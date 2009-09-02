@@ -41,11 +41,16 @@ allocate(idx(0:n), w(nmaps), s(nmaps), q(nmaps))
 allocate(Min(0:n,nmaps), Mout(0:m,nmaps), Mask(0:n,nmaps))
 
 call input_map(fin, Min, npix, nmaps)
+if (ord /= 1) call convert_nest2ring(nside, Min)
 
 ! import mask if specified
 if (nArguments() > 2) then
 	call getArgument(3, fmask)
+	
+	ntot = getsize_fits(fmask, ordering=ord)
+	
 	call input_map(fmask, Mask, npix, nmaps)
+	if (ord /= 1) call convert_nest2ring(nside, Mask)
 else
 	Mask = 1.0
 end if
@@ -55,11 +60,11 @@ do j = 0,m
 	s = 0.0 ! value  accumulator
 	q = 0.0 ! weight accumulator
 	
-	call pix2vec(mside, j, vj)
-	call query_disc(nside, vj, ww, idx, k, ord-1)
+	call pix2vec_ring(mside, j, vj)
+	call query_disc(nside, vj, ww, idx, k)
 	
 	do l = 0,k-1; i = idx(l)
-		call pix2vec(nside, i, vi)
+		call pix2vec_ring(nside, i, vi)
 		call angdist(vi, vj, t)
 		
 		w = kernel(t/ww)*Mask(i,:)
@@ -73,7 +78,7 @@ do j = 0,m
 	write (*,*) j,k,s/q
 end do
 
-call write_minimal_header(header, 'MAP', nside=mside, order=ord)
+call write_minimal_header(header, 'MAP', nside=mside, order=1)
 
 call output_map(Mout, header, '!'//fout)
 
@@ -85,13 +90,5 @@ function kernel(x)
 	
 	if (x < 1.0) kernel = (1.0 - x**2)**2
 end function kernel
-
-! renders cartesian vector coordinates of the nominal pixel center
-subroutine pix2vec(n, p, v)
-	integer n, p; real(DP) :: v(3); v = 0.0
-	
-	if (ord == 1) call pix2vec_ring(n, p, v)
-	if (ord == 2) call pix2vec_nest(n, p, v)
-end subroutine pix2vec
 
 end

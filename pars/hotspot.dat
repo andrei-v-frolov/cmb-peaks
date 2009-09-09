@@ -1,0 +1,4 @@
+infile = maps/@FILE@.fits
+extrema_outfile = /tmp/@FILE@-extrema.fits
+maxima_outfile = /tmp/@FILE@-max.dat
+minima_outfile = /tmp/@FILE@-min.dat

@@ -21,15 +21,16 @@ real(SP), allocatable :: Min(:,:), Mout(:,:), Mask(:,:)
 
 integer i, j, k, l
 integer, allocatable :: idx(:)
-real(DP) :: vi(3), vj(3), t, p, ww
+real(DP) :: vi(3), vj(3), t, p, aw, ww
 real(DP), allocatable :: w(:), s(:), q(:)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! beam FWHM
-call getArgument(1, beam)
-read (beam,*) t; ww = t/(180.0*60.0) * pi/fwhm()
+call getArgument(1, beam);
+read (beam,*) t; t = t/(180.0*60.0) * pi
+ww = 2.0*sin(t/2.0)/fwhm(); aw = 2.0*asin(ww/2.0)
 
 ! input map
 call getArgument(2, fin )
@@ -69,12 +70,13 @@ do j = 0,m
 	p = 0.0 ! kernel accumulator
 	
 	call pix2vec_ring(mside, j, vj)
-	call query_disc(nside, vj, ww, idx, k)
+	call query_disc(nside, vj, aw, idx, k)
 	
 	do l = 0,k-1; i = idx(l)
 		call pix2vec_ring(nside, i, vi)
 		call angdist(vi, vj, t)
 		
+		t = 2.0*sin(t/2.0)
 		t = kernel(t/ww)
 		w = t*Mask(i,:)
 		
@@ -123,7 +125,7 @@ function kernel(t)
 	! polynomial filters (generalized Savitzky-Golay family, spherical orthogonality)
 	!kernel = 2.0																		! SSG00
 	!kernel = 4.0*(1.0-x)																	! SSG01
-	kernel = 6.0*(1.0-x)**2																! SSG02
+	 kernel = 6.0*(1.0-x)**2																! SSG02
 	!kernel = (18.0+(-72.0+60.0*x)*x)															! SSG40
 	!kernel = (24.0+(-120.0+120.0*x)*x)*(1.0-x)														! SSG41
 	!kernel = (30.0+(-180.0+210.0*x)*x)*(1.0-x)**2														! SSG42

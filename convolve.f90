@@ -29,7 +29,7 @@ real(DP), allocatable :: w(:), s(:), q(:)
 
 ! beam FWHM
 call getArgument(1, beam);
-read (beam,*) t; t = t/(180.0*60.0) * pi
+read (beam,*) t; t = t * pi/(180.0*60.0)
 ww = 2.0*sin(t/2.0)/fwhm(); aw = 2.0*asin(ww/2.0)
 
 ! input map
@@ -91,7 +91,9 @@ do j = 0,m
 	Mout(j,:) = s/q
 end do
 
-call write_minimal_header(header, 'MAP', nside=mside, order=1)
+call write_minimal_header(header, 'MAP', nside=mside, order=1, creator='CONVOLVE', version='$Revision$')
+call add_card(header, kwd='KERNEL', value='UNSPECIFIED')
+call add_card(header, kwd='FWHM', value=trim(beam)//'ARCMIN')
 
 call output_map(Mout, header, '!'//fout)
 
@@ -133,6 +135,9 @@ function kernel(t)
 	!kernel = (60.0+(-840.0+(3360.0+(-5040.0+2520.0*x)*x)*x)*x)*(1.0-x)											! SSG81
 	!kernel = (70.0+(-1120.0+(5040.0+(-8400.0+4620.0*x)*x)*x)*x)*(1.0-x)**2											! SSG82
 	!kernel = (90.0+(-1800.0+(9900.0+(-19800.0+12870.0*x)*x)*x)*x)*(1.0-x)**4										! SSG84
+	
+	! (truncated) Gaussian kernel
+	!kernel = exp(-7.0*x)																	! GAUSS
 end function kernel
 
 ! full width half maximum of the kernel

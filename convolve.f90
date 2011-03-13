@@ -86,7 +86,7 @@ do j = 0,m
 	end do
 	
 	! mask away non-conforming pixels
-	where (abs((q-p)/p) > eps/2.0) q = 0.0
+	where (abs(1.0-q/p) > eps/2.0) q = 0.0
 	
 	Mout(j,:) = s/q
 end do

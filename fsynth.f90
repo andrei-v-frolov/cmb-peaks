@@ -1,5 +1,5 @@
 ! $Id$
-! Synthesize a filtered map, applying a mask correction
+! Synthesize a filtered map, applying a mask correction, and output hot pixels
 ! invoke: wiener ... | fsynth <mmap-alms.fits> <map.fits> <mask-alms.fits[:tdb]>
 
 program fsynth
@@ -54,9 +54,12 @@ end if
 allocate (Mout(0:n,nmaps))
 Mout = Mmap/Mask
 
+! output extrema distribution in first extent
+call extrema(Mout(:,1), Mask(:,1), nside, n)
+
 ! output corrected map
 call getArgument(2, fout)
-call write_minimal_header(header, 'MAP', nside=nside, order=1, creator='FSYNTH', version='$Revision$')
+call write_minimal_header(header, 'MAP', nside=nside, order=2, creator='FSYNTH', version='$Revision$')
 call output_map(Mout, header, '!'//fout)
 
 
@@ -65,25 +68,44 @@ contains
 ! synthesize a map from alms convolved with a beam function
 subroutine make_map(falms, bls, lmax, nside, map, n, next)
 	character(*) falms; real bls(0:lmax)
-	integer lmax, nalms, nside, next, k, l, m, n
+	integer lmax, nalms, nside, next, j, k, l, m, n
 	character(len=80) :: header(64,3)
 	real(DP), allocatable :: aks(:,:,:), map(:,:)
 	complex(DPC), allocatable :: alms(:,:,:)
 	
+	! read in alms data
 	nalms = number_of_alms(falms, next); n = nside2npix(nside)-1
 	allocate(aks(nalms,4,next), alms(next,0:lmax,0:lmax), map(0:n,next))
 	
 	call fits2alms(falms, nalms, aks, 3, header, 64, next)
 	
-	do k = 1,nalms
-		l = aks(k,1,1); m = aks(k,2,1)
+	! convert to complex alms, applying beam
+	do j = 1,next; do k = 1,nalms
+		l = aks(k,1,j); m = aks(k,2,j)
 		if (l > lmax .or. m > lmax) cycle
-		alms(:,l,m) = bls(l)*cmplx(aks(k,3,:), aks(k,4,:))
-	end do
+		alms(j,l,m) = bls(l)*cmplx(aks(k,3,j), aks(k,4,j))
+	end do; end do
 	
-	call alm2map(nside, lmax, lmax, alms, map(:,next))
+	! synthesize map (in nested ordering)
+	if (next == 1) call alm2map(nside, lmax, lmax, alms, map(:,1))
+	if (next >  1) call alm2map(nside, lmax, lmax, alms, map(:,1:next))
+	call convert_ring2nest(nside, map)
 	
 	deallocate(aks, alms)
+end subroutine
+
+! find extrema in the interior of the masked map
+subroutine extrema(M, mask, nside, n)
+	integer i, k, n, nside, nn(8)
+	real(DP), dimension(0:n) :: M, mask
+	
+	do i = 0,n
+		if (mask(i) == 0.0) cycle
+		call neighbours_nest(nside, i, nn, k)
+		if (any(mask(nn(1:k)) == 0.0)) cycle
+		
+		if (M(i) > maxval(M(nn(1:k))) .or. M(i) < minval(M(nn(1:k)))) write (*,'(I,G24.16)') i, M(i)
+	end do
 end subroutine
 
 end

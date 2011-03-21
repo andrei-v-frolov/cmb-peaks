@@ -1,5 +1,5 @@
 ! $Id$
-! Generate Wiener optimal filter of a circular kernel subject to noise with known Cl's
+! Generate Wiener-optimal filter of a circular kernel subject to noise with known Cl's
 ! invoke: wiener <{kernel:fwhm|kernel-bls.fits}> [noise-cls.{ascii|fits}] [filter-bls.fits]
 
 program wiener
@@ -20,6 +20,7 @@ real(DP), dimension(0:lmax,ncl) :: Bl, Cl
 
 integer i, l; real t
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! filter kernel
 call getArgument(1, kern)
@@ -69,20 +70,20 @@ subroutine legendre(P, lmax, x, s)
 	end do
 end subroutine
 
-! calculate beam bl's for a kernel of angular width a
+! calculate beam bl's for a kernel of angular FWHM alpha
 subroutine beam(Bl, lmax, k, alpha)
 	integer, parameter :: nmin = 8, nmax = 13
 	integer lmax; character(*) k; real x, w, alpha
 	real(DP) Bl(0:lmax), P(0:lmax), S(0:nmax,0:lmax), h(0:nmax)
 	integer i, ii, l, n
 	
-	! zero width means delta function
+	! zero width means delta beam
 	if (alpha == 0.0) then
 		Bl = 1.0
 		return
 	end if
 	
-	! assuming FIR kernel on [0,1] disk
+	! assuming FIR kernel on unit disk
 	w = 2.0*sin(alpha/2.0)/fwhm(k); h(0) = 1.0
 	call legendre(S(0,:), lmax, 1.0-w**2/2.0, kernel(k,1.0)/2.0)
 	
@@ -150,7 +151,7 @@ function kernel(k, t)
 						+(123559128.0+(-105907824.0+36773550.0*x)*x)*x)*x)*x)*x)*x)*x)*(1.0-x)**8
 		
 		! (truncated) Gaussian kernel
-		case('GAUSS');		kernel = 14.0*exp(-7.0*x)
+		case('GAUSS');		kernel = 50.0*exp(-25.0*x)
 	end select
 end function kernel
 
@@ -180,20 +181,21 @@ end function fwhm
 
 ! read (normalized) Cl's from a data file
 subroutine data2cl(fin, Cl, lmax, ncl, header)
-	integer l, lmax, ncl
+	integer l, lmax, ncl, io
         character(*) fin, header(:)
 	real(DP) p(ncl), Cl(0:lmax,ncl)
 	
-	! if it looks like FITS file, read it directly
+	! if it looks like a FITS file, read it in unchanged
 	if (index(fin, ".fits") > 0) then
 		call fits2cl(fin, Cl, lmax, ncl, header); return
 	end if
 	
-	! nope, it's plain text (note normalization!)
+	! nope, it's a plain text file (with normalized Cl's!)
         Cl = 0.0; open(11, file=fin, action="read")
         
-        do while (.not. eof(11))
-		read (11,*) l, p
+        do
+		read (11,*,iostat=io) l, p
+		if (io < 0) exit
 		if (l > lmax) cycle
 		Cl(l,:) = 2.0*pi*p/(l*(l+1.0))
 	end do
@@ -212,7 +214,7 @@ subroutine intcls(Cl, lmax)
 	! find what multipoles are missing
 	do l = 0,lmax/2; if (Cl(l) > 0.0) exit; end do
 	
-	! interpolate away
+	! interpolate missing multipoles
 	do i = 0,l-1
 		call polint(x(l:lmax), y(l:lmax), lmax-l+1, x(i), y(i), dy); Cl(i)=y(i)/w(i)
 	end do

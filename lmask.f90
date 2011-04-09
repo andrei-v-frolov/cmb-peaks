@@ -1,6 +1,6 @@
 ! $Id$
 ! Synthesize a rank-ordered weigth masks for calculating L-moments
-! invoke: lmask <map.fits[:channel]> <lmask-base[:moments]> [mask.fits]
+! invoke: lmask <map.fits[:channel]> <lmask.fits[:moments]> [mask.fits] [lmap-base]
 
 program lmask
 
@@ -33,7 +33,7 @@ if (i > 0) then; read (fout(i+1:),*) nmoms; fout(i:) = ""; end if
 
 ! allocate dynamic arrays to store maps and ranks
 ntot = getsize_fits(fin, nmaps=nmaps, nside=nside, ordering=ord); npix = nside2npix(nside)
-allocate(Min(npix,nmaps), Mask(npix,nmaps), Mout(npix,nmoms), P(0:nmoms), indx(npix), rank(npix))
+allocate(Min(npix,nmaps), Mask(npix,nmaps), Mout(npix,nmoms), P(nmoms), indx(npix), rank(npix))
 
 ! import input map
 call input_map(fin, Min, npix, nmaps)
@@ -58,31 +58,47 @@ call indexx(npix, Min(:,ch), indx)
 call rankx(npix, indx, rank)
 
 do i = 1,npix
-        call legendre(P, rank(i), nuse, nmoms-1)
-        Mout(i,:) = Mask(i,ch) * P(1:nmoms)
+        call gegenbauer(P, rank(i), nuse, nmoms-1, 1.0)
+        Mout(i,:) = Mask(i,ch) * P
 end do
 
 ! output L-weight masks (to a single FITS container)
-!call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
-!call output_map(Mout, header, '!'//fout)
+call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
+call output_map(Mout, header, '!'//fout)
 
-! output L-weight masks (to separate FITS files)
-do i = 1,nmoms
-	write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'
+! output L-weighted maps (to separate FITS files) if requested
+if (nArguments() > 3) then
+	call getArgument(4, fout)
 	
-	call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
-	call output_map(Mout(:,(/i/)), header, '!'//fmask)
-end do
+	do i = 1,npix
+		Mout(i,:) = Min(i,ch) * Mout(i,:)
+	end do
+	
+	do i = 1,nmoms
+		write (fmask,'(A,I1,A5)') trim(fout), i, '.fits'
+		
+		call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
+		call output_map(Mout(:,(/i/)), header, '!'//fmask)
+	end do
+end if
+
 
 contains
 
-! Calculate Legendre weights from rank ordering
-subroutine legendre(P, r, n, l)
-        integer k, r, n, l; real(DP) x, P(-1:l)
+! Calculate L-weights from rank ordering using
+! scaled Gegenbauer polynomials P(k,alpha,x) = C(k,alpha/2,2*x-1)/C(k,alpha/2,1)
+! generalize Legendre P (alpha=1), Chebyshev T (alpha=0) and Chebyshev U (alpha=2)
+subroutine gegenbauer(P, r, n, l, alpha)
+        integer k, r, n, l; real(DP) P(0:l), alpha
         
-        P(-1:0) = 1.0; do k = 1,l; x = real(r-k)/real(n-k)
-                P(k) = ((2*k-1)*(2.0*x-1.0)*P(k-1) - (k-1)*P(k-2))/k
+        P(0) = 1.0; P(1) = X(r,n,1); do k = 1,l-1
+                P(k+1) = (X(r,n,k+1)*(2*k+alpha)*P(k) - k*P(k-1))/(k+alpha)
         end do
-end subroutine legendre
+end subroutine gegenbauer
 
+function X(r,n,k)
+	integer r,n,k; real X
+	
+	X = 2.0*(r-k)/(n-k) - 1.0
+end function X
 end

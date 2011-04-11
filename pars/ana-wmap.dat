@@ -1,0 +1,7 @@
+simul_type = 1
+nlmax = 1535
+iter_order = 8
+
+infile = maps/wmap.fits
+outfile = !cl-wmap.fits
+outfile_alms = !alms/wmap.fits

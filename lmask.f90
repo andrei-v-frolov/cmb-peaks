@@ -19,7 +19,7 @@ integer i, nmaps, nside, npix, ntot, nuse, ord
 character(len=80) :: header(64), fin, fout, fmask
 real(SP), allocatable :: Min(:,:), Mout(:,:), Mask(:,:)
 integer, allocatable :: indx(:), rank(:)
-real(DP), allocatable :: P(:)
+real(DP), allocatable :: P(:,:)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -33,7 +33,7 @@ if (i > 0) then; read (fout(i+1:),*) nmoms; fout(i:) = ""; end if
 
 ! allocate dynamic arrays to store maps and ranks
 ntot = getsize_fits(fin, nmaps=nmaps, nside=nside, ordering=ord); npix = nside2npix(nside)
-allocate(Min(npix,nmaps), Mask(npix,nmaps), Mout(npix,nmoms), P(nmoms), indx(npix), rank(npix))
+allocate(Min(npix,nmaps), Mask(npix,nmaps), Mout(npix,nmoms), P(nmoms,nmoms), indx(npix), rank(npix))
 
 ! import input map
 call input_map(fin, Min, npix, nmaps)
@@ -54,12 +54,12 @@ if (nArguments() < 3) then; Mask = 1.0; nuse = npix; else
 end if
 
 ! compute rank ordering and L-weights
+call gegenbauer(P, nmoms-1, 1.0)
 call indexx(npix, Min(:,ch), indx)
 call rankx(npix, indx, rank)
 
 do i = 1,npix
-        call gegenbauer(P, rank(i), nuse, nmoms-1, 1.0)
-        Mout(i,:) = Mask(i,ch) * P
+        Mout(i,:) = Mask(i,ch) * matmul(P, X(rank(i), nuse, nmoms-1))
 end do
 
 ! output L-weight masks (to a single FITS container)
@@ -75,7 +75,7 @@ if (nArguments() > 3) then
 	end do
 	
 	do i = 1,nmoms
-		write (fmask,'(A,I1,A5)') trim(fout), i, '.fits'
+		write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'
 		
 		call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
 		call output_map(Mout(:,(/i/)), header, '!'//fmask)
@@ -85,20 +85,23 @@ end if
 
 contains
 
-! Calculate L-weights from rank ordering using
-! scaled Gegenbauer polynomials P(k,alpha,x) = C(k,alpha/2,2*x-1)/C(k,alpha/2,1)
+! scaled Gegenbauer polynomials P(k,alpha,x) = C(k,alpha/2,x)/C(k,alpha/2,1)
 ! generalize Legendre P (alpha=1), Chebyshev T (alpha=0) and Chebyshev U (alpha=2)
-subroutine gegenbauer(P, r, n, l, alpha)
-        integer k, r, n, l; real(DP) P(0:l), alpha
+! satisfy P(0) = 1.0; P(1) = x; P(k+1) = ((2*k+alpha)*x*P(k) - k*P(k-1))/(k+alpha)
+! returns *shifted* polynomial coefficients as P(k,alpha,2*x-1) = sum(P(k,n)*x^n)
+subroutine gegenbauer(P, l, alpha)
+        integer k, l; real P(0:l,0:l), alpha
         
-        P(0) = 1.0; P(1) = X(r,n,1); do k = 1,l-1
-                P(k+1) = (X(r,n,k+1)*(2*k+alpha)*P(k) - k*P(k-1))/(k+alpha)
+        P = 0.0; P(0,0) = 1.0; P(1,1) = 2.0; P(1,0) = -1.0; do k = 1,l-1
+                P(k+1,:) = ((2*k+alpha)*(2.0*cshift(P(k,:),-1)-P(k,:)) - k*P(k-1,:))/(k+alpha)
         end do
 end subroutine gegenbauer
 
-function X(r,n,k)
-	integer r,n,k; real X
+! Calculate L-weights from rank order vector X using matmul(P,X)
+function X(r,n,l)
+	integer r, n, l, k; real X(0:l)
 	
-	X = 2.0*(r-k)/(n-k) - 1.0
+	X(0) = 1.0; do k = 1,l; X(k) = X(k-1) * (r-k)/(n-k); end do
 end function X
+
 end

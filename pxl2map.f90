@@ -43,9 +43,26 @@ do
 	read (*,*,iostat=io) i, p
 	if (io < 0) exit
 	M(i,:) = p
+	!M(disk(i,90.0),:) = p
 end do
 
 call write_minimal_header(header, 'MAP', nside=nside, order=ord)
 call output_map(M, header, '!'//fout)
+
+contains
+
+function disk(j, w)
+	integer, allocatable :: disk(:)
+	integer j, k, idx(npix); real w, vj(3)
+	
+	select case (ord)
+		case(1); call pix2vec_ring(nside, j, vj)
+		case(2); call pix2vec_nest(nside, j, vj)
+	end select
+	
+	call query_disc(nside, vj, w * pi/(180.0*60.0), idx, k, nest=ord-1)
+	
+	allocate(disk(k)); disk = idx(1:k)
+end function
 
 end

@@ -36,9 +36,13 @@ BEAMS = 060 062 064 065 067 069 071 073 076 078 080 082 085 087 \
 	301 309 319 328 337 347 357 368 379 390 401 413 425 437 \
 	450 463 477 491 505 520 535 550 566 583 600
 
-KERN = $(shell expr '$*' : '\w\+-\(\w\+\)-[0-9]\+')
-FILT = $(shell expr '$*' : '\([[:alnum:]\-]\+\)-[0-9]\+')
-FWHM = $(shell expr '$*' : '[[:alnum:]\-]\+-\([0-9]\+\)' \* 2)
+# portable regexp definitions
+DIGITS = [0-9]\{1,\}
+ALNUMS = [[:alnum:]\-]\{1,\}
+
+FILT = $(shell expr '$*' : '\($(ALNUMS)\)-$(DIGITS)')
+FWHM = $(shell expr '$*' : '$(ALNUMS)-\($(DIGITS)\)' \* 2)
+KERN = $(shell expr '$*' : '$(ALNUMS)-\($(ALNUMS)\)-$(DIGITS)')
 
 MAPS  = $(foreach b,$(BEAMS),$(foreach k,$(KERNS),$(foreach s,$(STATS),$(s)-$(k)-$(b))))
 

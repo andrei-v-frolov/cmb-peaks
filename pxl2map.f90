@@ -18,6 +18,7 @@ implicit none
 character(len=80) :: header(64), fin, fout
 integer nmaps, nside, npix, n, ntot, ord, io
 real(SP), allocatable :: M(:,:)
+integer, allocatable, target :: idx(:)
 
 integer i; real(DP) p
 
@@ -32,9 +33,9 @@ call getArgument(2, fout)
 ntot = getsize_fits(fin, nmaps=nmaps, nside=nside, ordering=ord)
 npix = nside2npix(nside); n = npix-1
 
-allocate(M(0:n,nmaps))
+allocate(M(0:n,nmaps), idx(npix))
 
-call input_map(fin, M, npix, nmaps)
+!call input_map(fin, M, npix, nmaps)
 
 M = 0.0
 
@@ -44,6 +45,7 @@ do
 	if (io < 0) exit
 	M(i,:) = p
 	!M(disk(i,90.0),:) = p
+	!M(disk(i,600.0),:) = M(disk(i,600.0),:) + 1.0
 end do
 
 call write_minimal_header(header, 'MAP', nside=nside, order=ord)
@@ -52,8 +54,8 @@ call output_map(M, header, '!'//fout)
 contains
 
 function disk(j, w)
-	integer, allocatable :: disk(:)
-	integer j, k, idx(npix); real w, vj(3)
+    integer, pointer :: disk(:)
+	integer j, k; real w, vj(3)
 	
 	select case (ord)
 		case(1); call pix2vec_ring(nside, j, vj)
@@ -62,7 +64,7 @@ function disk(j, w)
 	
 	call query_disc(nside, vj, w * pi/(180.0*60.0), idx, k, nest=ord-1)
 	
-	allocate(disk(k)); disk = idx(1:k)
+	disk => idx(1:k)
 end function
 
 end

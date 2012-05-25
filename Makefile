@@ -9,7 +9,7 @@ BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fdiff pxltool pxl2map)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
-FFLAGS = -O3 -ipo -xT -r8 -pc80 -parallel
+FFLAGS = -O3 -ipo -xHOST -r8 -pc80 -parallel
 LDFLAGS = -static-intel
 
 # HEALPix and CFITSIO libraries
@@ -109,6 +109,7 @@ maps/T4-%.fits: maps/L4-%.fits maps/L2-%.fits
 
 gifs/%.gif: maps/%.fits
 	map2gif -inp $^ -out !$@ -xsz 1200 -bar true
+#	map2gif -inp $^ -out !$@ -pro GNO -lat -56.732571412162 -lon 209.958217270195 -res 3.3 -xsz 800 -bar true
 
 stat/%.eps stat/%.pdf: stat/%.dat
 	(cd stat; sed "s/@DATA@/$*/g;s/@KERNEL@/$(KERN)/g;s/@FILTER@/$(FILT)/g;s/@BEAM@/$(FWHM).0/g" < peak.gpl | gnuplot)
@@ -121,13 +122,3 @@ $(BINDIR)/wiener: polint.f
 
 $(BINDIR)/%: %.f90
 	$(FC) $(FFLAGS) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
-
-
-################### Brute Force (obsolete) #####################
-
-maps/%B.fits: maps/white.fits
-	$(call lock,$(BINDIR)/$(FILT) $(FWHM).0 $^ $@:3 maps/mask.fits:0.20)
-
-stat/%B.dat: maps/%B.fits
-	sed "s/@FILE@/$*/g" < pars/hotspot.dat > /tmp/$*.par
-	hotspot /tmp/$*.par; cat /tmp/$*-{min,max}.dat | sort -k2g > $@

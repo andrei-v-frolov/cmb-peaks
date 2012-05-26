@@ -117,6 +117,7 @@ stat/%.eps stat/%.pdf: stat/%.dat
 
 ################### Binaries & Dependencies ####################
 
+$(BINDIR)/fsynth: rank.f
 $(BINDIR)/lmask: rank.f
 $(BINDIR)/wiener: polint.f
 

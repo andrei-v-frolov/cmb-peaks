@@ -66,6 +66,7 @@ forall (i = 0:n) Mout(i,:) = Mmap(i,:)/Mask(i,1)
 select case (mode)
 	case (default,iqu); call extrema(Mout(:,1), Mask(:,1), nside, n)	! extrema distribution
 	case (inv);         call minkowski(Mout, Mask(:,1), nmaps, n, 1024)	! cumulative Minkowski functionals
+	!case (inv);         call skeleton(Mout(:,4), Mask(:,1), nside, n)	! ...
 end select
 
 ! output corrected map
@@ -252,6 +253,20 @@ subroutine extrema(M, mask, nside, n)
 		
 		if (M(i) > maxval(M(nn(1:k)))) write (*,'(I,G24.16,I)') i, M(i), +1
 		if (M(i) < minval(M(nn(1:k)))) write (*,'(I,G24.16,I)') i, M(i), -1
+	end do
+end subroutine
+
+! find skeleton in the interior of the masked map
+subroutine skeleton(M, mask, nside, n)
+	integer i, k, n, nside, nn(8)
+	real(DP), dimension(0:n) :: M, mask
+	
+	do i = 0,n
+		if (mask(i) == 0.0) cycle
+		call neighbours_nest(nside, i, nn, k)
+		if (any(mask(nn(1:k)) == 0.0)) cycle
+		
+		if (any(M(i)*M(nn(1:k)) < 0.0)) write (*,'(I,G24.16,I)') i, M(i)
 	end do
 end subroutine
 

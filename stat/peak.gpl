@@ -4,8 +4,6 @@ set terminal postscript eps enhanced solid color
 
 set size 0.6; set lmargin 5; set rmargin 1
 
-set lmargin 2.5 # margins on older gnuplot
-
 N = `wc -l < @DATA@.dat`; NN=N-1
 M = `head -1 @DATA@.dat | awk '{print $2;}'`
 P = `head -1 @DATA@.dat | awk '{print $1;}'`
@@ -53,11 +51,11 @@ plot Q68 with filledcurve y1=-Q68 lc rgb '#FFEEEE', Q95 with filledcurve y1=-Q95
 set size 0.16,0.23; set origin 0,0.075
 set xrange [-6:-4]; set yrange [1e-5:*]
 set logscale y; unset ytics; set grid y2
-set y2tics 1.0; set y2label 'log_{10} CDF' -0.5,0
+set y2tics 1.0; set y2label 'log_{10} CDF' offset -0.5,0
 set x2tics add M/sigma,2,0; set grid x2
 set format x2 '%.2f{/Symbol s}'; unset label
 plot 1.0-cdf(x-alpha) w l lt 2 lw 5
 unset multiplot
 
 # clean up
-! epstopdf @DATA@.eps
+! ../bins/epstopdf @DATA@.eps

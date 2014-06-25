@@ -3,7 +3,7 @@
 set output "sign.eps"
 set terminal postscript eps enhanced solid color
 
-set size 1.20,0.8; set lmargin 3; set rmargin 3
+set size 1.20,0.8; set lmargin 4; set rmargin 4
 
 ! sort -k1g -k11 L1-SSG??.dat | python spot.py > SPOTS
 
@@ -21,11 +21,11 @@ set size 1.20,0.8; set lmargin 3; set rmargin 3
 
 set logscale; set key bottom left Left reverse
 set xrange [2:20]
-set xlabel "filter kernel size [deg full width half max]" 0,0.5
+set xlabel "filter kernel size [deg full width half max]" offset 0,0.5
 set ytics 0.1 nomirror
 set yrange [1e-4:1]; set format y "10^{%T}"
-set ylabel "probability of Gaussian realization" 0.5
-set y2label "effective confidence level [{/Symbol s}]" -1,0
+set ylabel "probability of Gaussian realization" offset 0.5
+set y2label "effective confidence level [{/Symbol s}]" offset -1,0
 
 set xtics (1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30,32) rotate
 
@@ -57,4 +57,4 @@ plot erfc(3.0/sqrt(2)) w filledcurves above x1 lt 0 lc rgb '#FAE7B3' t '', \
      'SSG84-C.dat' u ($1/60.0):6:7:8 w e lt 3 pt 1 t ''
 
 # clean up
-! rm -f SSG??-[A-C].dat; epstopdf sign.eps
+! rm -f SSG??-[A-C].dat; ../bins/epstopdf sign.eps

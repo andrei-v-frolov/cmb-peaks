@@ -1,5 +1,5 @@
 simul_type = 1
-nlmax = 1535
+nlmax = 4000
 iter_order = 32
 
 infile = maps/white.fits

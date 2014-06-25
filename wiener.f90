@@ -14,7 +14,7 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: lmax = 2000, ncl = 1
+integer, parameter :: lmax = 4000, ncl = 1
 character(len=80) :: header(64), kern, fin, fout
 real(DP), dimension(0:lmax,ncl) :: Bl, Cl
 

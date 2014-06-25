@@ -20,7 +20,7 @@ implicit none
 
 integer, parameter :: default = 0, iqu = 1, inv = 2; integer :: mode = default
 
-integer, parameter :: lmax = 1535, nside = 512, hmax = 256
+integer, parameter :: lmax = 4000, nside = 2048, hmax = 256
 character(len=80) :: header(hmax), fmap, fmask, fout
 real(DP), allocatable :: Mmap(:,:), Mout(:,:), Mask(:,:)
 real(DP) beam(0:lmax)

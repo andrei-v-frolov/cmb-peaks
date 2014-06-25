@@ -1,8 +1,0 @@
-simul_type = 1
-nlmax = 1535
-iter_order = 32
-
-infile = maps/white.fits
-maskfile = maps/mask.fits
-outfile = !cl-mmap.fits
-outfile_alms = !alms/mmap.fits

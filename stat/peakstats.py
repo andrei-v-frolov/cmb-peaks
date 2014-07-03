@@ -38,7 +38,7 @@ def lkurtosis(gamma, n=1000, xmax=6.0):
     return gamma, L4/L2, L2-L4
 
 # gamma and sigma estimators are based on L-kurtosis LUT
-gamma_lut = np.vectorize(lkurtosis)(np.linspace(0.0, 1.0, 16))
+gamma_lut = np.vectorize(lkurtosis)(np.linspace(1.0, 0.0, 16))
 gamma_est = interp1d(gamma_lut[1], gamma_lut[0], kind='cubic')
 sigma_est = interp1d(gamma_lut[1], gamma_lut[2], kind='cubic')
 
@@ -57,7 +57,7 @@ def cdf_fit(x, F, n=32):
     """Determine parameters of a peak distribution F(x) by fitting Gaussian peak CDF"""
     
     # initial guess is calculated from L-moments
-    fit = [estimate(x, F)]; s = len(x)/n + 1
+    fit = list(estimate(x, F)); s = len(x)/n + 1
     
     # refine the fit using progressively more data
     while (s > 0):

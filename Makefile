@@ -111,8 +111,8 @@ gifs/%.gif: maps/%.fits
 	map2gif -inp $^ -out !$@ -xsz 1200 -bar true
 #	map2gif -inp $^ -out !$@ -pro GNO -lat -56.732571412162 -lon 209.958217270195 -res 3.3 -xsz 800 -bar true
 
-stat/%.eps stat/%.pdf: stat/%.dat
-	(cd stat; sed "s/@DATA@/$*/g;s/@KERNEL@/$(KERN)/g;s/@FILTER@/$(FILT)/g;s/@BEAM@/$(FWHM).0/g" < peak.gpl | gnuplot)
+stat/%.pdf: stat/%.dat
+	(cd stat; python plotpeaks.py $(KERN) $(FWHM).0 $*.dat $* 12.0)
 
 
 ################### Binaries & Dependencies ####################

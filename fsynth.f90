@@ -76,6 +76,8 @@ call output_map(Mout, header, '!'//fout)
 
 contains
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ! synthesize a map from alms convolved with a beam function
 subroutine make_map(falms, bls, lmax, nside, map, n, nout, mode)
 	character(*) falms; real bls(0:lmax)
@@ -241,6 +243,19 @@ function A(l,m)
 	A = sqrt((l*l-m*m)/(4.0*l*l-1.0))
 end function
 
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! print location info (map is assumed to be in nested order)
+! kind specifies peak (-1/+1 for min/max) or zero crossing (0)
+subroutine location(nside, pixel, value, kind)
+	integer nside, pixel, kind
+	real(DP) theta, phi, value
+	
+	call pix2ang_nest(nside, pixel, theta, phi)
+	write (*,'(3G24.16,I)') theta, phi, value, kind
+end subroutine
+
 ! find extrema in the interior of the masked map
 subroutine extrema(M, mask, nside, n)
 	integer i, k, n, nside, nn(8)
@@ -251,8 +266,8 @@ subroutine extrema(M, mask, nside, n)
 		call neighbours_nest(nside, i, nn, k)
 		if (any(mask(nn(1:k)) == 0.0)) cycle
 		
-		if (M(i) > maxval(M(nn(1:k)))) write (*,'(I,G24.16,I)') i, M(i), +1
-		if (M(i) < minval(M(nn(1:k)))) write (*,'(I,G24.16,I)') i, M(i), -1
+		if (M(i) > maxval(M(nn(1:k)))) call location(nside, i, M(i), +1)
+		if (M(i) < minval(M(nn(1:k)))) call location(nside, i, M(i), -1)
 	end do
 end subroutine
 
@@ -266,7 +281,7 @@ subroutine skeleton(M, mask, nside, n)
 		call neighbours_nest(nside, i, nn, k)
 		if (any(mask(nn(1:k)) == 0.0)) cycle
 		
-		if (any(M(i)*M(nn(1:k)) < 0.0)) write (*,'(I,G24.16,I)') i, M(i)
+		if (any(M(i)*M(nn(1:k)) < 0.0)) call location(nside, i, M(i), 0)
 	end do
 end subroutine
 

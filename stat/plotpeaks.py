@@ -21,11 +21,11 @@ widths = map(float, argv[5].split(',')) if (len(argv) > 5) else [18.0, 12.0, 8.8
 # import peak data
 ###############################################################################
 
-# data format: pixel #, peak value, peak type (+1 = max, -1 = min);
+# data format: theta, phi, peak value, peak type (+1 = max, -1 = min);
 peaks = np.loadtxt(file if file != '-' else stdin)
 
 # form peak CDF
-x = np.sort(peaks[:,1]); n = len(x)
+x = np.sort(peaks[:,2]); n = len(x)
 f = np.linspace(0.0, 1.0, n)
 
 # fit Gaussian random peak distribution

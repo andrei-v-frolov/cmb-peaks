@@ -27,8 +27,11 @@ BASE := wmap white mask $(foreach k,1 2 3 4,lmap-$(k))
 BASE := $(foreach m,$(BASE),maps/$(m).fits alms/$(m).fits gifs/$(m).gif)
 BASE := $(filter-out maps/wmap.fits maps/mask.fits alms/white.fits,$(BASE))
 
-STATS = L1 L2 L3 L4 T3 T4
-KERNS = SSG02 SSG42 SSG84
+#STATS = L1 L2 L3 L4 T3 T4
+#KERNS = SSG02 SSG42 SSG84
+
+STATS = L1
+KERNS = GAUSS SSG21 SSG42 SSG84
 BEAMS = 060 062 064 065 067 069 071 073 076 078 080 082 085 087 \
 	090 092 095 098 101 104 107 110 113 116 120 123 127 131 \
 	134 138 142 146 151 155 160 164 169 174 179 184 190 195 \

@@ -1,6 +1,6 @@
 ! $Id$
 ! create a blank map from pixel listing using existing map format
-! pixel values are to be supplied to stdin in pairs 'pixel value'
+! pixel values are to be supplied to stdin in triples 'theta phi value'
 ! invoke: pxl2map <map.fits> <out.fits>
 
 program pxl2map
@@ -20,7 +20,7 @@ integer nmaps, nside, npix, n, ntot, ord, io
 real(SP), allocatable :: M(:,:)
 integer, allocatable, target :: idx(:)
 
-integer i; real(DP) p
+real(DP) theta, phi, value
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -37,15 +37,16 @@ allocate(M(0:n,nmaps), idx(npix))
 
 !call input_map(fin, M, npix, nmaps)
 
-M = 0.0
+!M = 0.0
+M = 1.0/0.0
 
 ! input loop
 do
-	read (*,*,iostat=io) i, p
+	read (*,*,iostat=io) theta, phi, value
 	if (io < 0) exit
-	M(i,:) = p
-	!M(disk(i,90.0),:) = p
-	!M(disk(i,600.0),:) = M(disk(i,600.0),:) + 1.0
+	!M(pixel(theta,phi),:) = value
+	M(disk(theta,phi,90.0),:) = value
+	!M(disk(theta,phi,600.0),:) = M(disk(theta,phi,600.0),:) + 1.0
 end do
 
 call write_minimal_header(header, 'MAP', nside=nside, order=ord)
@@ -53,16 +54,25 @@ call output_map(M, header, '!'//fout)
 
 contains
 
-function disk(j, w)
-    integer, pointer :: disk(:)
-	integer j, k; real w, vj(3)
+! nearest pixel index
+function pixel(theta, phi)
+	real(DP) theta, phi, warcmin, v(3); integer pixel
 	
 	select case (ord)
-		case(1); call pix2vec_ring(nside, j, vj)
-		case(2); call pix2vec_nest(nside, j, vj)
+		case(1); call ang2pix_ring(nside, theta, phi, pixel)
+		case(2); call ang2pix_nest(nside, theta, phi, pixel)
 	end select
 	
-	call query_disc(nside, vj, w * pi/(180.0*60.0), idx, k, nest=ord-1)
+	write (*,*) pixel
+end function
+
+! disk pixel index 
+function disk(theta, phi, warcmin)
+	real(DP) theta, phi, warcmin, v(3)
+	integer, pointer :: disk(:); integer k
+	
+	call ang2vec(theta, phi, v)
+	call query_disc(nside, v, warcmin * pi/(180.0*60.0), idx, k, nest=ord-1)
 	
 	disk => idx(1:k)
 end function

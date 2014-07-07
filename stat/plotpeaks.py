@@ -21,7 +21,7 @@ widths = map(float, argv[5].split(',')) if (len(argv) > 5) else [18.0, 12.0, 8.8
 # import peak data
 ###############################################################################
 
-# data format: theta, phi, peak value, peak type (+1 = max, -1 = min);
+# peak data format: theta, phi, value, kind (-1 => min, +1 => max);
 peaks = np.loadtxt(file if file != '-' else stdin)
 
 # form peak CDF
@@ -32,8 +32,32 @@ f = np.linspace(0.0, 1.0, n)
 fit, cov = cdf_fit(x,f)
 gamma, sigma, alpha = fit
 
-# evaluate best fit CDF and fit variance
-y, dy = marginalize(lambda p: CDF(x, p[0], p[1], p[2]), fit, cov)
+
+###############################################################################
+# North/South asymmetry
+###############################################################################
+
+def ang2vec(theta,phi):
+    """Convert spherical coordinates (in radians) to a cartesian vector"""
+    return np.array([sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)])
+
+def iau2vec(l,b):
+    """Convert IAU galactic coordiates (in degrees) to a cartesian vector"""
+    theta = (90.0-b) * pi/180.0; phi = l * pi/180.0; return ang2vec(theta,phi)
+
+# dipole modulation direction
+dipole = iau2vec(227,-15)
+
+north = []
+south = []
+
+for i in range(n):
+    q = np.dot(ang2vec(peaks[i,0], peaks[i,1]), dipole)
+    
+    if (q < -1.0/3.0):
+        north.append(peaks[i,2])
+    if (q > +1.0/3.0):
+        south.append(peaks[i,2])
 
 
 ###############################################################################
@@ -79,7 +103,7 @@ def plot_setup(ax, xlabel='', ylabel='', xlim=[-6,6], ylim=[0,1], legend=''):
         if (fill):
             leg = plt.legend(loc=legend, frameon=True)
             # remove box around legend
-            leg.get_frame().set_edgecolor("white")
+            leg.get_frame().set_edgecolor('none')
             leg.get_frame().set_alpha(.8)
         else:
             plt.legend(loc=legend, frameon=False)
@@ -109,6 +133,46 @@ def plot_setup(ax, xlabel='', ylabel='', xlim=[-6,6], ylim=[0,1], legend=''):
     # set vertical y axis ticklables
     for ticklabel in ax.yaxis.get_ticklabels():
         ticklabel.set_rotation("vertical")
+
+def kstest(data, color='r', marker='+', size=1.0, label='', zorder=5):
+    """Plot Kolmogorov-Smirnov deviation test for specified data set"""
+    
+    # form peak CDF from value list
+    x = np.sort(data); n = len(x)
+    f = np.linspace(0.0, 1.0, n)
+    
+    # Kolmogorov-Smirnov deviation
+    K = sqrt(n)+0.12+0.11/sqrt(n)
+    
+    # evaluate best fit CDF and fit variance
+    y, dy = marginalize(lambda p: CDF(x, p[0], p[1], p[2]), fit, cov)
+    
+    # plot deviation from Gaussian peak CDF
+    for i in range(3):
+        plt.fill_between(x/sigma, K*(f-y-(i+1)*dy), K*(f-y+(i+1)*dy), edgecolor='none', color=color, alpha=0.1, zorder=zorder-(i+1))
+    
+    if (marker):
+        plt.scatter(x/sigma, K*(f-y), 24*width/8.8*size, color=color, marker=marker, linewidth=0.5, label=label, zorder=zorder)
+    #plt.errorbar(x/sigma, K*(f-y), yerr=3*K*dy, color="r", fmt="o", linewidth=0.5, label="Data")
+
+def plot_ks(plot, xlim=[-6,6]):
+    """Plot Kolmogorov-Smirnov deviation"""
+    
+    plt.title("Kolmogorov deviation from Gaussian peak CDF")
+    plt.hlines(0, xlim[0], xlim[1], linewidth=0.5, zorder=0) # x axis
+    
+    # Kolmogorov-Smirnov confidence levels
+    for i in [0.3989178859, 0.5137003373, 0.7170542898]:
+        plt.fill_between(xlim, -i, i, edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5)
+    
+    kstest(north, color='b', marker='x', size=0.2, label="northern cap")
+    kstest(south, color='g', marker='x', size=0.2, label="southern cap")
+    kstest(x, marker='+', size=0.5, label="entire sky")
+    
+    #plot_setup(plot, ylim=[-1,1])
+    plot_setup(plot, ylim=[-1.3,1.3])
+    #plt.yticks([-0.5,0.0,0.5,1.0])
+    plt.legend(loc='upper center', ncol=3, frameon=False)
 
 def plot_cdf(plot, xlim=[-6,6], n=1024):
     """Plot peak CDF"""
@@ -142,31 +206,9 @@ def plot_cdf(plot, xlim=[-6,6], n=1024):
     plot_setup(plot, xlim=xlim, legend='upper left')
     plot.xaxis.set_major_formatter(FormatStrFormatter('$%d\sigma$'))
 
-def plot_ks(plot, xlim=[-6,6]):
-    """Plot Kolmogorov-Smirnov deviation"""
-    
-    N = len(x); K = sqrt(N)+0.12+0.11/sqrt(N)
-    
-    plt.title("Kolmogorov deviation from Gaussian peak CDF")
-    plt.hlines(0, xlim[0], xlim[1], linewidth=0.5, zorder=0) # x axis
-    
-    # Kolmogorov-Smirnov confidence levels
-    for i in [0.3989178859, 0.5137003373, 0.7170542898]:
-        plt.fill_between(xlim, -i, i, edgecolor='none', color="darkgrey", alpha=0.2, zorder=-3)
-    
-    # Kolmogorov deviation from Gaussian peak CDF
-    for i in range(3):
-        plt.fill_between(x/sigma, K*(f-y-(i+1)*dy), K*(f-y+(i+1)*dy), edgecolor='none', color="r", alpha=0.1, zorder=5-i)
-    plt.scatter(x/sigma, K*(f-y), 24*width/8.8, color="r", marker="+", linewidth=0.5, label="Data", zorder=10)
-    
-    #plt.errorbar(x/sigma, K*(f-y), yerr=3*K*dy, color="r", fmt="o", linewidth=0.5, label="Data")
-    
-    plot_setup(plot, ylim=[-1,1])
-    plt.yticks([-0.5,0.0,0.5,1.0])
-
 # Create the plots
 for width in widths:
-    layout = gridspec.GridSpec(2, 1, height_ratios=[1, 2])
+    layout = gridspec.GridSpec(2, 1, height_ratios=[5, 8])
     fig = plt.figure(figsize=(cm2inch(width), cm2inch(width/aspect)), frameon=fill)
     
     # create plots

@@ -81,7 +81,7 @@ maps/lmask.fits $(foreach k, 1 2 3 4, maps/lmap-$(k).fits): maps/white.fits maps
 ################### Convolution Rules ##########################
 
 lock = -lockfile -r0 $@.lock && ($(1); rm -f $@.lock)
-convolve = $(BINDIR)/fsynth $< $(2) alms/mask.fits:0.5 < $(1) | sort -k2g > $(3)
+convolve = $(BINDIR)/fsynth $< $(2) alms/mask.fits:0.5 < $(1) | sort -k3g > $(3)
 
 beam/%.dat:
 	$(call lock,$(BINDIR)/wiener $(FILT):$(FWHM).0 > $@)

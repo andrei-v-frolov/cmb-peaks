@@ -1,0 +1,49 @@
+#!/usr/bin/env gnuplot
+
+#set terminal postscript eps enhanced solid color
+
+lmax=4000; lbeam=1200; alpha=0.75
+
+# Chebyshev polynomials (shifted to 0:1)
+T0(x)=1
+T1(x)=2*x-1
+T2(x)=8*x**2-8*x+1
+T3(x)=32*x**3-48*x**2+18*x-1
+T4(x)=128*x**4-256*x**3+160*x**2-32*x+1
+T5(x)=512*x**5-1280*x**4+1120*x**3-400*x**2+50*x-1
+
+# polynomial fit model to noise covariance
+F(x)=C0*T0(x)+C1*T1(x)+C2*T2(x)+C3*T3(x)+C4*T4(x)+C5*T5(x)
+X(l)=( (l*(l+1.0))/(lmax*(lmax+1.0)) )**0.25
+N(l)=F(X(l))/X(l)**alpha * l*(l+1)/(2*pi)
+
+# beam function for temperature map (squared because we fit Cl's)
+B(l)=exp(-l*(l+1)/lbeam**2/2.0)**2
+
+# SMICA effective beam (5' FWHM Gaussian/Pixel window at n=2048)
+BFWHM = 5.0 * pi/(180*60) # 5 arcmin
+P2048 = 1.21333461333613 * pi/(180*60)
+lbeam = sqrt((8*log(2))/(BFWHM**2-P2048**2))
+
+print "Effective l_beam = ", lbeam/sqrt(2)
+
+# do fit on noise component
+C0=0.0; C1=0.0; C2=0.0; C3=0.0; C4=0.0; C5=0.0
+
+fit [0:1] F(x) 'cl_noise_t1.txt' u (X($0)):($1*X($0)**alpha) via C0,C1,C2,C3,C4,C5
+#plot [0:1] 'cl_noise_t1.txt' u (X($0)):($1*X($0)**alpha) w l, F(x) w l
+
+# plot covariance model components
+set logscale; set key bottom right
+set xlabel 'l'; set ylabel 'C_l l(l+1)/2 {/Symbol p}, {/Symbol m}K^2' 
+plot [2:lmax] \
+     'cl_smica_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from SMICA sky map', \
+     'cl_noise_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from SMICA noise map', \
+     'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)) w l t 'best-fit CMB spectrum C_l', \
+     N(x) t 'ad-hoc noise C_l model', \
+     'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+N($1)) w l lw 3 t 'total C_l covariance model'
+
+# dump the tabulated model
+set table "base_planck_bestfit_cmb_adhoc_noise.cl"; set format y "%.12f"
+plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+N($1))
+unset table

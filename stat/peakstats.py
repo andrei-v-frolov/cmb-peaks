@@ -88,13 +88,25 @@ def marginalize(func, p, cov, order=4):
     
     return f, np.sqrt(df)
 
-def decimate(x, F, n=33):
-    """Decimate CDF to specified number of points by rational ratio"""
+def decimate(x, y, n=33, uniform='l'):
+    """Decimate CDF to approximate number of points (uniformly in x, y, or curve length)"""
     
-    # decimation ratio is q:p
-    q = len(x)-1; p = n-1
+    # uniform output measure
+    gxx = 0.0 if uniform=='y' else ((n-1.0)/(x[-1]-x[0]))**2/(2.0 if uniform=='l' else 1.0)
+    gyy = 0.0 if uniform=='x' else ((n-1.0)/(y[-1]-y[0]))**2/(2.0 if uniform=='l' else 1.0)
     
-    # selected elements index
-    idx = [i*q/p for i in range(n)]
+    # construct point index
+    idx = [0]; l = 0.0; N = len(x)
     
-    return x[idx],F[idx]
+    for i in range(1,N):
+        dl = sqrt(gxx*(x[i]-x[i-1])**2 + gyy*(y[i]-y[i-1])**2)
+        if (l < floor(l+dl)):
+            idx.append(i)
+        l += dl
+    
+    # append last point if we missed it
+    if (idx[-1] != N-1):
+        idx.append(N-1)
+    
+    # decimate the distribution
+    return x[idx],y[idx]

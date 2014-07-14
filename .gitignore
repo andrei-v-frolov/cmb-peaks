@@ -1,0 +1,9 @@
+# compiled Python
+*.py[cod]
+
+# generated data
+alms/*.fits
+beam/*.dat
+gifs/*.gif
+maps/*.fits
+stat/*.{dat,pdf}

@@ -2,6 +2,13 @@
 # Plot peak distribution and deviation from Gaussian peak statistics
 # usage: peakplot KERNEL FWHM [input datafile] [plot basename] [width list (in cm)]
 
+# plot style options
+aspect = 4/3.   # figure aspect ratio (default is 4:3)
+fill = False    # produce transparent plots if false
+grid = False    # do we want to render the plot grid?
+ptlimit = 513   # point limit for scatter plots (decimate if necessary)
+
+
 ###############################################################################
 # import libraries
 ###############################################################################
@@ -90,11 +97,6 @@ from pltconfig import *
 from matplotlib import gridspec
 from matplotlib.ticker import MaxNLocator
 
-# plot style options
-aspect = 4/3.   # figure aspect ratio (default is 4:3)
-fill = False    # produce transparent plots if false
-grid = False    # do we want to render the plot grid?
-
 def plot_setup(ax, xlabel='', ylabel='', xlim=[-6,6], ylim=[0,1], legend=''):
     """Setup common plot style parameters"""
     
@@ -134,12 +136,30 @@ def plot_setup(ax, xlabel='', ylabel='', xlim=[-6,6], ylim=[0,1], legend=''):
     for ticklabel in ax.yaxis.get_ticklabels():
         ticklabel.set_rotation("vertical")
 
-def kstest(data, color='r', marker='+', size=1.0, label='', zorder=5):
-    """Plot Kolmogorov-Smirnov deviation test for specified data set"""
+def cdfpts(data, color='r', marker='+', size=1.0, label='', zorder=5):
+    """Plot data points constituting CDF, decimating if necessary"""
     
     # form peak CDF from value list
     x = np.sort(data); n = len(x)
     f = np.linspace(0.0, 1.0, n)
+    
+    # decimate distribution
+    if (ptlimit and n > 3*ptlimit/2):
+        x,f = decimate(x,f,n=ptlimit)
+    
+    # plot data
+    plt.scatter(x/sigma, f, 24*width/8.8*size, color=color, marker=marker, linewidth=0.5, label=label, zorder=zorder)
+
+def kstest(data, color='r', marker='+', size=1.0, label='', zorder=5):
+    """Plot Kolmogorov-Smirnov deviation for a specified data set"""
+    
+    # form peak CDF from value list
+    x = np.sort(data); n = len(x)
+    f = np.linspace(0.0, 1.0, n)
+    
+    # decimate distribution
+    if (ptlimit and n > 3*ptlimit/2):
+        x,f = decimate(x,f,n=ptlimit)
     
     # Kolmogorov-Smirnov deviation
     K = sqrt(n)+0.12+0.11/sqrt(n)
@@ -155,8 +175,8 @@ def kstest(data, color='r', marker='+', size=1.0, label='', zorder=5):
         plt.scatter(x/sigma, K*(f-y), 24*width/8.8*size, color=color, marker=marker, linewidth=0.5, label=label, zorder=zorder)
     #plt.errorbar(x/sigma, K*(f-y), yerr=3*K*dy, color="r", fmt="o", linewidth=0.5, label="Data")
 
-def plot_ks(plot, xlim=[-6,6]):
-    """Plot Kolmogorov-Smirnov deviation"""
+def plot_ks_panel(plot, xlim=[-6,6]):
+    """Assemble Kolmogorov-Smirnov deviation panel plots"""
     
     plt.title("Kolmogorov deviation from Gaussian peak CDF")
     plt.hlines(0, xlim[0], xlim[1], linewidth=0.5, zorder=0) # x axis
@@ -174,11 +194,12 @@ def plot_ks(plot, xlim=[-6,6]):
     #plt.yticks([-0.5,0.0,0.5,1.0])
     plt.legend(loc='upper center', ncol=3, frameon=False)
 
-def plot_cdf(plot, xlim=[-6,6], n=1024):
-    """Plot peak CDF"""
+def plot_cdf_panel(plot, xlim=[-6,6], n=1024):
+    """Assemble peak CDF panel plots"""
     
     from matplotlib.ticker import FormatStrFormatter
     
+    # plot best-fitting Gaussian CDF
     nu = np.linspace(xlim[0], xlim[1], n)
     y, dy = marginalize(lambda p: CDF(sigma*nu, p[0], p[1], p[2]), fit, cov)
     
@@ -186,8 +207,10 @@ def plot_cdf(plot, xlim=[-6,6], n=1024):
         plt.fill_between(nu, y-(i+1)*dy, y+(i+1)*dy, edgecolor='none', color="g", alpha=0.1, zorder=-(i+1))
     plt.plot(nu, y, "g", linewidth=1.5*width/8.8, zorder=0, label=fitlbl)
     
-    plt.scatter(x/sigma, f, 24*width/8.8, color="r", marker="+", linewidth=0.5, zorder=7, label=datlbl)
+    # plot actual peak distribution
+    cdfpts(x, label=datlbl)
     
+    # annotate with pretty labels
     if (width > 15):
         plt.annotate(coldspot, [xlim[0]+0.1,0.05], va='bottom', ha='left', linespacing=1.5)
         plt.annotate(hotspot,  [xlim[1]-0.1,0.95], va='top', ha='right', linespacing=1.5)
@@ -212,8 +235,8 @@ for width in widths:
     fig = plt.figure(figsize=(cm2inch(width), cm2inch(width/aspect)), frameon=fill)
     
     # create plots
-    cdf = plt.subplot(layout[1]); plot_cdf(cdf)
-    ks  = plt.subplot(layout[0], sharex=cdf); plot_ks(ks)
+    cdf = plt.subplot(layout[1]); plot_cdf_panel(cdf)
+    ks  = plt.subplot(layout[0], sharex=cdf); plot_ks_panel(ks)
     
     # x axes is shared, so we don't need ticks except in the last plot
     plt.setp([a.get_xticklabels() for a in fig.axes[1:]], visible=False)

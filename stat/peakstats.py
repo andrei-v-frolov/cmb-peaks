@@ -87,3 +87,14 @@ def marginalize(func, p, cov, order=4):
         df += w * (func(p+dp) - f)**2
     
     return f, np.sqrt(df)
+
+def decimate(x, F, n=33):
+    """Decimate CDF to specified number of points by rational ratio"""
+    
+    # decimation ratio is q:p
+    q = len(x)-1; p = n-1
+    
+    # selected elements index
+    idx = [i*q/p for i in range(n)]
+    
+    return x[idx],F[idx]

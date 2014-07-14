@@ -2,19 +2,22 @@
 # Plot peak distribution and deviation from Gaussian peak statistics
 # usage: peakplot KERNEL FWHM [input datafile] [plot basename] [width list (in cm)]
 
-# plot style options
-aspect = 4/3.   # figure aspect ratio (default is 4:3)
-fill = False    # produce transparent plots if false
-grid = False    # do we want to render the plot grid?
-ptlimit = 513   # point limit for scatter plots (decimate if necessary)
-
-
 ###############################################################################
 # import libraries
 ###############################################################################
 
 from sys import argv, stdin
 from peakstats import *
+from spherical import *
+
+# plot style options
+aspect = 4/3.   # figure aspect ratio (default is 4:3)
+fill = False    # produce transparent plots if false
+grid = False    # do we want to render the plot grid?
+ptlimit = 513   # point limit for scatter plots (decimate if necessary)
+
+# dipole modulation direction (set to None for full sky only)
+dipole = iau2vec(227,-15); # dipole = None
 
 # parse arguments
 kernel = argv[1]
@@ -44,27 +47,17 @@ gamma, sigma, alpha = fit
 # North/South asymmetry
 ###############################################################################
 
-def ang2vec(theta,phi):
-    """Convert spherical coordinates (in radians) to a cartesian vector"""
-    return np.array([sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)])
-
-def iau2vec(l,b):
-    """Convert IAU galactic coordiates (in degrees) to a cartesian vector"""
-    theta = (90.0-b) * pi/180.0; phi = l * pi/180.0; return ang2vec(theta,phi)
-
-# dipole modulation direction
-dipole = iau2vec(227,-15)
-
-north = []
-south = []
-
-for i in range(n):
-    q = np.dot(ang2vec(peaks[i,0], peaks[i,1]), dipole)
+if (dipole != None):
+    north = []
+    south = []
     
-    if (q < -1.0/3.0):
-        north.append(peaks[i,2])
-    if (q > +1.0/3.0):
-        south.append(peaks[i,2])
+    for i in range(n):
+        q = np.dot(ang2vec(peaks[i,0], peaks[i,1]), dipole)
+        
+        if (q < -1.0/3.0):
+            north.append(peaks[i,2])
+        if (q > +1.0/3.0):
+            south.append(peaks[i,2])
 
 
 ###############################################################################
@@ -185,14 +178,18 @@ def plot_ks_panel(plot, xlim=[-6,6]):
     for i in [0.3989178859, 0.5137003373, 0.7170542898]:
         plt.fill_between(xlim, -i, i, edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5)
     
-    kstest(north, color='b', marker='x', size=0.2, label="northern cap")
-    kstest(south, color='g', marker='x', size=0.2, label="southern cap")
-    kstest(x, marker='+', size=0.5, label="entire sky")
-    
-    #plot_setup(plot, ylim=[-1,1])
-    plot_setup(plot, ylim=[-1.3,1.3])
-    #plt.yticks([-0.5,0.0,0.5,1.0])
-    plt.legend(loc='upper center', ncol=3, frameon=False)
+    if (dipole != None):
+        kstest(north, color='b', marker='x', size=0.2, label="northern cap")
+        kstest(south, color='g', marker='x', size=0.2, label="southern cap")
+        kstest(x, marker='+', size=0.5, label="entire sky")
+        
+        plot_setup(plot, ylim=[-1.3,1.3])
+        plt.legend(loc='upper center', ncol=3, frameon=False)
+    else:
+        kstest(x, marker='+', size=0.5)
+        
+        plot_setup(plot, ylim=[-1,1])
+        plt.yticks([-0.5,0.0,0.5,1.0])
 
 def plot_cdf_panel(plot, xlim=[-6,6], n=1024):
     """Assemble peak CDF panel plots"""

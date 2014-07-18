@@ -4,6 +4,16 @@
 import numpy as np
 from matplotlib import rcParams, rc
 
+# unit conversion
+def cm2inch(cm):
+    """Centimeters to inches"""
+    return cm/2.54
+
+# do you really want TeX?
+def usetex(flag=True):
+    """Shortcut to enable/disbleable TeX typesetting"""
+    rcParams.update({'text.usetex': flag})
+
 # common setup for matplotlib
 params = {'backend': 'pdf',
           'savefig.dpi': 300, # save figures to 300 dpi
@@ -24,8 +34,5 @@ rc('text.latex', preamble='\usepackage{sfmath}')
 
 rcParams.update(params)
 
+# import pyplot by default
 import matplotlib.pyplot as plt
-
-def cm2inch(cm):
-    """Centimeters to inches"""
-    return cm *0.393701

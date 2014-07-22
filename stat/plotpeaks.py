@@ -35,8 +35,7 @@ widths = map(float, argv[5].split(',')) if (len(argv) > 5) else [18.0, 12.0, 8.8
 peaks = np.loadtxt(file if file != '-' else stdin)
 
 # form peak CDF
-x = np.sort(peaks[:,2]); n = len(x)
-f = np.linspace(0.0, 1.0, n)
+x, f, n = makecdf(peaks[:,2])
 
 # fit Gaussian random peak distribution
 fit, cov = cdf_fit(x,f)
@@ -47,10 +46,10 @@ gamma, sigma, alpha = fit
 # North/South asymmetry
 ###############################################################################
 
+north = []
+south = []
+
 if (dipole != None):
-    north = []
-    south = []
-    
     for i in range(n):
         q = np.dot(ang2vec(peaks[i,0], peaks[i,1]), dipole)
         
@@ -133,8 +132,7 @@ def cdfpts(data, color='r', marker='+', size=1.0, label='', zorder=5):
     """Plot data points constituting CDF, decimating if necessary"""
     
     # form peak CDF from value list
-    x = np.sort(data); n = len(x)
-    f = np.linspace(0.0, 1.0, n)
+    x, f, n = makecdf(data)
     
     # decimate distribution
     if (ptlimit and n > 3*ptlimit/2):
@@ -147,8 +145,7 @@ def kstest(data, color='r', marker='+', size=1.0, label='', zorder=5):
     """Plot Kolmogorov-Smirnov deviation for a specified data set"""
     
     # form peak CDF from value list
-    x = np.sort(data); n = len(x)
-    f = np.linspace(0.0, 1.0, n)
+    x, f, n = makecdf(data)
     
     # decimate distribution
     if (ptlimit and n > 3*ptlimit/2):

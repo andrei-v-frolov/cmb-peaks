@@ -9,7 +9,7 @@ from scipy.optimize import curve_fit
 
 
 ###############################################################################
-# statistics primitives
+# Gaussian peak distribution
 ###############################################################################
 
 def CDF(x, gamma, sigma=1.0, alpha=0.0):
@@ -20,6 +20,19 @@ def CDF(x, gamma, sigma=1.0, alpha=0.0):
     npk_below = 1.0 - npk_above
     
     return npk_below
+
+
+###############################################################################
+# statistics primitives
+###############################################################################
+
+def makecdf(data):
+    """Make CDF F(x) of supplied distribution data by sorting"""
+    
+    x = np.sort(data, kind='mergesort')
+    n = len(x); F = np.linspace(0.0, 1.0, n)
+    
+    return x, F, n
 
 def lmoments(x, F):
     """Calculate lower L-moments of the distribution described by (tabulated) CDF F(x)""" 

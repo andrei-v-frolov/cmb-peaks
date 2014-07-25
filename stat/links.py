@@ -35,7 +35,7 @@ def parse(path):
 # import peak data and build merger tree
 ###############################################################################
 
-coarse = None
+coarse = {}
 scales = []
 
 G = nx.Graph()
@@ -95,8 +95,8 @@ for i in range(1,len(argv)):
             mollweide=moll, north=lamn, south=lams, tree=tree)
         
         # link to the closest coarse node
-        if (coarse):
-            link = closest(node, coarse)
+        if (kernel in coarse):
+            link = closest(node, coarse[kernel])
             
             if (link):
                 G.add_edge((kernel,fwhm,rank), link)
@@ -105,7 +105,7 @@ for i in range(1,len(argv)):
         nodes[rank,:] = node
     
     # done; update coarse layer
-    coarse = [kernel, fwhm, nodes]
+    coarse[kernel] = [kernel, fwhm, nodes]
 
 print 'Total %i nodes, %i edges' % (len(G.nodes()), len(G.edges()))
 

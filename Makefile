@@ -5,11 +5,11 @@
 
 # Multiple architecture support (sort of)
 BINDIR = bins/$(shell uname -m)-$(shell uname -s)
-BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fdiff pxl2map)
+BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
-FFLAGS = -O3 -ipo -xHOST -r8 -pc80 -parallel
+FFLAGS = -O3 -ipo -xHOST -heap-arrays 256 -r8 -pc80 -parallel
 LDFLAGS = -static-intel
 
 # HEALPix and CFITSIO libraries
@@ -102,10 +102,10 @@ maps/L4-%.fits stat/L4-%.dat: alms/lmap-4.fits alms/mask.fits beam/%.dat
 	$(call lock,$(call convolve,beam/$*.dat,maps/L4-$*.fits,stat/L4-$*.dat))
 
 maps/T3-%.fits: maps/L3-%.fits maps/L2-%.fits
-	$(call lock,$(BINDIR)/fdiff $^ $@)
+	$(call lock,$(BINDIR)/fcalc $(word 1,$^) '/' $(word 2,$^) '=>' $@)
 
 maps/T4-%.fits: maps/L4-%.fits maps/L2-%.fits
-	$(call lock,$(BINDIR)/fdiff $^ $@)
+	$(call lock,$(BINDIR)/fcalc $(word 1,$^) '/' $(word 2,$^) '=>' $@)
 
 
 ################### Post-Processing Rules ######################

@@ -1,6 +1,9 @@
 # compiled Python
 *.py[cod]
 
+# compiled binaries
+bins/{i386,x86_64}-{Darwin,Linux}/*
+
 # generated data
 alms/*.fits
 beam/*.dat

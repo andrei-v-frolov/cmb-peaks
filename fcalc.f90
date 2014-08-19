@@ -67,8 +67,10 @@ select case (op)
         case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
         
         ! masking operators
-        case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
         case ('valid'); where (valid) Mout = 1.0
+        case ('invalid'); where (.not. valid) Mout = 1.0
+        case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
+        case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
         case ('inpaint'); call inpaint(M1, M2, Mout)
         
         ! unknown operator
@@ -76,40 +78,50 @@ select case (op)
 end select
 
 ! write output map
-call write_minimal_header(header, 'MAP', nside=nside, order=ord)
+call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='FCALC', version='$Revision$')
 call output_map(Mout, header, '!'//fout)
 
 contains
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! ...
 subroutine inpaint(map, mask, mout)
         real(SP), dimension(0:n) :: map, mask, mout
         real(DP), dimension(0:n) :: M, L
-        real(DP) stencil(9,0:n)
-        integer i, k, nn(9,0:n)
         
-        M = map*mask; stencil = 0.0
+        integer i, j, k, nn(9,0:n)
+        real(DP) w(9,0:n)
         
-        do i = 0,n
-                call neighbours(nside, i, nn(2:9,i), k, ord)
-                nn(1,i) = i; if (mask(i) /= 0.0) k = 0
-                
-                stencil(1:k+1,i) = 1.0/(k+1)
+        ! prepare stencil for the pixels that need inpainting
+        k = 0; do i = 0,n
+                M(i) = map(i)*mask(i); if (mask(i) /= 0.0) cycle
+                call stencil(nside, ord, i, nn(:,k), bartjan=w(:,k))
+                k = k+1
         end do
         
-        do k = 1,100
-                forall (i=0:n) L(i) = sum(stencil(:,i)*M(nn(:,i)))
-                where (mask == 0.0) M = L
+        ! iterate diffusion steps
+        do j = 1,100
+                forall (i=0:k-1) L(i) = sum(w(:,i)*M(nn(:,i)))
+                M(nn(1,0:k-1)) = L(0:k-1)
         end do
         
+        ! save the result
         mout = M
 end subroutine inpaint
 
-! return nearest neighbours list in arbitrary ordering
-subroutine neighbours(nside, i, nn, k, order)
-        integer, parameter :: RING = 1, NEST = 2
-        integer i, j, k, nn(8), nside, order
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! return nearest neighbours list (in arbitrary map ordering)
+subroutine neighbours(nside, order, i, nn, k)
+        integer nside, order, i, j, k, nn(8)
         
+        ! ordering convention literals
+        integer, parameter :: RING = 1, NEST = 2
+        
+        ! get HEALPix neighbour list
         select case(order)
                 case(RING)
                         call ring2nest(nside, i, j)
@@ -123,6 +135,57 @@ subroutine neighbours(nside, i, nn, k, order)
                         call abort(": ordering not supported")
         end select
 end subroutine neighbours
+
+! gnomonic coordinates (X,Y) of a pixel p around origin i (in arbitrary map ordering)
+subroutine pix2gno(nside, order, i, p, XY)
+        integer nside, order, i, p; real(DP) XY(2)
+        real(DP) theta, phi, U(3), V(3), W(3), X(3), Y(3)
+        
+        ! ordering convention literals
+        integer, parameter :: RING = 1, NEST = 2
+        
+        ! convert pixels to coordinates
+        select case(order)
+                case(RING)
+                        call pix2vec_ring(nside, i, U)
+                        call pix2vec_ring(nside, p, V)
+                        call pix2ang_ring(nside, i, theta, phi)
+                case(NEST)
+                        call pix2vec_nest(nside, i, U)
+                        call pix2vec_nest(nside, p, V)
+                        call pix2ang_nest(nside, i, theta, phi)
+                case default
+                        call abort(": ordering not supported")
+        end select
+        
+        ! project onto a tangent plane through origin
+        W = V/sum(U*V) - U
+        
+        ! project onto local orthonormal basis in (theta,phi) directions
+        X = (/ cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta) /)
+        Y = (/ -sin(phi), cos(phi), 0.0 /)
+        
+        XY = (/ sum(W*X), sum(W*Y) /)
+end subroutine pix2gno
+
+! return differential operator stencil (to be applied to nearest neighbours)
+subroutine stencil(nside, order, i, nn, count, bartjan)
+        integer nside, order, i, j, k, nn(9)
+        integer, intent(out), optional :: count
+        
+        ! supported stencils - see below for description
+        real(DP), dimension(9), intent(out), optional :: bartjan
+        
+        ! nearest neighbour list
+        nn(1) = i; call neighbours(nside, order, i, nn(2:), k)
+        if (k < 8) nn(9) = i; if (present(count)) count = k+1
+        
+        ! nearest neighbour average used by Bartjan van Tent et. al.
+        if (present(bartjan)) then; bartjan = 0.0; bartjan(2:k+1) = 1.0/k; end if
+end subroutine stencil
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! read map from FITS file, allocating storage if necessary
 subroutine read_map(fin, M, nside, nmaps, ord)

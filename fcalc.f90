@@ -71,7 +71,7 @@ select case (op)
         case ('invalid'); where (.not. valid) Mout = 1.0
         case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
         case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
-        case ('inpaint'); call inpaint(M1, M2, Mout)
+        case ('inpaint'); call inpaint_mg(M1, M2, Mout)
         
         ! unknown operator
         case default; call abort(trim(op) // ": operation not supported")
@@ -89,28 +89,126 @@ contains
 ! ...
 subroutine inpaint(map, mask, mout)
         real(SP), dimension(0:n) :: map, mask, mout
-        real(DP), dimension(0:n) :: M, L
+        real(DP), dimension(0:n) :: U, V
         
-        integer i, j, k, nn(9,0:n)
+        integer i, k, m, nn(9,0:n)
         real(DP) w(9,0:n)
         
         ! prepare stencil for the pixels that need inpainting
         k = 0; do i = 0,n
-                M(i) = map(i)*mask(i); if (mask(i) /= 0.0) cycle
+                U(i) = map(i)*mask(i); if (mask(i) /= 0.0) cycle
                 call stencil(nside, ord, i, nn(:,k), bartjan=w(:,k))
                 k = k+1
-        end do
+        end do; m = k-1
         
         ! iterate diffusion steps
-        do j = 1,100
-                forall (i=0:k-1) L(i) = sum(w(:,i)*M(nn(:,i)))
-                M(nn(1,0:k-1)) = L(0:k-1)
+        do i = 1,100
+                forall (k=0:m) V(k) = sum(w(:,k)*U(nn(:,k)))
+                forall (k=0:m) U(nn(1,k)) = V(k)
         end do
         
         ! save the result
-        mout = M
+        mout = U
 end subroutine inpaint
 
+
+subroutine inpaint_mg(map, mask, mout)
+        real(SP), dimension(0:n) :: map, mask, mout
+        real(DP), dimension(0:n) :: U, K, R
+        
+        ! ordering convention literals
+        integer, parameter :: RING = 1, NEST = 2
+        
+        integer i
+        
+        U = map*mask; K = mask
+        
+        select case(ord)
+                case(RING)
+                        call convert_ring2nest(nside, U)
+                        call convert_ring2nest(nside, K)
+                        
+                        do i=1,32; R=0.0; call wstroke(nside, U, K, R)
+                        write (*,*) "Total residual", sqrt(sum(R*R))
+                        end do
+                        
+                        call convert_nest2ring(nside, U)
+                        call convert_nest2ring(nside, R)
+                case(NEST)
+                        do i=1,32; R=0.0; call wstroke(nside, U, K, R)
+                        write (*,*) "Total residual", sqrt(sum(R*R))
+                        end do
+                case default
+                        call abort(": ordering not supported")
+        end select
+        
+        mout = R
+end subroutine inpaint_mg
+
+! multigrid W-stroke: inpaints with L[map] = rhs where mask is not unity
+! all maps are assumed to be in nested ordering for performance reasons
+recursive subroutine wstroke(nside, map, mask, rhs); use udgrade_nr
+        integer i, k, m, n, nside; real(DP) h2
+        
+        ! fine and coarse maps
+        real(DP), dimension(0:12*nside**2-1) :: map, mask, rhs, tmp
+        real(DP), dimension(0:3*nside**2-1) :: cmap, cmask, crhs
+        
+        ! stencil operators
+        integer,  dimension(9,0:12*nside**2-1) :: nn    ! nearest neighbours
+        real(DP), dimension(9,0:12*nside**2-1) :: L     ! Laplacian stencil
+        
+        ! ordering convention literals
+        integer, parameter :: RING = 1, NEST = 2
+        
+        ! init pixel ranges
+        n = nside2npix(nside)-1; m = 0; k = 0
+        
+        ! pixel grid spacing
+        h2 = (pi/3.0)/nside**2
+        
+        write (*,*) "Entering w-stroke at nside=", nside
+        
+        ! stencils for the pixels that need inpainting
+        do i = 0,n; if (mask(i) == 1.0) cycle
+                call stencil(nside, NEST, i, nn(:,k), laplace=L(:,k)); k = k+1
+        end do; m = k-1
+        
+        ! pre-smooth using Jacobi iteration
+        do i = 1,100
+                forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(L(2:9,k)*map(nn(2:9,k))))/L(1,k)
+                forall (k=0:m) map(nn(1,k)) = tmp(k)
+        end do
+        
+        if (nside > 8) then
+        ! downgrade residual
+        cmap = 0.0; tmp = 0.0
+        
+        forall (k=0:m) tmp(nn(1,k)) = rhs(nn(1,k)) - sum(L(:,k)*map(nn(:,k)))/h2
+        
+        call udgrade_nest(mask, nside, cmask, nside/2)
+        call udgrade_nest(tmp, nside, crhs, nside/2)
+        
+        ! solve coarse problem
+        call wstroke(nside/2, cmap, cmask, crhs)
+        
+        ! upgrade correction and update the map
+        call udgrade_nest(cmap, nside/2, tmp, nside)
+        forall (k=0:m) map(nn(1,k)) = map(nn(1,k)) + tmp(nn(1,k))
+        end if
+        
+        ! post-smooth using Jacobi iteration
+        do i = 1,100
+                forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(L(2:9,k)*map(nn(2:9,k))))/L(1,k)
+                forall (k=0:m) map(nn(1,k)) = tmp(k)
+        end do
+        
+        ! calculate residual
+        forall (k=0:m) tmp(k) = rhs(nn(1,k)) - sum(L(:,k)*map(nn(:,k)))/h2; rhs = 0.0
+        forall (k=0:m) rhs(nn(1,k)) = tmp(k)
+        
+        write (*,*) "Average residual", sqrt(sum(tmp(0:m)**2))/(m+1.0)
+end subroutine wstroke
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -169,12 +267,12 @@ subroutine pix2gno(nside, order, i, p, XY)
 end subroutine pix2gno
 
 ! return differential operator stencil (to be applied to nearest neighbours)
-subroutine stencil(nside, order, i, nn, count, bartjan)
+subroutine stencil(nside, order, i, nn, count, bartjan, laplace)
         integer nside, order, i, j, k, nn(9)
         integer, intent(out), optional :: count
         
         ! supported stencils - see below for description
-        real(DP), dimension(9), intent(out), optional :: bartjan
+        real(DP), dimension(9), intent(out), optional :: bartjan, laplace
         
         ! nearest neighbour list
         nn(1) = i; call neighbours(nside, order, i, nn(2:), k)
@@ -182,6 +280,12 @@ subroutine stencil(nside, order, i, nn, count, bartjan)
         
         ! nearest neighbour average used by Bartjan van Tent et. al.
         if (present(bartjan)) then; bartjan = 0.0; bartjan(2:k+1) = 1.0/k; end if
+        
+        ! placeholder, this does not handle pixels with seven neighnours correctly
+        if (present(laplace)) then
+                laplace(1) = -8.0/3.0; laplace(2:9) = 1.0/3.0
+                if (k < 8) call warning("n=7 stencil not supported in Laplacian")
+        end if
 end subroutine stencil
 
 

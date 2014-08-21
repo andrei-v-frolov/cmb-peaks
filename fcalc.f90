@@ -130,7 +130,7 @@ subroutine inpaint_mg(map, mask, mout)
                         call convert_ring2nest(nside, U)
                         call convert_ring2nest(nside, K)
                         
-                        do i = 1,16
+                        do i = 1,32
                             R = 0.0; call wstroke(nside, U, K, R, R)
                             write (*,*) "Total residual", sqrt(sum(R*R))
                         end do
@@ -138,7 +138,7 @@ subroutine inpaint_mg(map, mask, mout)
                         call convert_nest2ring(nside, U)
                         call convert_nest2ring(nside, R)
                 case(NEST)
-                        do i = 1,16
+                        do i = 1,32
                             R = 0.0; call wstroke(nside, U, K, R, R)
                             write (*,*) "Total residual", sqrt(sum(R*R))
                         end do

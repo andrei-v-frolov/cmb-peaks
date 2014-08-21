@@ -15,9 +15,11 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+integer, parameter :: IO = SP ! default I/O precision
+
 integer :: nmaps = 0, nside = 0, ord = 0, n = 0
 character(len=80) :: header(64), fin1, op, fin2, fout
-real(SP), dimension(:,:), allocatable :: M1, M2, Mout
+real(IO), dimension(:,:), allocatable :: M1, M2, Mout
 logical, dimension(:,:), allocatable :: valid
 
 
@@ -88,7 +90,7 @@ contains
 
 ! ...
 subroutine inpaint(map, mask, mout)
-        real(SP), dimension(0:n) :: map, mask, mout
+        real(IO), dimension(0:n) :: map, mask, mout
         real(DP), dimension(0:n) :: U, V
         
         integer i, k, m, nn(9,0:n)
@@ -113,7 +115,7 @@ end subroutine inpaint
 
 ! ...
 subroutine inpaint_mg(map, mask, mout)
-        real(SP), dimension(0:n) :: map, mask, mout
+        real(IO), dimension(0:n) :: map, mask, mout
         real(DP), dimension(0:n) :: U, K, R
         
         ! ordering convention literals
@@ -305,7 +307,7 @@ end subroutine stencil
 ! read map from FITS file, allocating storage if necessary
 subroutine read_map(fin, M, nside, nmaps, ord)
         character(*) fin
-        real(SP), allocatable :: M(:,:)
+        real(IO), allocatable :: M(:,:)
         integer nside, npix, nmaps, ord
         
         ! read header info
@@ -319,7 +321,8 @@ subroutine read_map(fin, M, nside, nmaps, ord)
         ! check if map format agrees with requested one
         if (nside == 0) nside = hside; if (hside /= nside) call abort(trim(fin) // ": map resolution does not conform")
         if (nmaps == 0) nmaps = hmaps; if (hmaps  < nmaps) call abort(trim(fin) // ": too few channels in an input map")
-        if (  ord == 0)   ord = hord;  if ( hord /= ord) call warning(trim(fin) // ": map ordering is being converted")
+                                       if (hmaps  > nmaps) call warning(trim(fin) // ": ignoring extra channels")
+        if (  ord == 0)   ord = hord;  if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
         
         ! allocate storage if needed
         npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix,nmaps))

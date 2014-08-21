@@ -181,7 +181,7 @@ end function fwhm
 
 ! read (normalized) Cl's from a data file
 subroutine data2cl(fin, Cl, lmax, ncl, header)
-	integer l, lmax, ncl, io
+	integer l, lmax, ncl, status
         character(*) fin, header(:)
 	real(DP) p(ncl), Cl(0:lmax,ncl)
 	
@@ -194,8 +194,8 @@ subroutine data2cl(fin, Cl, lmax, ncl, header)
         Cl = 0.0; open(11, file=fin, action="read")
         
         do
-		read (11,*,iostat=io) l, p
-		if (io < 0) exit
+		read (11,*,iostat=status) l, p
+		if (status < 0) exit
 		if (l > lmax) cycle
 		Cl(l,:) = 2.0*pi*p/(l*(l+1.0))
 	end do

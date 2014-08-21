@@ -20,19 +20,23 @@ implicit none
 
 integer, parameter :: default = 0, iqu = 1, inv = 2; integer :: mode = default
 
+integer, parameter :: IO = SP               ! default I/O precision
+integer, parameter :: RING = 1, NEST = 2    ! ordering literals
+
 integer, parameter :: lmax = 4000, nside = 2048, hmax = 256
 character(len=80) :: header(hmax), fmap, fmask, fout
-real(DP), allocatable :: Mmap(:,:), Mout(:,:), Mask(:,:)
+real(DP), allocatable :: mmap(:,:), mask(:,:), map(:,:)
+real(IO), allocatable :: mout(:,:)
 real(DP) beam(0:lmax)
 
-integer i, l, n, nmaps, mmaps, io; real :: b, tol = 1.0
+integer i, l, n, nmaps, mmaps, status; real :: b, tol = 1.0
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! read beam from stdin
 beam = 0.0; do
-	read (*,*,iostat=io) l, b
-	if (io < 0) exit
+	read (*,*,iostat=status) l, b
+	if (status < 0) exit
 	if (l > lmax) cycle
 	beam(l) = b
 end do
@@ -43,38 +47,38 @@ call getArgument(2, fout)
 
 i = index(fout, ":iqu", .true.); if (i > 0) then; fout(i:) = ""; mode = iqu; end if
 i = index(fout, ":inv", .true.); if (i > 0) then; fout(i:) = ""; mode = inv; end if
-call make_map(fmap, beam, lmax, nside, Mmap, n, nmaps, mode)
+call make_map(fmap, beam, lmax, nside, mmap, n, nmaps, mode)
 
 ! make filtered mask
 if (nArguments() < 3) then
-	allocate (Mask(0:n,1)); Mask = 1.0; mmaps = 1
+	allocate (mask(0:n,1)); mask = 1.0; mmaps = 1
 else
 	call getArgument(3, fmask); i = index(fmask, ":", .true.)
 	if (i > 0) then; read (fmask(i+1:),*) tol; fmask(i:) = ""; end if
 	
-	call make_map(fmask, beam/beam(0), lmax, nside, Mask, n, mmaps, default)
+	call make_map(fmask, beam/beam(0), lmax, nside, mask, n, mmaps, default)
 	
 	! remove non-compliant pixels
-	where (Mask <= 0.0 .or. abs(log10(Mask)) > tol/10.0) Mask = 0.0
+	where (mask <= 0.0 .or. abs(log10(mask)) > tol/10.0) mask = 0.0
 end if
 
 ! mask correction
-allocate (Mout(0:n,nmaps))
-forall (i = 0:n) Mout(i,:) = Mmap(i,:)/Mask(i,1)
+allocate (map(0:n,nmaps)); forall (i = 0:n) map(i,:) = mmap(i,:)/mask(i,1)
 
 ! output map statistics
 select case (mode)
-	case (default,iqu); call extrema(Mout(:,1), Mask(:,1), nside, n)	! extrema distribution
-	case (inv);         call minkowski(Mout, Mask(:,1), nmaps, n, 1024)	! cumulative Minkowski functionals
-	!case (inv);         call skeleton(Mout(:,4), Mask(:,1), nside, n)	! ...
+	case (default,iqu); call extrema(map(:,1), mask(:,1), nside, n)	! extrema distribution
+	case (inv);         call minkowski(map, mask(:,1), nmaps, n, 1024)	! cumulative Minkowski functionals
+	!case (inv);         call skeleton(map(:,4), mask(:,1), nside, n)	! ...
 end select
 
-! output corrected map
-call write_minimal_header(header, 'MAP', nside=nside, order=2, creator='FSYNTH', version='$Revision$', polar=(mode .eq. iqu))
-call output_map(Mout, header, '!'//fout)
-
+! output corrected map (in specified precision)
+allocate (mout(0:n,nmaps)); mout = map
+call write_minimal_header(header, 'MAP', nside=nside, order=NEST, creator='FSYNTH', version='$Revision$', polar=(mode .eq. iqu))
+call output_map(mout, header, '!'//fout)
 
 contains
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

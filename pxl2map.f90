@@ -15,9 +15,12 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+integer, parameter :: IO = SP               ! default I/O precision
+integer, parameter :: RING = 1, NEST = 2    ! ordering literals
+
 character(len=80) :: header(64), fin, fout
-integer nmaps, nside, npix, n, ntot, ord, io
-real(SP), allocatable :: M(:,:)
+integer nmaps, nside, npix, n, ntot, ord, status
+real(IO), allocatable :: M(:,:)
 integer, allocatable, target :: idx(:)
 
 real(DP) theta, phi, value
@@ -42,8 +45,8 @@ M = 1.0/0.0
 
 ! input loop
 do
-	read (*,*,iostat=io) theta, phi, value
-	if (io < 0) exit
+	read (*,*,iostat=status) theta, phi, value
+	if (status < 0) exit
 	!M(pixel(theta,phi),:) = value
 	M(disk(theta,phi,90.0),:) = value
 	!M(disk(theta,phi,600.0),:) = M(disk(theta,phi,600.0),:) + 1.0
@@ -59,8 +62,9 @@ function pixel(theta, phi)
 	real(DP) theta, phi, warcmin, v(3); integer pixel
 	
 	select case (ord)
-		case(1); call ang2pix_ring(nside, theta, phi, pixel)
-		case(2); call ang2pix_nest(nside, theta, phi, pixel)
+		case(RING); call ang2pix_ring(nside, theta, phi, pixel)
+		case(NEST); call ang2pix_nest(nside, theta, phi, pixel)
+		case default; call abort(": ordering not supported")
 	end select
 	
 	write (*,*) pixel

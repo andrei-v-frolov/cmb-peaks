@@ -15,7 +15,8 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: IO = SP ! default I/O precision
+integer, parameter :: IO = SP               ! default I/O precision
+integer, parameter :: RING = 1, NEST = 2    ! ordering literals
 
 integer :: nmaps = 0, nside = 0, ord = 0, n = 0
 character(len=80) :: header(64), fin1, op, fin2, fout
@@ -118,9 +119,6 @@ subroutine inpaint_mg(map, mask, mout)
         real(IO), dimension(0:n) :: map, mask, mout
         real(DP), dimension(0:n) :: U, K, R
         
-        ! ordering convention literals
-        integer, parameter :: RING = 1, NEST = 2
-        
         integer i
         
         U = map*mask; K = mask
@@ -163,9 +161,6 @@ recursive subroutine wstroke(nside, map, mask, rhs, residual); use udgrade_nr
         ! stencil operators
         integer,  dimension(9,0:12*nside**2-1) :: nn    ! nearest neighbours
         real(DP), dimension(9,0:12*nside**2-1) :: L     ! Laplacian stencil
-        
-        ! ordering convention literals
-        integer, parameter :: RING = 1, NEST = 2
         
         ! init pixel ranges
         n = nside2npix(nside)-1; m = 0; k = 0
@@ -229,9 +224,6 @@ end subroutine wstroke
 subroutine neighbours(nside, order, i, nn, k)
         integer nside, order, i, j, k, nn(8)
         
-        ! ordering convention literals
-        integer, parameter :: RING = 1, NEST = 2
-        
         ! get HEALPix neighbour list
         select case(order)
                 case(RING)
@@ -251,9 +243,6 @@ end subroutine neighbours
 subroutine pix2gno(nside, order, i, p, XY)
         integer nside, order, i, p; real(DP) XY(2)
         real(DP) theta, phi, U(3), V(3), W(3), X(3), Y(3)
-        
-        ! ordering convention literals
-        integer, parameter :: RING = 1, NEST = 2
         
         ! convert pixels to coordinates
         select case(order)
@@ -313,7 +302,6 @@ subroutine read_map(fin, M, nside, nmaps, ord)
         ! read header info
         character(len=80) :: header(64)
         integer hside, htot, hmaps, hord
-        integer, parameter :: RING = 1, NEST = 2
         
         htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord)
         if (htot == -1) call abort(trim(fin) // ": file not found")

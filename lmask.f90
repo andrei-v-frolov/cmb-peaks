@@ -17,8 +17,11 @@ implicit none
 integer :: datach = 1, maskch = 1, nmoms = 4    ! defaults
 integer :: i, npix, nuse, nside = 0, ord = 0    ! map format
 
+integer, parameter :: IO = SP                   ! default I/O precision
+integer, parameter :: RING = 1, NEST = 2        ! ordering literals
+
 character(len=80) :: header(64), fin, fout, fmask
-real(SP), allocatable :: Min(:), Mask(:), Mout(:,:)
+real(IO), allocatable :: Min(:), Mask(:), Mout(:,:)
 integer, allocatable :: indx(:), rank(:)
 real(DP), allocatable :: P(:,:)
 
@@ -125,7 +128,7 @@ end subroutine parse
 ! read a single map channel, allocating storage if necessary
 subroutine read_channel(fin, M, nside, channel, ord)
         character(*) fin
-        real(SP), allocatable :: M(:), TMP(:,:)
+        real(IO), allocatable :: M(:), TMP(:,:)
         integer channel, nside, npix, nmaps, ord
         
         ! read full map into temporary storage
@@ -143,13 +146,12 @@ end subroutine read_channel
 ! read map from FITS file, allocating storage if necessary
 subroutine read_map(fin, M, nside, nmaps, ord)
         character(*) fin
-        real(SP), allocatable :: M(:,:)
+        real(IO), allocatable :: M(:,:)
         integer nside, npix, nmaps, ord
         
         ! read header info
         character(len=80) :: header(64)
         integer hside, htot, hmaps, hord
-        integer, parameter :: RING = 1, NEST = 2
         
         htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord)
         if (htot == -1) call abort(trim(fin) // ": file not found")
@@ -157,7 +159,8 @@ subroutine read_map(fin, M, nside, nmaps, ord)
         ! check if map format agrees with requested one
         if (nside == 0) nside = hside; if (hside /= nside) call abort(trim(fin) // ": map resolution does not conform")
         if (nmaps == 0) nmaps = hmaps; if (hmaps  < nmaps) call abort(trim(fin) // ": too few channels in an input map")
-        if (  ord == 0)   ord = hord;  if ( hord /= ord) call warning(trim(fin) // ": map ordering is being converted")
+                                       if (hmaps  > nmaps) call warning(trim(fin) // ": ignoring extra channels")
+        if (  ord == 0)   ord = hord;  if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
         
         ! allocate storage if needed
         npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix,nmaps))

@@ -194,16 +194,14 @@ end subroutine mg_residual
 recursive subroutine mg_wstroke(mg, l); use udgrade_nr
         type(multigrid) mg(:); integer i, k, l
         
-        associate($MGVARS$)
-        
         ! pre-smooth
         call mg_smooth(mg, l, 16)
         
-        ! coarse grid
+        ! solve coarse problem
         if (l < size(mg)) then
-                associate(cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
+                associate($MGVARS$, cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
                 
-                ! downgrade and pack residual
+                ! downgrade residual
                 call mg_residual(mg, l, tmp)
                 call udgrade_nest(tmp, nside, crhs, mg(l+1)%nside)
                 
@@ -217,8 +215,6 @@ recursive subroutine mg_wstroke(mg, l); use udgrade_nr
         
         ! post-smooth
         call mg_smooth(mg, l, 16)
-        
-        end associate
 end subroutine mg_wstroke
 
 

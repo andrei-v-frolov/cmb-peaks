@@ -15,13 +15,27 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: IO = SP               ! default I/O precision
-integer, parameter :: RING = 1, NEST = 2    ! ordering literals
+integer, parameter :: IO = SP                   ! default I/O precision
+integer, parameter :: RING = 1, NEST = 2        ! ordering literals
+logical, parameter :: verbose = .true.          ! diagnostic output
 
 integer :: nmaps = 0, nside = 0, ord = 0, n = 0
 character(len=80) :: header(64), fin1, op, fin2, fout
 real(IO), dimension(:,:), allocatable :: M1, M2, Mout
 logical, dimension(:,:), allocatable :: valid
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+type multigrid
+        integer nside, n, m; real(DP) h2                ! grid specification
+        real(DP), dimension(:), allocatable :: map, rhs, tmp
+        real(DP), dimension(:,:), allocatable :: LAPL   ! Laplacian stencil
+        integer,  dimension(:,:), allocatable :: nn     ! nearest neighbours
+end type
+
+#define $MG(X) X => mg(l)%X
+#define $MGVARS$ $MG(nside), $MG(n), $MG(m), $MG(h2), $MG(map), $MG(rhs), $MG(tmp), $MG(LAPL), $MG(nn)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -74,7 +88,7 @@ select case (op)
         case ('invalid'); where (.not. valid) Mout = 1.0
         case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
         case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
-        case ('inpaint'); call inpaint_mg(M1, M2, Mout)
+        case ('inpaint'); call inpaint(M1, M2, Mout)
         
         ! unknown operator
         case default; call abort(trim(op) // ": operation not supported")
@@ -89,134 +103,124 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! ...
+! inpaint map using multigrid diffusion where mask is not unity
 subroutine inpaint(map, mask, mout)
         real(IO), dimension(0:n) :: map, mask, mout
-        real(DP), dimension(0:n) :: U, V
+        type(multigrid), allocatable :: mg(:)
+        integer i; real(DP) R(0:n)
         
-        integer i, k, m, nn(9,0:n)
-        real(DP) w(9,0:n)
+        if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
+        call mg_init(mg, nside, ord, map*mask, mask)
         
-        ! prepare stencil for the pixels that need inpainting
-        k = 0; do i = 0,n
-                U(i) = map(i)*mask(i); if (mask(i) /= 0.0) cycle
-                call stencil(nside, ord, i, nn(:,k), bartjan=w(:,k))
-                k = k+1
-        end do; m = k-1
-        
-        ! iterate diffusion steps
-        do i = 1,100
-                forall (k=0:m) V(k) = sum(w(:,k)*U(nn(:,k)))
-                forall (k=0:m) U(nn(1,k)) = V(k)
+        if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
+        do i = 1,32
+                call mg_wstroke(mg, 1)
+                
+                ! output residual
+                if (.not. verbose) cycle
+                call mg_residual(mg, 1, R)
+                write (*,*) sqrt(sum(R*R))/mg(1)%m, maxval(abs(R))
         end do
         
-        ! save the result
-        mout = U
+        mout = mg(1)%map; if (ord == RING) call convert_nest2ring(nside, mout)
 end subroutine inpaint
 
-! ...
-subroutine inpaint_mg(map, mask, mout)
-        real(IO), dimension(0:n) :: map, mask, mout
-        real(DP), dimension(0:n) :: U, K, R
+! init multigrid structure
+subroutine mg_init(mg, fside, order, imap, imask); use udgrade_nr
+        type(multigrid), allocatable :: mg(:)
+        integer i, k, l, fside, order, levels
+        real(IO), dimension(0:12*fside**2-1) :: imap, imask
         
-        integer i
+        ! total multigrid levels
+        levels = log(nside/4.0)/log(2.0)
+        if (levels < 1) levels = 1
+        allocate(mg(levels))
         
-        U = map*mask; K = mask
+        ! allocate grid storage
+        do l = 1,levels; associate($MGVARS$)
+                nside = ishft(fside,1-l)
+                n = nside2npix(nside)-1
+                h2 = (pi/3.0)/nside**2
+                
+                allocate(mg(l)%map(0:n), mg(l)%rhs(0:n), mg(l)%tmp(0:n), source=0.0)
+                allocate(mg(l)%nn(9,0:n), mg(l)%LAPL(9,0:n))
+        end associate; end do
         
-        select case(ord)
-                case(RING)
-                        call convert_ring2nest(nside, U)
-                        call convert_ring2nest(nside, K)
-                        
-                        do i = 1,32
-                            R = 0.0; call wstroke(nside, U, K, R, R)
-                            write (*,*) "Total residual", sqrt(sum(R*R))
-                        end do
-                        
-                        call convert_nest2ring(nside, U)
-                        call convert_nest2ring(nside, R)
-                case(NEST)
-                        do i = 1,32
-                            R = 0.0; call wstroke(nside, U, K, R, R)
-                            write (*,*) "Total residual", sqrt(sum(R*R))
-                        end do
-                case default
-                        call abort(": ordering not supported")
-        end select
+        ! initialize finest grid
+        l = 1; associate($MGVARS$, mask => mg(l)%tmp)
+                map = imap; if (order == RING) call convert_ring2nest(nside, map)
+                mask = imask; if (order == RING) call convert_ring2nest(nside, mask)
+        end associate
         
-        mout = U
-end subroutine inpaint_mg
+        ! initialize coarse grids
+        do l = 2,levels; associate($MGVARS$, mask => mg(l)%tmp)
+                call udgrade_nest(mg(l-1)%tmp, mg(l-1)%nside, mask, nside)
+        end associate; end do
+        
+        ! initalize stencils
+        do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
+                k = 0; do i = 0,n; if (mask(i) == 1.0) cycle
+                        call stencil(nside, NEST, i, nn(:,k), laplace=LAPL(:,k)); k = k+1
+                end do; m = k-1
+                
+                if (verbose) write (*,*) l, nside, m
+        end associate; end do
+end subroutine mg_init
 
-! multigrid W-stroke: inpaints with L[map] = rhs where mask is not unity
-! all maps are assumed to be in nested ordering for performance reasons
-recursive subroutine wstroke(nside, map, mask, rhs, residual); use udgrade_nr
-        integer i, k, m, n, nside, niter; real(DP) h2
+! smooth map using Jacobi iteration
+subroutine mg_smooth(mg, l, iterations)
+        type(multigrid) mg(:); integer i, k, l, iterations
         
-        ! fine and coarse maps
-        real(DP), dimension(0:12*nside**2-1) :: map, mask, rhs, tmp
-        real(DP), dimension(0:12*nside**2-1), optional :: residual
-        real(DP), dimension(0:3*nside**2-1) :: cmap, cmask, crhs
-        intent(INOUT) map; intent(in) mask, rhs; intent(out) residual
-        
-        ! stencil operators
-        integer,  dimension(9,0:12*nside**2-1) :: nn    ! nearest neighbours
-        real(DP), dimension(9,0:12*nside**2-1) :: L     ! Laplacian stencil
-        
-        ! init pixel ranges
-        n = nside2npix(nside)-1; m = 0; k = 0
-        
-        ! pixel grid spacing
-        h2 = (pi/3.0)/nside**2
-        
-        ! Jacobi smoothing schedule
-        niter = 64; if (nside > 8) niter = 16
-        
-        !write (*,*) "Entering w-stroke at nside=", nside
-        
-        ! stencils for the pixels that need inpainting
-        do i = 0,n; if (mask(i) == 1.0) cycle
-                call stencil(nside, NEST, i, nn(:,k), laplace=L(:,k)); k = k+1
-        end do; m = k-1
-        
-        ! pre-smooth using Jacobi iteration
-        do i = 1,niter
-                forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(L(2:9,k)*map(nn(2:9,k))))/L(1,k)
+        associate($MGVARS$)
+        do i = 1,iterations
+                forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(LAPL(2:9,k)*map(nn(2:9,k))))/LAPL(1,k)
                 forall (k=0:m) map(nn(1,k)) = tmp(k)
         end do
+        end associate
+end subroutine mg_smooth
+
+! calculate residual
+subroutine mg_residual(mg, l, residual)
+        type(multigrid) mg(:); integer i, k, l; real(DP) residual(:)
         
-        ! solve coarse problem recursively (if we are not on the coarsest grid, that is)
-        if (nside > 8) then
-                ! downgrade residual
-                cmap = 0.0; tmp = 0.0
+        residual = 0.0
+        
+        associate($MGVARS$)
+        forall (k=0:m) residual(nn(1,k)) = rhs(nn(1,k)) - sum(LAPL(:,k)*map(nn(:,k)))/h2
+        end associate
+end subroutine mg_residual
+
+! multigrid W-stroke: inpaints level-l map with L[map] = rhs where masked
+recursive subroutine mg_wstroke(mg, l); use udgrade_nr
+        type(multigrid) mg(:); integer i, k, l
+        
+        associate($MGVARS$)
+        
+        ! pre-smooth
+        call mg_smooth(mg, l, 16)
+        
+        ! coarse grid
+        if (l < size(mg)) then
+                associate(cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
                 
-                forall (k=0:m) tmp(nn(1,k)) = rhs(nn(1,k)) - sum(L(:,k)*map(nn(:,k)))/h2
-                
-                call udgrade_nest(mask, nside, cmask, nside/2)
-                call udgrade_nest(tmp, nside, crhs, nside/2)
+                ! downgrade and pack residual
+                call mg_residual(mg, l, tmp)
+                call udgrade_nest(tmp, nside, crhs, mg(l+1)%nside)
                 
                 ! W-stroke schedule
-                do i = 1,2; call wstroke(nside/2, cmap, cmask, crhs); end do
+                cmap = 0.0; do i = 1,2; call mg_wstroke(mg, l+1); end do
                 
                 ! upgrade correction and update the map
-                call udgrade_nest(cmap, nside/2, tmp, nside)
+                call udgrade_nest(cmap, mg(l+1)%nside, tmp, nside)
                 forall (k=0:m) map(nn(1,k)) = map(nn(1,k)) + tmp(nn(1,k))
-        end if
+        end associate; else; call mg_smooth(mg, l, 96); end if
         
-        ! post-smooth using Jacobi iteration
-        do i = 1,niter
-                forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(L(2:9,k)*map(nn(2:9,k))))/L(1,k)
-                forall (k=0:m) map(nn(1,k)) = tmp(k)
-        end do
+        ! post-smooth
+        call mg_smooth(mg, l, 16)
         
-        ! calculate residual if requested
-        if (present(residual)) then
-                residual = 0.0
-                forall (k=0:m) tmp(k) = rhs(nn(1,k)) - sum(L(:,k)*map(nn(:,k)))/h2
-                forall (k=0:m) residual(nn(1,k)) = tmp(k)
-                
-                write (*,*) "Average residual", sqrt(sum(tmp(0:m)**2))/(m+1.0)
-        end if
-end subroutine wstroke
+        end associate
+end subroutine mg_wstroke
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -269,19 +273,16 @@ subroutine pix2gno(nside, order, i, p, XY)
 end subroutine pix2gno
 
 ! return differential operator stencil (to be applied to nearest neighbours)
-subroutine stencil(nside, order, i, nn, count, bartjan, laplace)
+subroutine stencil(nside, order, i, nn, count, laplace)
         integer nside, order, i, j, k, nn(9)
         integer, intent(out), optional :: count
         
         ! supported stencils - see below for description
-        real(DP), dimension(9), intent(out), optional :: bartjan, laplace
+        real(DP), dimension(9), intent(out), optional :: laplace
         
         ! nearest neighbour list
         nn(1) = i; call neighbours(nside, order, i, nn(2:), k)
         if (k < 8) nn(9) = i; if (present(count)) count = k+1
-        
-        ! nearest neighbour average used by Bartjan van Tent et. al.
-        if (present(bartjan)) then; bartjan = 0.0; bartjan(2:k+1) = 1.0/k; end if
         
         ! placeholder, this does not handle pixels with seven neighnours correctly
         if (present(laplace)) then

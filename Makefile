@@ -9,7 +9,7 @@ BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
-FFLAGS = -O3 -ipo -xHOST -heap-arrays 256 -r8 -pc80 -parallel
+FFLAGS = -O3 -ipo -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
 LDFLAGS = -static-intel
 
 # HEALPix and CFITSIO libraries

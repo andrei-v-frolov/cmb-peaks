@@ -160,7 +160,7 @@ subroutine mg_init(mg, fside, order, imap, imask); use udgrade_nr
         ! initalize stencils
         do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
                 k = 0; do i = 0,n; if (mask(i) == 1.0) cycle
-                        call stencil(nside, NEST, i, nn(:,k), laplace=LAPL(:,k)); k = k+1
+                        call stencil(nside, NEST, i, nn(:,k), Lw=LAPL(:,k)); k = k+1
                 end do; m = k-1
                 
                 if (verbose) write (*,*) l, nside, m
@@ -240,9 +240,10 @@ subroutine neighbours(nside, order, i, nn, k)
 end subroutine neighbours
 
 ! gnomonic coordinates (X,Y) of a pixel p around origin i (in arbitrary map ordering)
-subroutine pix2gno(nside, order, i, p, XY)
-        integer nside, order, i, p; real(DP) XY(2)
+subroutine pix2gno(nside, order, i, p, XY, R)
+        integer nside, order, i, p; real(DP) XY(2), R
         real(DP) theta, phi, U(3), V(3), W(3), X(3), Y(3)
+        optional XY, R
         
         ! convert pixels to coordinates
         select case(order)
@@ -259,7 +260,10 @@ subroutine pix2gno(nside, order, i, p, XY)
         end select
         
         ! project onto a tangent plane through origin
-        W = V/sum(U*V) - U
+        W = V/sum(U*V) - U; if (present(R)) R = sqrt(sum(W*W))
+        
+        ! bail unless we want coordinates
+        if (.not. present(XY)) return
         
         ! project onto local orthonormal basis in (theta,phi) directions
         X = (/ cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta) /)
@@ -268,23 +272,70 @@ subroutine pix2gno(nside, order, i, p, XY)
         XY = (/ sum(W*X), sum(W*Y) /)
 end subroutine pix2gno
 
-! return differential operator stencil (to be applied to nearest neighbours)
-subroutine stencil(nside, order, i, nn, count, laplace)
-        integer nside, order, i, j, k, nn(9)
-        integer, intent(out), optional :: count
+! calculate differential operator stencils (to be applied to nearest neighbours)
+subroutine stencil(nside, order, i, nn, count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy)
+        integer nside, order, i, j, k, nn(9), count, status
+        real(DP), dimension(9) :: La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
         
-        ! supported stencils - see below for description
-        real(DP), dimension(9), intent(out), optional :: laplace
+        ! interface description
+        intent(in) nside, order, i
+        intent(out) nn, count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
+        optional count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
+        
+        ! working variables
+        real, parameter :: gamma = -1.0
+        integer, parameter :: m = 9, n = 10
+        real(DP) x, y, XY(2), A(m), B(m), F(m,n), S(m), U(m,m), Q(n,m), V(n,n), W(m*n)
         
         ! nearest neighbour list
         nn(1) = i; call neighbours(nside, order, i, nn(2:), k)
         if (k < 8) nn(9) = i; if (present(count)) count = k+1
         
-        ! placeholder, this does not handle pixels with seven neighnours correctly
-        if (present(laplace)) then
-                laplace(1) = -8.0/3.0; laplace(2:9) = 1.0/3.0
-                !if (k < 8) call warning("n=7 stencil not supported in Laplacian")
+        ! average Laplacian stencil (used by Bartjan van Tent et. al.)
+        if (present(La)) then
+                W(1:k) = (8.0/3.0)/k; W(k+1:) = 0.0
+                
+                La = (/ -sum(W(1:k)), W(1:8) /)
         end if
+        
+        ! distance-weighted Laplacian stencil (better, still cheap to calculate)
+        if (present(Lw)) then
+                do j = 1,k; call pix2gno(nside, order, i, nn(j+1), R=S(j)); end do
+                W(1:k) = 4.0*S(1:k)**gamma/sum(S(1:k)**(gamma+2.0)); W(k+1:) = 0.0
+                
+                Lw = (/ -sum(W(1:k)), W(1:8) /) * (pi/3.0)/nside**2
+        end if
+        
+        ! bail unless exact (and expensive!) stencils are requested
+        if (.not. any((/ present(Lx), present(Dx), present(Dy), present(Dxx), present(Dxy), present(Dyy) /))) return
+        
+        ! local polynomial basis (in gnomonic coordinates)
+        do j = 1,m
+                call pix2gno(nside, order, i, nn(j), XY)
+                XY = nside/sqrt(pi/3.0) * XY; x = XY(1); y = XY(2)
+                
+                F(j,:) = (/ 1.0, x, y, x*x, x*y, y*y, x*x*x, x*x*y, x*y*y, y*y*y /)
+        end do
+        
+        ! calculate singular value decomposition of basis matrix
+        call dgesvd('All', 'All', m, n, F, m, S, U, m, V, n, W, size(W), status)
+        if (status /= 0) call abort("SVD failed in stencil()")
+        
+        ! invert SVD to obtain stencil projector; last eigenvalue could be degenerate
+        Q = 0.0; forall (j=1:k+1) Q(j,j) = 1.0/S(j)
+        Q = matmul(Q,transpose(U))
+        Q = matmul(transpose(V),Q)
+        
+        ! pixels 1 and 9 are the same in 7-neighbour case, roll 'em up together
+        if (k < 8) then; Q(:,1) = Q(:,1) + Q(:,9); Q(:,9) = 0.0; end if
+        
+        ! return requested stencils
+        if (present(Lx)) Lx = 2.0*(Q(4,:)+Q(6,:))
+        if (present(Dx)) Dx = Q(2,:)
+        if (present(Dy)) Dy = Q(3,:)
+        if (present(Dxx)) Dxx = 2.0*Q(4,:)
+        if (present(Dxy)) Dxy = Q(5,:)
+        if (present(Dyy)) Dyy = 2.0*Q(6,:)
 end subroutine stencil
 
 

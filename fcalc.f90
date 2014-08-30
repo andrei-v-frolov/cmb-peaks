@@ -34,6 +34,8 @@ type multigrid
         integer,  dimension(:,:), allocatable :: nn     ! nearest neighbours
 end type
 
+type(multigrid), allocatable :: mg(:)
+
 #define $MG(X) X => mg(l)%X
 #define $MGVARS$ $MG(nside), $MG(n), $MG(m), $MG(h2), $MG(map), $MG(rhs), $MG(tmp), $MG(LAPL), $MG(nn)
 
@@ -106,23 +108,27 @@ contains
 ! inpaint map using multigrid diffusion where mask is not unity
 subroutine inpaint(map, mask, mout)
         real(IO), dimension(0:n) :: map, mask, mout
-        type(multigrid), allocatable :: mg(:)
-        integer i; real(DP) R(0:n)
+        integer i
         
         if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
         call mg_init(mg, nside, ord, map*mask, mask)
         
+        associate(result => mg(1)%map, residual => mg(1)%tmp, m => mg(1)%m)
         if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
         do i = 1,32
                 call mg_wstroke(mg, 1)
                 
                 ! output residual
                 if (.not. verbose) cycle
-                call mg_residual(mg, 1, R)
-                write (*,*) sqrt(sum(R*R))/mg(1)%m, maxval(abs(R))
+                call mg_residual(mg, 1, residual)
+                write (*,*) sqrt(sum(residual**2))/m, maxval(abs(residual))
         end do
         
-        mout = mg(1)%map; if (ord == RING) call convert_nest2ring(nside, mout)
+        mout = result
+        end associate
+        
+        ! convert back to original order
+        if (ord == RING) call convert_nest2ring(nside, mout)
 end subroutine inpaint
 
 ! init multigrid structure

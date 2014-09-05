@@ -1,0 +1,67 @@
+#!/usr/bin/env python
+
+# Configure Matplotlib options
+from pltconfig import *
+from matplotlib.ticker import MaxNLocator
+
+# plot style options
+aspect = 3/2.   # figure aspect ratio (default is 4:3)
+scale = 1.0e-6  # scale plot units? (to uK convention)
+fill = False    # produce transparent plots if false
+grid = False    # do we want to render the plot grid?
+
+# Load data
+GAUSS = np.loadtxt("WHITEN-GAUSS-800.dat") # l, b_l
+SSG21 = np.loadtxt("WHITEN-SSG21-800.dat") # l, b_l
+SSG42 = np.loadtxt("WHITEN-SSG42-800.dat") # l, b_l
+SSG84 = np.loadtxt("WHITEN-SSG84-800.dat") # l, b_l
+
+# Create the plots
+for width in [18., 12., 8.8]:
+    fig = plt.figure(figsize=(cm2inch(width), cm2inch(width/aspect)), frameon=fill)
+    # this should be changed for making a panel of multiple figures
+    ax = fig.add_subplot(111)
+    
+    # beam functions
+    #plt.plot(WHITE[:,0], WHITE[:,1], "#B0C4DE", linewidth=3.0*width/8.8, label=r"\texttt{WHITE} kernel")
+    plt.plot(SSG21[:,0], SSG21[:,1]*scale, "r", linewidth=1.5*width/8.8, label=r"\texttt{WHITE*SSG21} kernel")
+    plt.plot(SSG42[:,0], SSG42[:,1]*scale, "g", linewidth=1.5*width/8.8, label=r"\texttt{WHITE*SSG42} kernel")
+    plt.plot(SSG84[:,0], SSG84[:,1]*scale, "b", linewidth=1.5*width/8.8, label=r"\texttt{WHITE*SSG84} kernel")
+    plt.plot(GAUSS[:,0], GAUSS[:,1]*scale, "k", linewidth=1.5*width/8.8, label=r"\texttt{WHITE*GAUSS} kernel")
+    
+    # x axis
+    plt.hlines(0, 0, 4000, linewidth=0.5)
+    
+    # legend
+    if (fill):
+        leg = plt.legend(frameon=True)
+        # remove box around legend
+        leg.get_frame().set_edgecolor('none')
+        leg.get_frame().set_alpha(.8)
+    else:
+        plt.legend(frameon=False)
+    
+    # labels
+    plt.xlabel(r"$\ell$"); plt.ylabel(r"$b_\ell$"); plt.title(r"Filter kernels with pre-whitening applied")
+    ax.yaxis.labelpad = 10*width/17.; ax.xaxis.labelpad = 10*width/17. # distance of axis label to tick labels
+    
+    # reduce ticks for small figures
+    #if width < 10:
+    #    ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+    
+    # grid
+    if (grid):
+        plt.grid(True, which="major", axis="both")
+    
+    # axes limits
+    plt.ylim([-0.05, 0.20]); plt.xlim([0, 100]);
+    
+    # reduce white space around figure
+    plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    
+    # set vertical y axis ticklables
+    for ticklabel in ax.yaxis.get_ticklabels():
+        ticklabel.set_rotation("vertical")
+    
+    # save to pdf with right bounding box
+    plt.savefig("./peaks-beam-comp-800.%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02, transparent=not(fill))

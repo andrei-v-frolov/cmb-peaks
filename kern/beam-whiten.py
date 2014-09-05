@@ -32,7 +32,7 @@ for width in [18., 12., 8.8]:
         leg.get_frame().set_edgecolor('none')
         leg.get_frame().set_alpha(.8)
     else:
-        plt.legend(frameon=False)
+        plt.legend(loc="lower right", frameon=False)
     
     # labels
     plt.xlabel(r"$\ell$"); plt.ylabel(r"$b_\ell$"); plt.title(r"Pre-whiten filter kernel, full $\ell$ range")

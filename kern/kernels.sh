@@ -11,6 +11,7 @@ if [ -r ../cl-lcdm.dat ]; then
     WHITEN=../cl-lcdm.dat
 fi
 
+# generate filter kernel data
 $BINDIR/wiener WHITE:0.0 ${WHITEN:-} > KERNEL-WHITE-00a.dat
 $BINDIR/wiener GAUSS:5.0 ${WHITEN:-} > KERNEL-WHITE-05a.dat
 
@@ -19,4 +20,9 @@ for w in 120 800; do
        $BINDIR/wiener $k:$w.0 > KERNEL-$k-$w.dat
        $BINDIR/wiener $k:$w.0 ${WHITEN:-} > WHITEN-$k-$w.dat
     done
+done
+
+# produce all the plots
+for p in beam-*.py; do
+    python $p
 done

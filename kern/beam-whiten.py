@@ -47,7 +47,7 @@ for width in [18., 12., 8.8]:
         plt.grid(True, which="major", axis="both")
     
     # axes limits
-    plt.ylim([0.0, 40.0]); plt.xlim([0, 4000]);
+    plt.ylim([0.0, 100.0]); plt.xlim([0, 4000]);
     
     # reduce white space around figure
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)

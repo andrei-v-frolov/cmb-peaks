@@ -35,8 +35,8 @@ fit [0:1] F(x) 'cl_noise_t1.txt' u (X($0)):($1*X($0)**alpha) via C0,C1,C2,C3,C4,
 #plot [0:1] 'cl_noise_t1.txt' u (X($0)):($1*X($0)**alpha) w l, F(x) w l
 
 # plot covariance model components
-set logscale; set key bottom right
-set xlabel 'l'; set ylabel 'C_l l(l+1)/2 {/Symbol p}, {/Symbol m}K^2' 
+set logscale; set key bottom right; set format y "%g"
+set xlabel 'l'; set ylabel 'C_l l(l+1)/2 {/Symbol p}, {/Symbol m}K^2'
 plot [2:lmax] \
      'cl_smica_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from SMICA sky map', \
      'cl_noise_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from SMICA noise map', \

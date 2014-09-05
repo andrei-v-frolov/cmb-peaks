@@ -1,7 +1,7 @@
 #!/usr/bin/env gnuplot
 
 set terminal postscript eps enhanced solid color
-set output "noise.eps"; set size 0.60
+set output "noise.eps"; set size 0.80
 
 lmax=4000; lbeam=1200; alpha=0.75
 
@@ -19,7 +19,7 @@ X(l)=( (l*(l+1.0))/(lmax*(lmax+1.0)) )**0.25
 N(l)=F(X(l))/X(l)**alpha * l*(l+1)/(2*pi)
 
 # beam function for temperature map (squared because we fit Cl's)
-B(l)=exp(-l*(l+1)/lbeam**2/2.0)**2
+B(l)=exp(-l*(l+1)/lbeam**2/2.0)**2 * uK**2; uK = 1.0e-6
 
 # SMICA effective beam (5' FWHM Gaussian/Pixel window at n=2048)
 BFWHM = 5.0 * pi/(180*60) # 5 arcmin
@@ -29,24 +29,25 @@ lbeam = sqrt((8*log(2))/(BFWHM**2-P2048**2))
 print "Effective l_beam = ", lbeam/sqrt(2)
 
 # do fit on noise component
-C0=0.0; C1=0.0; C2=0.0; C3=0.0; C4=0.0; C5=0.0
+C0=0.0; C1=0.0; C2=0.0; C3=0.0; C4=0.0; C5=0.0; Cn=1.0
 
 fit [0:1] F(x) 'cl_noise_t1.txt' u (X($0)):($1*X($0)**alpha) via C0,C1,C2,C3,C4,C5
+fit [lbeam/sqrt(2.0):] Cn*N(x) 'cl_smica_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) via Cn
 #plot [0:1] 'cl_noise_t1.txt' u (X($0)):($1*X($0)**alpha) w l, F(x) w l
 
 # plot covariance model components
 set logscale; set key bottom right; set format y "%g"
-set xlabel 'l'; set ylabel 'C_l l(l+1)/2 {/Symbol p}, {/Symbol m}K^2'
+set xlabel 'l'; set ylabel 'C_l l(l+1)/2{/Symbol p}, K^2'
 plot [2:lmax] \
      'cl_smica_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from SMICA sky map', \
      'cl_noise_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from SMICA noise map', \
      'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)) w l t 'best-fit CMB spectrum C_l', \
      N(x) t 'ad-hoc noise C_l model', \
-     'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+N($1)) w l lw 3 t 'total C_l covariance model'
+     'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+Cn*N($1)) w l lw 3 t 'total C_l covariance model'
 # convert the plot to pdf
 ! ../bins/epstopdf noise.eps
 
 # dump the tabulated model
 set table "base_planck_bestfit_cmb_adhoc_noise.cl"; set format y "%.16g"
-plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+N($1))
+plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+Cn*N($1))
 unset table

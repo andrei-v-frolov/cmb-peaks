@@ -47,8 +47,8 @@ M = 1.0/0.0
 do
 	read (*,*,iostat=status) theta, phi, value
 	if (status < 0) exit
-	!M(pixel(theta,phi),:) = value
-	M(disk(theta,phi,90.0),:) = value
+	M(pixel(theta,phi),:) = value
+	!M(disk(theta,phi,90.0),:) = value
 	!M(disk(theta,phi,600.0),:) = M(disk(theta,phi,600.0),:) + 1.0
 end do
 

@@ -71,6 +71,7 @@ clean:
 
 dataclean:
 	rm -f $(foreach m,$(MAPS),maps/$(m).fits gifs/$(m).gif stat/$(m).{dat,eps,pdf})
+	rm -f kern/*.{dat,pdf} xtra/peaks-*.{fits,gif}
 
 distclean: dataclean
 	rm -f $(BINS) $(BASE) cl-{wmap,mask}.fits cl-lmap-?.fits

@@ -61,8 +61,10 @@ def ksdiff(x,f):
     
     return K*max(np.abs(f-y))
 
-for i in range(npix):
-    theta = pixel[i,0]; phi = pixel[i,1]
+def lparams(p):
+    """Calculate and print local distribution parameters centered on pixel p"""
+    
+    theta = pixel[p,0]; phi = pixel[p,1]
     
     x = np.sort(cap(theta, phi, fwhm))
     n = len(x); f = np.linspace(0.0, 1.0, n)
@@ -76,3 +78,14 @@ for i in range(npix):
     except:
         # not converged, do nothing
         print "",
+
+
+###############################################################################
+# run the job in parallel, if job control is available
+###############################################################################
+try:
+    from joblib import Parallel, delayed
+    Parallel(n_jobs=32)(delayed(lparams)(i) for i in range(npix))
+except:
+    for i in range(npix):
+        lparams(i)

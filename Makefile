@@ -75,6 +75,7 @@ dataclean:
 
 distclean: dataclean
 	rm -f $(BINS) $(BASE) cl-{wmap,mask}.fits cl-lmap-?.fits
+	rm -f `find . -name *.py[cod]`
 
 
 ################### Whiten Pipeline ############################

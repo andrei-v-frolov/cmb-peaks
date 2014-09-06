@@ -51,18 +51,18 @@ def cap(theta, phi, fwhm=8.0*pi/180.0):
     return data
 
 def ksdiff(x,f):
-    """Calculate Kolmogorov-Smirnov deviation of """
+    """Calculate Kolmogorov-Smirnov deviation from full-sky Gaussian CDF fit"""
     
     # Kolmogorov-Smirnov deviation
     N = len(x); K = sqrt(N)+0.12+0.11/sqrt(N)
     
     # evaluate best fit CDF and fit variance
-    y, dy = marginalize(lambda p: CDF(x, p[0], p[1], p[2]), fullsky_fit, fullsky_cov)
+    gamma, sigma, alpha = fullsky_fit; y = CDF(x, gamma, sigma, alpha)
     
     return K*max(np.abs(f-y))
 
 def lparams(p):
-    """Calculate and print local distribution parameters centered on pixel p"""
+    """Calculate and print local peak distribution parameters in a disk centered on pixel p"""
     
     theta = pixel[p,0]; phi = pixel[p,1]
     
@@ -83,7 +83,6 @@ def lparams(p):
 ###############################################################################
 # run the job in parallel, if job control is available
 ###############################################################################
-
 try:
     from joblib import Parallel, delayed
     from multiprocessing import cpu_count

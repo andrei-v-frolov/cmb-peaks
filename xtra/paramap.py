@@ -69,15 +69,7 @@ def lparams(p):
     x = np.sort(cap(theta, phi, fwhm))
     n = len(x); f = np.linspace(0.0, 1.0, n)
     
-    try:
-        # fit Gaussian random peak distribution
-        fit, cov = cdf_fit(x,f)
-        gamma, sigma, alpha = fit
-        
-        print theta, phi, n, gamma, sigma, alpha, ksdiff(x,f); stdout.flush()
-    except:
-        # not converged, do nothing
-        print "",
+    print theta, phi, n, ksdiff(x,f); stdout.flush()
 
 
 ###############################################################################

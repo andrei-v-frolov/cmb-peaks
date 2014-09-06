@@ -50,14 +50,14 @@ def cap(theta, phi, fwhm=8.0*pi/180.0):
     
     return data
 
-def ksdiff(x,f):
-    """Calculate Kolmogorov-Smirnov deviation from full-sky Gaussian CDF fit"""
+def ksdiff(x,f,fit):
+    """Calculate Kolmogorov-Smirnov deviation from Gaussian CDF fit"""
     
     # Kolmogorov-Smirnov deviation
     N = len(x); K = sqrt(N)+0.12+0.11/sqrt(N)
     
     # evaluate best fit CDF and fit variance
-    gamma, sigma, alpha = fullsky_fit; y = CDF(x, gamma, sigma, alpha)
+    gamma, sigma, alpha = fit; y = CDF(x, gamma, sigma, alpha)
     
     return K*max(np.abs(f-y))
 
@@ -65,11 +65,19 @@ def lparams(p):
     """Calculate and print local peak distribution parameters in a disk centered on pixel p"""
     
     theta = pixel[p,0]; phi = pixel[p,1]
+    x, f, n = makecdf(cap(theta, phi, fwhm))
     
-    x = np.sort(cap(theta, phi, fwhm))
-    n = len(x); f = np.linspace(0.0, 1.0, n)
+    print theta, phi, n, ksdiff(x,f,fullsky_fit),
     
-    print theta, phi, n, ksdiff(x,f); stdout.flush()
+    try:
+        # fit Gaussian random peak distribution
+        fit, cov = cdf_fit(x,f); gamma, sigma, alpha = fit
+        print gamma, sigma, alpha, ksdiff(x,f,fit)
+    except:
+        # not converged, do nothing
+        print ""
+    
+    stdout.flush()
 
 
 ###############################################################################

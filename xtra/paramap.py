@@ -6,7 +6,7 @@
 # import libraries
 ###############################################################################
 
-from sys import argv, stdin
+from sys import argv, stdin, stdout
 from peakstats import *
 
 # parse arguments
@@ -57,7 +57,7 @@ def ksdiff(x,f):
     N = len(x); K = sqrt(N)+0.12+0.11/sqrt(N)
     
     # evaluate best fit CDF and fit variance
-    y, dy = marginalize(lambda p: CDF(x, p[0], p[1], p[2]), fit, cov)
+    y, dy = marginalize(lambda p: CDF(x, p[0], p[1], p[2]), fullsky_fit, fullsky_cov)
     
     return K*max(np.abs(f-y))
 
@@ -74,7 +74,7 @@ def lparams(p):
         fit, cov = cdf_fit(x,f)
         gamma, sigma, alpha = fit
         
-        print theta, phi, n, gamma, sigma, alpha, ksdiff(x,f)
+        print theta, phi, n, gamma, sigma, alpha, ksdiff(x,f); stdout.flush()
     except:
         # not converged, do nothing
         print "",
@@ -83,9 +83,12 @@ def lparams(p):
 ###############################################################################
 # run the job in parallel, if job control is available
 ###############################################################################
+
 try:
     from joblib import Parallel, delayed
-    Parallel(n_jobs=32)(delayed(lparams)(i) for i in range(npix))
+    from multiprocessing import cpu_count
+    
+    Parallel(n_jobs=cpu_count(), verbose=15)(delayed(lparams)(i) for i in range(npix))
 except:
     for i in range(npix):
         lparams(i)

@@ -70,7 +70,7 @@ def lparams(p):
     print theta, phi, n, ksdiff(x,f,fullsky_fit),
     
     try:
-        # fit Gaussian random peak distribution
+        # try fitting local Gaussian random peak distribution
         fit, cov = cdf_fit(x,f); gamma, sigma, alpha = fit
         print gamma, sigma, alpha, ksdiff(x,f,fit)
     except:
@@ -89,5 +89,4 @@ try:
     
     Parallel(n_jobs=cpu_count(), verbose=15)(delayed(lparams)(i) for i in range(npix))
 except:
-    for i in range(npix):
-        lparams(i)
+    [lparams(i) for i in range(npix)]

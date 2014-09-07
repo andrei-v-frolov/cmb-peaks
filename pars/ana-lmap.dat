@@ -1,6 +1,6 @@
 simul_type = 1
 nlmax = 4000
-iter_order = 8
+iter_order = 16
 
 infile = maps/lmap-@ORDER@.fits
 maskfile = maps/mask.fits

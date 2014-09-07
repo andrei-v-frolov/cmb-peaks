@@ -1,6 +1,6 @@
 simul_type = 1
 nlmax = 4000
-iter_order = 8
+iter_order = 4
 
 infile = maps/mask.fits
 outfile = !cl-mask.fits

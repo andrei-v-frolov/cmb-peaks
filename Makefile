@@ -1,5 +1,4 @@
 ################################################################
-# $Id$
 # COLDSPOT Pipeline Makefile (Intel Fortran compiler)
 ################################################################
 
@@ -87,7 +86,7 @@ cl-%.fits alms/%.fits: pars/ana-%.dat maps/%.fits
 	anafast $<
 
 maps/white.fits: cl-lcdm.dat alms/wmap.fits
-	$(BINDIR)/wiener WHITE:0.0 $< | $(BINDIR)/fsynth alms/wmap.fits $@ > /dev/null
+	$(BINDIR)/wiener GAUSS:5.0 $< | $(BINDIR)/fsynth alms/wmap.fits $@ > /dev/null
 
 maps/lmask.fits $(foreach k, 1 2 3 4, maps/lmap-$(k).fits): maps/white.fits maps/mask.fits
 	$(BINDIR)/lmask $< $@:4 maps/mask.fits maps/lmap

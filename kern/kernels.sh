@@ -18,7 +18,6 @@ $BINDIR/wiener GAUSS:5.0 ${WHITEN:-} > KERNEL-WHITE-05a.dat
 for w in 120 800; do
     for k in GAUSS SSG21 SSG42 SSG84; do
        $BINDIR/wiener $k:$w.0 > KERNEL-$k-$w.dat
-       $BINDIR/wiener $k:$w.0 ${WHITEN:-} > WHITEN-$k-$w.dat
     done
 done
 

@@ -6,12 +6,14 @@ from matplotlib.ticker import MaxNLocator
 
 # plot style options
 aspect = 3/2.   # figure aspect ratio (default is 4:3)
-scale = 1.0e-6  # scale plot units? (to uK convention)
 fill = False    # produce transparent plots if false
 grid = False    # do we want to render the plot grid?
 
 # Load data
-WHITE = np.loadtxt("KERNEL-WHITE-00a.dat") # l, b_l
+WHITE = np.loadtxt("KERNEL-WHITE-05a.dat") # l, b_l
+
+# scale kernel to uK
+WHITE[:,1] *= 1.0e-6
 
 # Create the plots
 for width in [18., 12., 8.8]:
@@ -20,7 +22,7 @@ for width in [18., 12., 8.8]:
     ax = fig.add_subplot(111)
     
     # beam functions
-    plt.plot(WHITE[:,0], WHITE[:,1]*scale, "#B0C4DE", linewidth=3.0*width/8.8, label=r"\texttt{WHITE} kernel")
+    plt.plot(WHITE[:,0], WHITE[:,1], "#B0C4DE", linewidth=3.0*width/8.8, label=r"\texttt{WHITE} kernel")
     
     # x axis
     plt.hlines(0, 0, 4000, linewidth=0.5)
@@ -47,7 +49,7 @@ for width in [18., 12., 8.8]:
         plt.grid(True, which="major", axis="both")
     
     # axes limits
-    plt.ylim([0.0, 110.0]); plt.xlim([0, 4000]);
+    plt.ylim([0.0, 40.0]); plt.xlim([0, 4000]);
     
     # reduce white space around figure
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0)

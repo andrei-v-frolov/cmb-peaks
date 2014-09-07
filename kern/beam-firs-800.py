@@ -6,16 +6,18 @@ from matplotlib.ticker import MaxNLocator
 
 # plot style options
 aspect = 3/2.   # figure aspect ratio (default is 4:3)
-scale = 1.0e-6  # scale plot units? (to uK convention)
 fill = False    # produce transparent plots if false
 grid = False    # do we want to render the plot grid?
 
 # Load data
-WHITE = np.loadtxt("KERNEL-WHITE-00a.dat") # l, b_l
+WHITE = np.loadtxt("KERNEL-WHITE-05a.dat") # l, b_l
 GAUSS = np.loadtxt("KERNEL-GAUSS-800.dat") # l, b_l
 SSG21 = np.loadtxt("KERNEL-SSG21-800.dat") # l, b_l
 SSG42 = np.loadtxt("KERNEL-SSG42-800.dat") # l, b_l
 SSG84 = np.loadtxt("KERNEL-SSG84-800.dat") # l, b_l
+
+# scale kernel to uK
+WHITE[:,1] *= 1.0e-6
 
 # Create the plots
 for width in [18., 12., 8.8]:
@@ -24,7 +26,7 @@ for width in [18., 12., 8.8]:
     ax = fig.add_subplot(111)
     
     # beam functions
-    plt.plot(WHITE[:,0], WHITE[:,1]*scale, "#B0C4DE", linewidth=3.0*width/8.8, label=r"\texttt{WHITE} kernel")
+    plt.plot(WHITE[:,0], WHITE[:,1], "#B0C4DE", linewidth=3.0*width/8.8, label=r"\texttt{WHITE} kernel")
     plt.plot(SSG21[:,0], SSG21[:,1], "r", linewidth=1.5*width/8.8, label=r"\texttt{SSG21} kernel")
     plt.plot(SSG42[:,0], SSG42[:,1], "g", linewidth=1.5*width/8.8, label=r"\texttt{SSG42} kernel")
     plt.plot(SSG84[:,0], SSG84[:,1], "b", linewidth=1.5*width/8.8, label=r"\texttt{SSG84} kernel")

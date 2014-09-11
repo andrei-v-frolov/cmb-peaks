@@ -44,9 +44,10 @@ plot [2:lmax] \
 ! ../bins/epstopdf noise.eps
 
 # dump the tabulated model
-set table "base_planck_bestfit_cmb_adhoc_noise.cl"; set format y "%.16g"
-plot [2:lmax] 'noise.dat' u 1:($2*B($1)+Cn*N($1))
+set table "noise.dat"; set format y "%.16g"
+plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:($2*B($1)+Cn*N($1))
 unset table
 
 # select only valid data
-! awk '$3 == "i" {print $1, $2;}' noise.dat > base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl && rm -f noise.dat
+! awk '$3 == "i" {print $1, $2;}' noise.dat > base_planck_bestfit_cmb_adhoc_noise.cl && rm -f noise.dat
+

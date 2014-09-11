@@ -115,7 +115,7 @@ subroutine inpaint(map, mask, mout)
         
         associate(result => mg(1)%map, residual => mg(1)%tmp, m => mg(1)%m)
         if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
-        do i = 1,32
+        do i = 1,18
                 call mg_wstroke(mg, 1)
                 
                 ! output residual
@@ -165,7 +165,7 @@ subroutine mg_init(mg, fside, order, imap, imask); use udgrade_nr
         
         ! initalize stencils
         do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
-                k = 0; do i = 0,n; if (mask(i) == 1.0) cycle
+                k = 0; do i = 0,n; if (mask(i) /= 0.0) cycle
                         call stencil(nside, NEST, i, nn(:,k), Lw=LAPL(:,k)); k = k+1
                 end do; m = k-1
                 
@@ -201,10 +201,10 @@ recursive subroutine mg_wstroke(mg, l); use udgrade_nr
         type(multigrid) mg(:); integer i, k, l
         
         ! pre-smooth
-        call mg_smooth(mg, l, 16)
+        call mg_smooth(mg, l, 8)
         
-        ! solve coarse problem
-        if (l < size(mg)) then
+        ! solve coarse problem (with at least a few pixels)
+        if (l < size(mg) .and. mg(l+1)%m > 0) then
                 associate($MGVARS$, cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
                 
                 ! downgrade residual
@@ -217,10 +217,10 @@ recursive subroutine mg_wstroke(mg, l); use udgrade_nr
                 ! upgrade correction and update the map
                 call udgrade_nest(cmap, mg(l+1)%nside, tmp, nside)
                 forall (k=0:m) map(nn(1,k)) = map(nn(1,k)) + tmp(nn(1,k))
-        end associate; else; call mg_smooth(mg, l, 96); end if
+        end associate; else; call mg_smooth(mg, l, max(mg(l)%m-15,48)); end if
         
         ! post-smooth
-        call mg_smooth(mg, l, 16)
+        call mg_smooth(mg, l, 8)
 end subroutine mg_wstroke
 
 

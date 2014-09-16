@@ -18,5 +18,5 @@ def load_cmap(name, file, bad='gray', over='white', under='white'):
     return cmap
 
 # default HEALPix and Planck colormaps
-healpix_cmap = load_cmap('healpix',   '../pars/HEALPix_CMB.rgb')
-planck_cmap  = load_cmap('parchment', '../pars/Planck_Parchment.rgb')
+healpix_cmap = load_cmap('healpix',   '../libs/colormaps/HEALPix_CMB.rgb')
+planck_cmap  = load_cmap('parchment', '../libs/colormaps/Planck_Parchment.rgb')

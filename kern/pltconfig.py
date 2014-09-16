@@ -1,1 +1,1 @@
-../stat/pltconfig.py
+../libs/pltconfig.py

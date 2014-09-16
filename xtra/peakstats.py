@@ -1,1 +1,1 @@
-../stat/peakstats.py
+../libs/peakstats.py

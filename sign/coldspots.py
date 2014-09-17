@@ -40,10 +40,14 @@ for i in range(1,len(argv)):
     # form peak CDF
     x, f, n = makecdf(peaks[:,2])
     
-    # fit Gaussian random peak distribution
-    fit, cov = cdf_fit(x,f)
-    
-    coldsign = marginalize(lambda p: log(1.0 - (1.0-CDF(x[0], p[0], p[1], p[2]))**n), fit, cov)
-    hotsign = marginalize(lambda p: log(1.0 - CDF(x[-1], p[0], p[1], p[2])**n), fit, cov)
-    
-    print fwhm, coldsign[0], coldsign[1]
+    # try fitting local Gaussian random peak distribution
+    try:
+        fit, cov = cdf_fit(x,f)
+        
+        coldsign = marginalize(lambda p: log10(1.0 - (1.0-CDF(x[0], p[0], p[1], p[2]))**n), fit, cov)
+        hotsign = marginalize(lambda p: log10(1.0 - CDF(x[-1], p[0], p[1], p[2])**n), fit, cov)
+        
+        print fwhm, coldsign[0], coldsign[1]
+    except:
+        # not converged, do nothing
+        print "",

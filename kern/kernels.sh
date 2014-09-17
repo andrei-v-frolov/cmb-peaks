@@ -23,5 +23,5 @@ done
 
 # produce all the plots
 for p in beam-*.py; do
-    python $p
+    python $p 8.8
 done

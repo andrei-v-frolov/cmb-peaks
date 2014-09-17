@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Plot pre-whitener kernels; usage: beam-comp-800 [width list (in cm)]
 
 # configure import path
 import os, sys
@@ -14,6 +15,8 @@ aspect = 3/2.   # figure aspect ratio (default is 4:3)
 fill = False    # produce transparent plots if false
 grid = False    # do we want to render the plot grid?
 
+widths = map(float, sys.argv[1].split(',')) if (len(sys.argv) > 1) else [18.0, 12.0, 8.8]
+
 # Load data
 WHITE = np.loadtxt("KERNEL-WHITE-05a.dat") # l, b_l
 GAUSS = np.loadtxt("KERNEL-GAUSS-800.dat") # l, b_l
@@ -25,7 +28,7 @@ SSG84 = np.loadtxt("KERNEL-SSG84-800.dat") # l, b_l
 WHITE[:,1] *= 1.0e-6
 
 # Create the plots
-for width in [18., 12., 8.8]:
+for width in widths:
     fig = plt.figure(figsize=(cm2inch(width), cm2inch(width/aspect)), frameon=fill)
     # this should be changed for making a panel of multiple figures
     ax = fig.add_subplot(111)
@@ -72,4 +75,6 @@ for width in [18., 12., 8.8]:
         ticklabel.set_rotation("vertical")
     
     # save to pdf with right bounding box
-    plt.savefig("./peaks-beam-comp-800.%dmm.pdf" % int(width*10), bbox_inches='tight', pad_inches=0.02, transparent=not(fill))
+    base = 'peaks-beam-comp-800'
+    pdf = "%s.%dmm.pdf" % (base,int(width*10)) if len(widths) > 1 else base+".pdf"
+    plt.savefig(pdf, bbox_inches='tight', pad_inches=0.02, transparent=not(fill))

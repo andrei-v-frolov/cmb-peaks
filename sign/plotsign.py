@@ -28,7 +28,7 @@ widths = map(float, sys.argv[1].split(',')) if (len(argv) > 1) else [18.0, 12.0,
 ###############################################################################
 
 try:
-    dataset = open(os.path.join(here, '../DATASET'), 'r').read()
+    dataset = open(os.path.join(here, '../DATASET'), 'r').readline().strip()
 except:
     dataset = ''
 

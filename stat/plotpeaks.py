@@ -6,6 +6,12 @@
 # import libraries
 ###############################################################################
 
+# configure import path
+import os, sys
+here = os.path.split(os.path.realpath(__file__))[0]
+sys.path.append(os.path.join(here, '../libs'))
+
+# import libraries
 from sys import argv, stdin
 from peakstats import *
 from spherical import *

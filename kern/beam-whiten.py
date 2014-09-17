@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# configure import path
+import os, sys
+here = os.path.split(os.path.realpath(__file__))[0]
+sys.path.append(os.path.join(here, '../libs'))
+
 # Configure Matplotlib options
 from pltconfig import *
 from matplotlib.ticker import MaxNLocator

@@ -2,6 +2,10 @@
 # import Planck-specific colormaps
 ###############################################################################
 
+# configure import path
+import os; here = os.path.split(os.path.realpath(__file__))[0]
+
+# import libraries
 import numpy as np
 from matplotlib.colors import ListedColormap
 from matplotlib.cm import register_cmap
@@ -18,5 +22,5 @@ def load_cmap(name, file, bad='gray', over='white', under='white'):
     return cmap
 
 # default HEALPix and Planck colormaps
-healpix_cmap = load_cmap('healpix',   '../libs/colormaps/HEALPix_CMB.rgb')
-planck_cmap  = load_cmap('parchment', '../libs/colormaps/Planck_Parchment.rgb')
+healpix_cmap = load_cmap('healpix', os.path.join(here, 'colormaps/HEALPix_CMB.rgb'))
+planck_cmap  = load_cmap('parchment', os.path.join(here, 'colormaps/Planck_Parchment.rgb'))

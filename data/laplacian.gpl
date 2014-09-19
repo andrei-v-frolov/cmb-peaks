@@ -1,0 +1,37 @@
+#!/usr/bin/env gnuplot
+
+set terminal postscript eps enhanced solid color
+set output "laplacian.eps"; set size 0.80
+
+lmax=4000; lbeam=1200
+
+# beam function for temperature map (squared because we fit Cl's)
+B(l)=exp(-l*(l+1)/lbeam**2/2.0)/(l*(l+1))
+C(l)=B(l)**2 * l*(l+1)/(2*pi)
+
+# effective beam (5' FWHM Gaussian/Pixel window at n=2048)
+BFWHM = 5.0 * pi/(180*60) # 5 arcmin
+P2048 = 1.21333461333613 * pi/(180*60)
+lbeam = sqrt((8*log(2))/(BFWHM**2-P2048**2))
+
+print "Effective l_beam = ", lbeam/sqrt(2)
+
+# plot covariance model components
+set title "{/Times-Roman*1.6 inverse Laplacian acting on `cat ../DATASET`}"
+set logscale; set key bottom right; set format y "%g"
+set xlabel 'l'; set ylabel 'C_l l(l+1)/2{/Symbol p}, K^2'
+plot [2:lmax] \
+     'cl_full_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from full-sky map', \
+     'cl_hmhd_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) w l t 'C_l from HMHD noise map', \
+     C(x) t "inverse Laplacian smoothed to 5\' FWHM"
+# convert the plot to pdf
+! ../bins/epstopdf laplacian.eps
+
+# dump the tabulated model
+set table "noise.dat"; set format y "%.16g"
+plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:(C($1))
+unset table
+
+# select only valid data
+# ! awk '$3 == "i" {print $1, $2;}' noise.dat > laplacian.cl && rm -f noise.dat
+

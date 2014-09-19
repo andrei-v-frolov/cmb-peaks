@@ -33,5 +33,5 @@ plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:(C($1
 unset table
 
 # select only valid data
-# ! awk '$3 == "i" {print $1, $2;}' noise.dat > laplacian.cl && rm -f noise.dat
+! awk '$3 == "i" {print $1, $2;}' noise.dat > laplacian.cl && rm -f noise.dat
 

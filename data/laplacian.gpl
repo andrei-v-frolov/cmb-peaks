@@ -7,7 +7,7 @@ lmax=4000; lbeam=1200
 
 # beam function for temperature map (squared because we fit Cl's)
 B(l)=exp(-l*(l+1)/lbeam**2/2.0)/(l*(l+1))
-C(l)=B(l)**2 * l*(l+1)/(2*pi)
+C(l)=B(l)**2 * l*(l+1)/(2*pi) * 1.0e-3
 
 # effective beam (5' FWHM Gaussian/Pixel window at n=2048)
 BFWHM = 5.0 * pi/(180*60) # 5 arcmin

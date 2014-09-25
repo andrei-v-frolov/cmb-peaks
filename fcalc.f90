@@ -6,24 +6,18 @@
 program fcalc
 
 ! HEALPix includes
+use mapio
 use extension
-use head_fits; use healpix_types
-use pix_tools; use fitstools
 
 implicit none
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: IO = SP                   ! default I/O precision
-integer, parameter :: RING = 1, NEST = 2        ! ordering literals
-logical, parameter :: verbose = .true.          ! diagnostic output
-
+character(len=80) :: fin1, op, fin2, fout
 integer :: nmaps = 0, nside = 0, ord = 0, n = 0
-character(len=80) :: header(64), fin1, op, fin2, fout
 real(IO), dimension(:,:), allocatable :: M1, M2, Mout
 logical, dimension(:,:), allocatable :: valid
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -97,8 +91,7 @@ select case (op)
 end select
 
 ! write output map
-call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='FCALC', version='$Revision$')
-call output_map(Mout, header, '!'//fout)
+call write_map(fout, Mout, nside, ord, creator='FCALC')
 
 contains
 
@@ -343,44 +336,5 @@ subroutine stencil(nside, order, i, nn, count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
         if (present(Dxy)) Dxy = Q(5,:)
         if (present(Dyy)) Dyy = 2.0*Q(6,:)
 end subroutine stencil
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! read map from FITS file, allocating storage if necessary
-subroutine read_map(fin, M, nside, nmaps, ord)
-        character(*) fin
-        real(IO), allocatable :: M(:,:)
-        integer nside, npix, nmaps, ord
-        
-        ! read header info
-        character(len=80) :: header(64)
-        integer hside, htot, hmaps, hord
-        
-        htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord)
-        if (htot == -1) call abort(trim(fin) // ": file not found")
-        
-        ! check if map format agrees with requested one
-        if (nside == 0) nside = hside; if (hside /= nside) call abort(trim(fin) // ": map resolution does not conform")
-        if (nmaps == 0) nmaps = hmaps; if (hmaps  < nmaps) call abort(trim(fin) // ": too few channels in an input map")
-                                       if (hmaps  > nmaps) call warning(trim(fin) // ": ignoring extra channels")
-        if (  ord == 0)   ord = hord;  if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
-        
-        ! allocate storage if needed
-        npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix,nmaps))
-        if (size(M,1) /= npix .or. size(M,2) < nmaps) call abort(trim(fin) // ": unexpected storage array shape")
-        
-        ! read map data, converting order if needed
-        call input_map(fin, M, npix, nmaps)
-        if (hord == RING .and. ord == NEST) call convert_ring2nest(nside, M)
-        if (hord == NEST .and. ord == RING) call convert_nest2ring(nside, M)
-end subroutine read_map
-
-! output warning message to stderr
-subroutine warning(msg)
-        character(*) msg; logical, parameter :: verbose = .true.
-        
-        if (verbose) write (0,'(a)') "warning: " // msg
-end subroutine warning
 
 end

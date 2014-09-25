@@ -8,11 +8,8 @@ program fsynth
 
 ! HEALPix includes
 use extension
-use head_fits
-use healpix_types
-use fitstools
 use alm_tools
-use pix_tools
+use mapio
 
 implicit none
 
@@ -20,11 +17,8 @@ implicit none
 
 integer, parameter :: default = 0, iqu = 1, inv = 2; integer :: mode = default
 
-integer, parameter :: IO = SP               ! default I/O precision
-integer, parameter :: RING = 1, NEST = 2    ! ordering literals
-
+character(len=80) :: fmap, fmask, fout
 integer, parameter :: lmax = 4000, nside = 2048, hmax = 256
-character(len=80) :: header(hmax), fmap, fmask, fout
 real(DP), allocatable :: mmap(:,:), mask(:,:), map(:,:)
 real(IO), allocatable :: mout(:,:)
 real(DP) beam(0:lmax)
@@ -74,8 +68,7 @@ end select
 
 ! output corrected map (in specified precision)
 allocate (mout(0:n,nmaps)); mout = map
-call write_minimal_header(header, 'MAP', nside=nside, order=NEST, creator='FSYNTH', version='$Revision$', polar=(mode .eq. iqu))
-call output_map(mout, header, '!'//fout)
+call write_map(fout, mout, nside, NEST, creator='FSYNTH')
 
 contains
 

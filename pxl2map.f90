@@ -6,22 +6,18 @@
 program pxl2map
 
 ! HEALPix includes
+use mapio
 use extension
-use head_fits; use healpix_types
-use pix_tools; use fitstools
 
 implicit none
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: IO = SP               ! default I/O precision
-integer, parameter :: RING = 1, NEST = 2    ! ordering literals
-
-character(len=80) :: header(64), fin, fout
-integer nmaps, nside, npix, n, ntot, ord, status
+character(len=80) :: fin, fout
 real(IO), allocatable :: M(:,:)
 integer, allocatable, target :: idx(:)
+integer :: nmaps = 0, nside = 0, ord = 0, n = 0, npix, status
 
 real(DP) theta, phi, value
 
@@ -33,14 +29,11 @@ call getArgument(1, fin )
 call getArgument(2, fout)
 
 ! import input map
-ntot = getsize_fits(fin, nmaps=nmaps, nside=nside, ordering=ord)
+call read_map(fin, M, nside, nmaps, ord)
 npix = nside2npix(nside); n = npix-1
 
-allocate(M(0:n,nmaps), idx(npix))
+allocate(idx(npix))
 
-!call input_map(fin, M, npix, nmaps)
-
-!M = 0.0
 M = 1.0/0.0
 
 ! input loop
@@ -52,8 +45,9 @@ do
 	!M(disk(theta,phi,600.0),:) = M(disk(theta,phi,600.0),:) + 1.0
 end do
 
-call write_minimal_header(header, 'MAP', nside=nside, order=ord)
-call output_map(M, header, '!'//fout)
+! output map
+call write_map(fout, M, nside, ord, creator='PXL2MAP')
+
 
 contains
 
@@ -66,8 +60,6 @@ function pixel(theta, phi)
 		case(NEST); call ang2pix_nest(nside, theta, phi, pixel)
 		case default; call abort(": ordering not supported")
 	end select
-	
-	write (*,*) pixel
 end function
 
 ! disk pixel index 

@@ -1,3 +1,6 @@
+# Fortran modules
+*.mod
+
 # compiled Python
 *.py[cod]
 

@@ -131,8 +131,10 @@ stat/%.pdf: stat/%.dat
 
 ################### Binaries & Dependencies ####################
 
-$(BINDIR)/fsynth: rank.f
-$(BINDIR)/lmask: rank.f
+$(BINDIR)/fcalc: mapio.f90
+$(BINDIR)/fsynth: mapio.f90 rank.f
+$(BINDIR)/lmask: mapio.f90 rank.f
+$(BINDIR)/pxl2map: mapio.f90
 $(BINDIR)/wiener: polint.f
 
 $(BINDIR)/%: %.f90

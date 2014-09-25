@@ -5,9 +5,8 @@
 program lmask
 
 ! HEALPix includes
+use mapio
 use extension
-use head_fits; use healpix_types
-use pix_tools; use fitstools
 
 implicit none
 
@@ -17,10 +16,7 @@ implicit none
 integer :: datach = 1, maskch = 1, nmoms = 4    ! defaults
 integer :: i, npix, nuse, nside = 0, ord = 0    ! map format
 
-integer, parameter :: IO = SP                   ! default I/O precision
-integer, parameter :: RING = 1, NEST = 2        ! ordering literals
-
-character(len=80) :: header(64), fin, fout, fmask
+character(len=80) :: fin, fout, fmask
 real(IO), allocatable :: Min(:), Mask(:), Mout(:,:)
 integer, allocatable :: indx(:), rank(:)
 real(DP), allocatable :: P(:,:)
@@ -40,8 +36,8 @@ if (nArguments() < 3) then
         allocate(Mask, mold=Min)
         Mask = 1.0; nuse = npix
 else
-        call getArgument(3, fmask); call parse(fmask, maskch)
-	call read_channel(fmask, Mask, nside, maskch, ord)
+    call getArgument(3, fmask); call parse(fmask, maskch)
+    call read_channel(fmask, Mask, nside, maskch, ord)
 	
 	! masked pixels are not ranked
 	nuse = 0; do i = 1,npix
@@ -62,12 +58,11 @@ call indexx(npix, Min, indx)
 call rankx(npix, indx, rank)
 
 do i = 1,npix
-        Mout(i,:) = Mask(i) * matmul(P, X(rank(i), nuse, nmoms-1))
+    Mout(i,:) = Mask(i) * matmul(P, X(rank(i), nuse, nmoms-1))
 end do
 
 ! output L-weight masks (to a single FITS container)
-call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
-call output_map(Mout, header, '!'//fout)
+call write_map(fout, Mout, nside, ord, creator='LMASK')
 
 ! output L-weighted maps (to separate FITS files) if requested
 if (nArguments() > 3) then
@@ -79,9 +74,7 @@ if (nArguments() > 3) then
 	
 	do i = 1,nmoms
 		write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'
-		
-		call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator='LMASK', version='$Revision$')
-		call output_map(Mout(:,(/i/)), header, '!'//fmask)
+        call write_map(fmask, Mout(:,(/i/)), nside, ord, creator='LMASK')
 	end do
 end if
 
@@ -142,41 +135,5 @@ subroutine read_channel(fin, M, nside, channel, ord)
         ! copy over the data we want, free the full map
         M = TMP(:,channel); deallocate(TMP)
 end subroutine read_channel
-
-! read map from FITS file, allocating storage if necessary
-subroutine read_map(fin, M, nside, nmaps, ord)
-        character(*) fin
-        real(IO), allocatable :: M(:,:)
-        integer nside, npix, nmaps, ord
-        
-        ! read header info
-        character(len=80) :: header(64)
-        integer hside, htot, hmaps, hord
-        
-        htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord)
-        if (htot == -1) call abort(trim(fin) // ": file not found")
-        
-        ! check if map format agrees with requested one
-        if (nside == 0) nside = hside; if (hside /= nside) call abort(trim(fin) // ": map resolution does not conform")
-        if (nmaps == 0) nmaps = hmaps; if (hmaps  < nmaps) call abort(trim(fin) // ": too few channels in an input map")
-                                       if (hmaps  > nmaps) call warning(trim(fin) // ": ignoring extra channels")
-        if (  ord == 0)   ord = hord;  if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
-        
-        ! allocate storage if needed
-        npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix,nmaps))
-        if (size(M,1) /= npix .or. size(M,2) < nmaps) call abort(trim(fin) // ": unexpected storage array shape")
-        
-        ! read map data, converting order if needed
-        call input_map(fin, M, npix, nmaps)
-        if (hord == RING .and. ord == NEST) call convert_ring2nest(nside, M)
-        if (hord == NEST .and. ord == RING) call convert_nest2ring(nside, M)
-end subroutine read_map
-
-! output warning message to stderr
-subroutine warning(msg)
-        character(*) msg; logical, parameter :: verbose = .true.
-        
-        if (verbose) write (0,'(a)') "warning: " // msg
-end subroutine warning
 
 end

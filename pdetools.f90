@@ -37,11 +37,15 @@ subroutine inpaint(map, mask, mout, nside, order)
         associate(result => mg(1)%map, residual => mg(1)%tmp, m => mg(1)%m)
         if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
         do i = 1,18
+                ! run W-stroke
                 call mg_wstroke(mg, 1)
+                
+                ! feather up on the last iteration
+                if (i == 18) call mg_smooth(mg, 1, 8)
                 
                 ! output residual
                 if (.not. verbose) cycle
-                call mg_residual(mg, 1, residual)
+                call mg_residual(mg, 1)
                 write (*,*) sqrt(sum(residual**2))/m, maxval(abs(residual))
         end do
         
@@ -123,13 +127,11 @@ subroutine mg_smooth(mg, l, iterations)
 end subroutine mg_smooth
 
 ! calculate residual
-subroutine mg_residual(mg, l, residual)
-        type(multigrid) mg(:); integer i, k, l; real(DP) residual(:)
+subroutine mg_residual(mg, l)
+        type(multigrid) mg(:); integer k, l
         
-        residual = 0.0
-        
-        associate($MGVARS$)
-        forall (k=0:m) residual(nn(1,k)) = rhs(nn(1,k)) - sum(LAPL(:,k)*map(nn(:,k)))/h2
+        associate($MGVARS$); tmp = 0.0
+        forall (k=0:m) tmp(nn(1,k)) = rhs(nn(1,k)) - sum(LAPL(:,k)*map(nn(:,k)))/h2
         end associate
 end subroutine mg_residual
 
@@ -145,7 +147,7 @@ recursive subroutine mg_wstroke(mg, l)
                 associate($MGVARS$, cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
                 
                 ! downgrade residual
-                call mg_residual(mg, l, tmp)
+                call mg_residual(mg, l)
                 call udgrade_nest(tmp, nside, crhs, mg(l+1)%nside)
                 
                 ! W-stroke schedule

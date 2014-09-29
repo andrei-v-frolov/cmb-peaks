@@ -1,5 +1,5 @@
 # Fortran modules
-*.mod
+*.{o,mod}
 
 # compiled Python
 *.py[cod]

@@ -13,8 +13,8 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer :: datach = 1, maskch = 1, nmoms = 4    ! defaults
-integer :: i, npix, nuse, nside = 0, ord = 0    ! map format
+integer :: datach = 1, maskch = 1, nmoms = 4	! defaults
+integer :: i, npix, nuse, nside = 0, ord = 0	! map format
 
 character(len=80) :: fin, fout, fmask
 real(IO), allocatable :: Min(:), Mask(:), Mout(:,:)
@@ -33,11 +33,11 @@ call read_channel(fin, Min, nside, datach, ord); npix = nside2npix(nside)
 
 ! read mask if specified
 if (nArguments() < 3) then
-        allocate(Mask, mold=Min)
-        Mask = 1.0; nuse = npix
+	allocate(Mask, mold=Min)
+	Mask = 1.0; nuse = npix
 else
-    call getArgument(3, fmask); call parse(fmask, maskch)
-    call read_channel(fmask, Mask, nside, maskch, ord)
+	call getArgument(3, fmask); call parse(fmask, maskch)
+	call read_channel(fmask, Mask, nside, maskch, ord)
 	
 	! masked pixels are not ranked
 	nuse = 0; do i = 1,npix
@@ -58,7 +58,7 @@ call indexx(npix, Min, indx)
 call rankx(npix, indx, rank)
 
 do i = 1,npix
-    Mout(i,:) = Mask(i) * matmul(P, X(rank(i), nuse, nmoms-1))
+	Mout(i,:) = Mask(i) * matmul(P, X(rank(i), nuse, nmoms-1))
 end do
 
 ! output L-weight masks (to a single FITS container)
@@ -74,7 +74,7 @@ if (nArguments() > 3) then
 	
 	do i = 1,nmoms
 		write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'
-        call write_map(fmask, Mout(:,(/i/)), nside, ord, creator='LMASK')
+		call write_map(fmask, Mout(:,(/i/)), nside, ord, creator='LMASK')
 	end do
 end if
 
@@ -88,11 +88,11 @@ contains
 ! satisfy P(0) = 1.0; P(1) = x; P(k+1) = ((2*k+alpha)*x*P(k) - k*P(k-1))/(k+alpha)
 ! returns *shifted* polynomial coefficients as P(k,alpha,2*x-1) = sum(P(k,n)*x^n)
 subroutine gegenbauer(P, l, alpha)
-        integer k, l; real P(0:l,0:l), alpha
-        
-        P = 0.0; P(0,0) = 1.0; P(1,1) = 2.0; P(1,0) = -1.0; do k = 1,l-1
-                P(k+1,:) = ((2*k+alpha)*(2.0*cshift(P(k,:),-1)-P(k,:)) - k*P(k-1,:))/(k+alpha)
-        end do
+	integer k, l; real P(0:l,0:l), alpha
+	
+	P = 0.0; P(0,0) = 1.0; P(1,1) = 2.0; P(1,0) = -1.0; do k = 1,l-1
+		P(k+1,:) = ((2*k+alpha)*(2.0*cshift(P(k,:),-1)-P(k,:)) - k*P(k-1,:))/(k+alpha)
+	end do
 end subroutine gegenbauer
 
 ! Calculate L-weights from rank order vector X using matmul(P,X)
@@ -107,33 +107,33 @@ end function X
 
 ! parse optional channel specification
 subroutine parse(file, channel)
-        character(*) file
-        integer channel, i
-        
-        i = index(file,  ":", .true.)
-        
-        if (i > 0) then
-                read (file(i+1:),*) channel
-                file(i:) = ""
-        end if
+	character(*) file
+	integer channel, i
+	
+	i = index(file, ":", .true.)
+	
+	if (i > 0) then
+		read (file(i+1:),*) channel
+		file(i:) = ""
+	end if
 end subroutine parse
 
 ! read a single map channel, allocating storage if necessary
 subroutine read_channel(fin, M, nside, channel, ord)
-        character(*) fin
-        real(IO), allocatable :: M(:), TMP(:,:)
-        integer channel, nside, npix, nmaps, ord
-        
-        ! read full map into temporary storage
-        nmaps = 0; call read_map(fin, TMP, nside, nmaps, ord)
-        if (channel > nmaps) call abort(trim(fin) // ": too few channels in an input map")
-        
-        ! allocate storage if needed
-        npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix))
-        if (size(M) /= npix) call abort(trim(fin) // ": unexpected storage array shape")
-        
-        ! copy over the data we want, free the full map
-        M = TMP(:,channel); deallocate(TMP)
+	character(*) fin
+	real(IO), allocatable :: M(:), TMP(:,:)
+	integer channel, nside, npix, nmaps, ord
+	
+	! read full map into temporary storage
+	nmaps = 0; call read_map(fin, TMP, nside, nmaps, ord)
+	if (channel > nmaps) call abort(trim(fin) // ": too few channels in an input map")
+	
+	! allocate storage if needed
+	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix))
+	if (size(M) /= npix) call abort(trim(fin) // ": unexpected storage array shape")
+	
+	! copy over the data we want, free the full map
+	M = TMP(:,channel); deallocate(TMP)
 end subroutine read_channel
 
 end

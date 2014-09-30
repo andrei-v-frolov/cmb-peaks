@@ -45,35 +45,35 @@ valid = .not. (isnan(M1) .or. isnan(M2))
 
 ! apply operator
 select case (op)
-        ! arithmetic operators
-        case ('+');  Mout = M1 + M2
-        case ('-');  Mout = M1 - M2
-        case ('*');  Mout = M1 * M2
-        case ('/');  Mout = M1 / M2
-        case ('//'); Mout = floor(M1/M2)
-        case ('**'); Mout = M1 ** M2
-        
-        ! comparison operators
-        case ('<');  where (M1 < M2) Mout = 1.0
-        case ('>');  where (M1 > M2) Mout = 1.0
-        case ('<='); where (M1 <= M2) Mout = 1.0
-        case ('>='); where (M1 >= M2) Mout = 1.0
-        case ('=','=='); where (M1 == M2) Mout = 1.0
-        case ('!=','/=','<>'); where (M1 /= M2) Mout = 1.0
-        
-        ! projection operators
-        case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
-        case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
-        
-        ! masking operators
-        case ('valid'); where (valid) Mout = 1.0
-        case ('invalid'); where (.not. valid) Mout = 1.0
-        case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
-        case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
-        case ('inpaint'); call inpaint(M1, M2, Mout, nside, ord)
-        
-        ! unknown operator
-        case default; call abort(trim(op) // ": operation not supported")
+	! arithmetic operators
+	case ('+');  Mout = M1 + M2
+	case ('-');  Mout = M1 - M2
+	case ('*');  Mout = M1 * M2
+	case ('/');  Mout = M1 / M2
+	case ('//'); Mout = floor(M1/M2)
+	case ('**'); Mout = M1 ** M2
+	
+	! comparison operators
+	case ('<');  where (M1 < M2) Mout = 1.0
+	case ('>');  where (M1 > M2) Mout = 1.0
+	case ('<='); where (M1 <= M2) Mout = 1.0
+	case ('>='); where (M1 >= M2) Mout = 1.0
+	case ('=','=='); where (M1 == M2) Mout = 1.0
+	case ('!=','/=','<>'); where (M1 /= M2) Mout = 1.0
+	
+	! projection operators
+	case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
+	case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
+	
+	! masking operators
+	case ('valid'); where (valid) Mout = 1.0
+	case ('invalid'); where (.not. valid) Mout = 1.0
+	case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
+	case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
+	case ('inpaint'); call inpaint(M1, M2, Mout, nside, ord)
+	
+	! unknown operator
+	case default; call abort(trim(op) // ": operation not supported")
 end select
 
 ! write output map

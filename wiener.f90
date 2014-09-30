@@ -182,7 +182,7 @@ end function fwhm
 ! read (normalized) Cl's from a data file
 subroutine data2cl(fin, Cl, lmax, ncl, header)
 	integer l, lmax, ncl, status
-        character(*) fin, header(:)
+	character(*) fin, header(:)
 	real(DP) p(ncl), Cl(0:lmax,ncl)
 	
 	! if it looks like a FITS file, read it in unchanged
@@ -191,16 +191,16 @@ subroutine data2cl(fin, Cl, lmax, ncl, header)
 	end if
 	
 	! nope, it's a plain text file (with normalized Cl's!)
-        Cl = 0.0; open(11, file=fin, action="read")
-        
-        do
+	Cl = 0.0; open(11, file=fin, action="read")
+	
+	do
 		read (11,*,iostat=status) l, p
 		if (status < 0) exit
 		if (l > lmax) cycle
 		Cl(l,:) = 2.0*pi*p/(l*(l+1.0))
 	end do
-        
-        close(11)
+	
+	close(11)
 end subroutine
 
 ! interpolate missing lower multipoles

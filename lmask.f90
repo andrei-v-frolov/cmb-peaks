@@ -13,13 +13,13 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer :: datach = 1, maskch = 1, nmoms = 4	! defaults
-integer :: i, npix, nuse, nside = 0, ord = 0	! map format
+integer :: datach = 1, maskch = 1, nmoms = 4		! defaults
+integer :: i, n, npix, nused, nside = 0, ord = 0	! map format
 
 character(len=80) :: fin, fout, fmask
 real(IO), allocatable :: Min(:), Mask(:), Mout(:,:)
-integer, allocatable :: indx(:), rank(:)
-real(DP), allocatable :: P(:,:)
+integer,  allocatable :: indx(:), rank(:)
+real(DP), allocatable :: M(:), P(:,:)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -29,37 +29,32 @@ call getArgument(1, fin ); call parse(fin, datach)
 call getArgument(2, fout); call parse(fout, nmoms)
 
 ! read input map
-call read_channel(fin, Min, nside, datach, ord); npix = nside2npix(nside)
+call read_channel(fin, Min, nside, datach, ord)
+npix = nside2npix(nside); n = npix-1
+
+! allocate dynamic arrays to store output maps and ranks
+allocate(Mout(0:n,nmoms), P(nmoms,nmoms))
+allocate(M(npix), indx(npix), rank(npix)); M = Min
 
 ! read mask if specified
 if (nArguments() < 3) then
-	allocate(Mask, mold=Min)
-	Mask = 1.0; nuse = npix
+	allocate(Mask, mold=Min); Mask = 1.0
 else
 	call getArgument(3, fmask); call parse(fmask, maskch)
 	call read_channel(fmask, Mask, nside, maskch, ord)
-	
-	! masked pixels are not ranked
-	nuse = 0; do i = 1,npix
-		if (Mask(i) == 0.0) then
-			Min(i) = HUGE(Min)
-		else
-			nuse = nuse + 1
-		end if
-	end do
 end if
 
-! allocate dynamic arrays to store output maps and ranks
-allocate(Mout(npix,nmoms), P(nmoms,nmoms), indx(npix), rank(npix))
+! masked pixels are not ranked
+where (isnan(Min)) Mask = 0.0
+where (Mask == 0.0) M = HUGE(M)
+nused = count(Mask /= 0.0)
 
 ! compute rank ordering and L-weights
 call gegenbauer(P, nmoms-1, 1.0)
-call indexx(npix, Min, indx)
+call indexx(npix, M, indx)
 call rankx(npix, indx, rank)
 
-do i = 1,npix
-	Mout(i,:) = Mask(i) * matmul(P, X(rank(i), nuse, nmoms-1))
-end do
+forall (i=0:n) Mout(i,:) = Mask(i) * matmul(P, X(rank(i+1), nused, nmoms-1))
 
 ! output L-weight masks (to a single FITS container)
 call write_map(fout, Mout, nside, ord, creator='LMASK')
@@ -68,9 +63,7 @@ call write_map(fout, Mout, nside, ord, creator='LMASK')
 if (nArguments() > 3) then
 	call getArgument(4, fout)
 	
-	do i = 1,npix
-		Mout(i,:) = Min(i) * Mout(i,:)
-	end do
+	forall (i=0:n) Mout(i,:) = Min(i) * Mout(i,:)
 	
 	do i = 1,nmoms
 		write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'
@@ -96,8 +89,8 @@ subroutine gegenbauer(P, l, alpha)
 end subroutine gegenbauer
 
 ! Calculate L-weights from rank order vector X using matmul(P,X)
-function X(r,n,l)
-	integer r, n, l, k; real X(0:l)
+pure function X(r,n,l)
+	integer, intent(in) :: r, n, l; integer k; real X(0:l)
 	
 	X(0) = 1.0; do k = 1,l; X(k) = X(k-1) * (r-k)/(n-k); end do
 end function X
@@ -129,7 +122,7 @@ subroutine read_channel(fin, M, nside, channel, ord)
 	if (channel > nmaps) call abort(trim(fin) // ": too few channels in an input map")
 	
 	! allocate storage if needed
-	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix))
+	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1))
 	if (size(M) /= npix) call abort(trim(fin) // ": unexpected storage array shape")
 	
 	! copy over the data we want, free the full map

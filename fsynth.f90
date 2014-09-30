@@ -117,7 +117,7 @@ end subroutine
 subroutine alm2map_inv(nside, lmax, mmax, alms, Minv)
 	integer p, l, m, n, nside, lmax, mmax
 	complex(DPC) alms(1,0:lmax,0:mmax)
-	real(DP) Minv(12*nside**2,3), theta, phi
+	real(DP) Minv(0:12*nside**2-1,3), theta, phi
 	
 	! temporary storage
 	real(DP), allocatable :: I(:), C(:), D1(:,:), D2(:,:)
@@ -156,7 +156,7 @@ end subroutine
 subroutine alm2map_iqu_hpx(nside, lmax, mmax, alms, Miqu)
 	integer p, l, m, n, nside, lmax, mmax
 	complex(DPC) alms(1,0:lmax,0:mmax)
-	real(DP) Miqu(12*nside**2,3), theta, phi
+	real(DP) Miqu(0:12*nside**2-1,3), theta, phi
 	
 	! temporary storage
 	real(DP), allocatable :: I(:), C(:), D1(:,:), D2(:,:)
@@ -192,7 +192,7 @@ end subroutine
 subroutine alm2map_iqu(nside, lmax, mmax, alms, Miqu)
 	integer p, l, m, n, nside, lmax, mmax
 	complex(DPC) alms(1,0:lmax,0:mmax), mu
-	real(DP) Miqu(12*nside**2,3), theta, phi
+	real(DP) Miqu(0:12*nside**2-1,3), theta, phi
 	
 	! temporary storage
 	real(DP), allocatable :: I(:), T(:), Q(:), U(:), S(:)

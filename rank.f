@@ -1,9 +1,9 @@
       SUBROUTINE indexx(n,arr,indx)
       INTEGER n,indx(n),M,NSTACK
-      REAL*4 arr(n)
+      REAL*8 arr(n)
       PARAMETER (M=7,NSTACK=50)
       INTEGER i,indxt,ir,itemp,j,jstack,k,l,istack(NSTACK)
-      REAL*4 a
+      REAL*8 a
       do 11 j=1,n
         indx(j)=j
 11    continue

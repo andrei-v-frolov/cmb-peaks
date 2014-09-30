@@ -65,7 +65,7 @@ subroutine read_map(fin, M, nside, nmaps, ord)
 	if (  ord == 0)   ord = hord;	if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
 	
 	! allocate storage if needed
-	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(npix,nmaps))
+	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1,nmaps))
 	if (size(M,1) /= npix .or. size(M,2) < nmaps) call abort(trim(fin) // ": unexpected storage array shape")
 	
 	! read map data, converting order if needed

@@ -17,10 +17,9 @@ implicit none
 character(len=80) :: fin, fout
 real(IO), allocatable :: M(:,:)
 integer, allocatable, target :: idx(:)
-integer :: nmaps = 0, nside = 0, ord = 0, n = 0, npix, status
+integer :: nside = 0, nmaps = 0, ord = 0, n, status
 
 real(DP) theta, phi, value
-
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -30,9 +29,7 @@ call getArgument(2, fout)
 
 ! import input map
 call read_map(fin, M, nside, nmaps, ord)
-npix = nside2npix(nside); n = npix-1
-
-allocate(idx(npix))
+n = nside2npix(nside)-1; allocate(idx(0:n))
 
 M = 1.0/0.0
 
@@ -48,12 +45,13 @@ end do
 ! output map
 call write_map(fout, M, nside, ord, creator='PXL2MAP')
 
-
 contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! nearest pixel index
 function pixel(theta, phi)
-	real(DP) theta, phi, warcmin, v(3); integer pixel
+	real(DP) theta, phi, v(3); integer pixel
 	
 	select case (ord)
 		case(RING); call ang2pix_ring(nside, theta, phi, pixel)
@@ -63,14 +61,14 @@ function pixel(theta, phi)
 end function
 
 ! disk pixel index 
-function disk(theta, phi, warcmin)
-	real(DP) theta, phi, warcmin, v(3)
+function disk(theta, phi, radius)
+	real(DP) theta, phi, radius, v(3)
 	integer, pointer :: disk(:); integer k
 	
 	call ang2vec(theta, phi, v)
-	call query_disc(nside, v, warcmin * pi/(180.0*60.0), idx, k, nest=ord-1)
+	call query_disc(nside, v, radius * pi/(180.0*60.0), idx, k, nest=ord-1)
 	
-	disk => idx(1:k)
+	disk => idx(0:k-1)
 end function
 
 end

@@ -131,13 +131,13 @@ stat/%.pdf: stat/%.dat
 
 ################### Binaries & Dependencies ####################
 
-$(BINDIR)/fcalc: mapio.mod pdetools.mod
-$(BINDIR)/fsynth: mapio.mod rank.f
-$(BINDIR)/lmask: mapio.mod rank.f
-$(BINDIR)/pxl2map: mapio.mod
-$(BINDIR)/wiener: polint.f
+$(BINDIR)/fcalc: mapio.o pdetools.o
+$(BINDIR)/fsynth: mapio.o rank.o
+$(BINDIR)/lmask: mapio.o rank.o
+$(BINDIR)/pxl2map: mapio.o
+$(BINDIR)/wiener: polint.o
 
 $(BINDIR)/%: %.f90
-	$(FC) $(FFLAGS) $(INCS) $(^:%.mod=%.f90) -o $@ $(LDFLAGS) $(LIBS)
-%.mod: %.f90
-	$(FC) $(FFLAGS) $(INCS) $^ -c -o /dev/null
+	$(FC) $(FFLAGS) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
+%.o %.mod: %.f90
+	$(FC) $(FFLAGS) $(INCS) $^ -c

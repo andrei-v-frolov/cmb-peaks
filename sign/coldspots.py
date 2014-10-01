@@ -48,6 +48,6 @@ for i in range(1,len(argv)):
         hotsign = marginalize(lambda p: log10(1.0 - CDF(x[-1], p[0], p[1], p[2])**n), fit, cov)
         
         print fwhm, coldsign[0], coldsign[1]
-    except:
+    except StandardError:
         # not converged, do nothing
-        print "",
+        pass

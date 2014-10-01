@@ -79,7 +79,7 @@ def lparams(p):
         # try fitting local Gaussian random peak distribution
         fit, cov = cdf_fit(x,f); gamma, sigma, alpha = fit
         print gamma, sigma, alpha, ksdiff(x,f,fit)
-    except Exception:
+    except StandardError:
         # not converged, do nothing
         pass
     

@@ -79,9 +79,9 @@ def lparams(p):
         # try fitting local Gaussian random peak distribution
         fit, cov = cdf_fit(x,f); gamma, sigma, alpha = fit
         print gamma, sigma, alpha, ksdiff(x,f,fit)
-    except:
+    except Exception:
         # not converged, do nothing
-        print ""
+        pass
     
     stdout.flush()
 
@@ -94,5 +94,5 @@ try:
     from multiprocessing import cpu_count
     
     Parallel(n_jobs=cpu_count(), verbose=15)(delayed(lparams)(i) for i in range(npix))
-except:
+except ImportError:
     [lparams(i) for i in range(npix)]

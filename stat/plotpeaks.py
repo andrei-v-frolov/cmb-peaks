@@ -102,9 +102,10 @@ def plot_setup(ax, xlabel='', ylabel='', xlim=[-6,6], ylim=[0,1], legend=''):
     if (legend):
         if (fill):
             leg = plt.legend(loc=legend, frameon=True)
-            # remove box around legend
-            leg.get_frame().set_edgecolor('none')
-            leg.get_frame().set_alpha(.8)
+            
+            if (leg): # remove box around legend
+                leg.get_frame().set_edgecolor('none')
+                leg.get_frame().set_alpha(.8)
         else:
             plt.legend(loc=legend, frameon=False)
     

@@ -7,7 +7,7 @@
 ###############################################################################
 
 # configure import path
-import os, sys
+import os, sys, warnings
 here = os.path.split(os.path.realpath(__file__))[0]
 sys.path.append(os.path.join(here, '../libs'))
 
@@ -29,7 +29,7 @@ widths = map(float, sys.argv[1].split(',')) if (len(argv) > 1) else [18.0, 12.0,
 
 try:
     dataset = open(os.path.join(here, '../DATASET'), 'r').readline().strip()
-except:
+except StandardError:
     dataset = ''
 
 plot = {
@@ -103,15 +103,20 @@ for width in widths:
     plt.fill_between([2,20], ys[5], -4.0, edgecolor='none', color='gold', alpha=0.2, zorder=-5)
     
     for f, l in plot.items():
-        data = np.loadtxt(f) # significance data format: fwhm, logsign, dlogsign;
-        plt.errorbar(data[:,0]/60.0, data[:,1], yerr=data[:,2], fmt='-o', alpha=0.8, label=l)
+        try:
+            data = np.loadtxt(f) # significance data format: fwhm, logsign, dlogsign;
+            plt.errorbar(data[:,0]/60.0, data[:,1], yerr=data[:,2], fmt='-o', alpha=0.8, label=l)
+        except StandardError:
+            MissingData = f + ": Data file not found!"
+            warnings.warn(MissingData)
     
-    # legend
+    # legend setup
     if (fill or True):
         leg = plt.legend(loc='lower left', numpoints=1, frameon=True)
-        # remove box around legend
-        leg.get_frame().set_edgecolor('none')
-        leg.get_frame().set_alpha(.8)
+        
+        if (leg): # remove box around legend
+            leg.get_frame().set_edgecolor('none')
+            leg.get_frame().set_alpha(.8)
     else:
         plt.legend(loc='lower left', numpoints=1, frameon=False)
     

@@ -46,9 +46,10 @@ for width in widths:
     # legend
     if (fill or width < 15):
         leg = plt.legend(frameon=True)
-        # remove box around legend
-        leg.get_frame().set_edgecolor('none')
-        leg.get_frame().set_alpha(.8)
+        
+        if (leg) # remove box around legend
+            leg.get_frame().set_edgecolor('none')
+            leg.get_frame().set_alpha(.8)
     else:
         #bbox = (0.0, 0.13, 1.0, 0.47) if width < 15.0 else (0.0, 0.0, 1.0, 1.0)
         #plt.legend(frameon=False, loc='upper right', bbox_to_anchor=bbox)

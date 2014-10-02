@@ -15,6 +15,9 @@ from scipy.optimize import curve_fit
 def CDF(x, gamma, sigma=1.0, alpha=0.0):
     """Calculate fraction of Gaussian random field peaks (max+min) below threshold nu"""
     
+    # CDF is not monotonic for gamma > 1, and is not real for gamma > sqrt(3/2)
+    if (gamma > 1.0): return np.inf
+    
     nu = x/sigma - alpha; mu = nu/sqrt(2.0-gamma**2/0.75)
     npk_above = sqrt(1.5/pi) * gamma**2 * nu*np.exp(-nu**2/2.0) + np.vectorize(erfc)(mu)/2.0
     npk_below = 1.0 - npk_above

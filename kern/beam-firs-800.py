@@ -47,7 +47,7 @@ for width in widths:
     if (fill or width < 15):
         leg = plt.legend(frameon=True)
         
-        if (leg) # remove box around legend
+        if (leg): # remove box around legend
             leg.get_frame().set_edgecolor('none')
             leg.get_frame().set_alpha(.8)
     else:

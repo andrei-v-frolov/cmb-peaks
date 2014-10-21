@@ -37,7 +37,12 @@ def bootstrap(X):
 def logutp(v, X):
     """Log-upper tail probability to find value x in distribution X"""
     
-    x, f, n = makecdf(X); cdf = interp1d(x, f, kind='linear')
+    x, f, n = makecdf(X)
+    
+    if (v < x[ 0]): return log10(1.0/len(x))
+    if (v > x[-1]): return 0.0
+    
+    cdf = interp1d(x, f, kind='linear', assume_sorted=True)
     
     return log10(cdf(v))
 
@@ -54,7 +59,7 @@ DATA = np.loadtxt(argv[1]); p = DATA[0,2]
 SIMS = np.loadtxt(argv[2]); X = SIMS[:,2]
 
 # baseline significance
-sign = logutp(p, X); var  = 0.0; samples = 1000
+sign = logutp(p, X); var  = 0.0; samples = 10000
 
 # bootstrap
 for i in range(samples):

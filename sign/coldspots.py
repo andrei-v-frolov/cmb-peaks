@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Calculate significance of coldest peak 
+# Calculate significance of the coldest peak (using Gaussian sky assumption)
 # usage: coldspots [peak data files]
 
 ###############################################################################

@@ -42,7 +42,7 @@ def logutp(v, X):
     if (v < x[ 0]): return log10(1.0/len(x))
     if (v > x[-1]): return 0.0
     
-    cdf = interp1d(x, f, kind='linear', assume_sorted=True)
+    cdf = interp1d(x, f, kind='linear')
     
     return log10(cdf(v))
 

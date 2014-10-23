@@ -24,7 +24,7 @@ call getArgument(1, fin )
 call getArgument(2, fout)
 nsims = nArguments() - 2
 
-if (nsims < 1) call abort("Too few simulations supplied, cannot remap...")
+if (nsims < 2) call abort("Too few simulations supplied, cannot remap...")
 
 ! read input map
 call read_map(fin, Min, nside, nmaps, ord); n = nside2npix(nside)-1
@@ -39,19 +39,20 @@ do i = 1,nsims
 	call read_map(fsim, Mout, nside, nmaps, ord); sims(:,:,i) = Mout
 end do
 
-! remap pixels according 
+! remap pixels into log-UTP using distribution of simulated values
 do m = 1,nmaps; do i = 0,n
 	Mout(i,m) = -logutp(Min(i,m), nsims, sims(i,m,:), clip=.true.)
 end do; end do
 
 
-! output L-weight masks (to a single FITS container)
+! output log-UTP map
 call write_map(fout, Mout, nside, ord, creator='REMAP')
 
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! calculate log of upper tail probability of v (i.e. #sims > v)
 function logutp(v, n, samples, bootstrap, clip)
 	integer n; real(IO) logutp, v, samples(n)
 	logical, optional, value :: bootstrap, clip

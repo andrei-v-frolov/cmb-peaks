@@ -15,6 +15,16 @@ bins/x86_64-Darwin/*
 alms/*.fits
 beam/*.dat
 gifs/*.gif
+kern/*.dat
 maps/*.fits
 stat/*.dat
 stat/*.pdf
+xtra/*.fits
+xtra/*.gif
+
+# generated sims
+mcmc/*.fits
+mcmc/*.gif
+mcmc/coldest/*.dat
+mcmc/hottest/*.dat
+

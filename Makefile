@@ -4,7 +4,7 @@
 
 # Multiple architecture support (sort of)
 BINDIR = bins/$(shell uname -m)-$(shell uname -s)
-BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map)
+BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map remap)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
@@ -134,6 +134,7 @@ stat/%.pdf: stat/%.dat
 $(BINDIR)/fcalc: mapio.o pdetools.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
+$(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 

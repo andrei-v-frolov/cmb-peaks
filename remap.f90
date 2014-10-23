@@ -41,7 +41,7 @@ end do
 
 ! remap pixels according 
 do m = 1,nmaps; do i = 0,n
-	Mout(i,m) = logutp(Min(i,m), nsims, sims(i,m,:), clip=.true.)
+	Mout(i,m) = -logutp(Min(i,m), nsims, sims(i,m,:), clip=.true.)
 end do; end do
 
 

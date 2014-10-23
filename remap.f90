@@ -41,7 +41,7 @@ end do
 
 ! remap pixels according 
 do m = 1,nmaps; do i = 0,n
-	Mout(i,m) = logutp(Min(i,m), nsims, sims(i,m,:))
+	Mout(i,m) = logutp(Min(i,m), nsims, sims(i,m,:), clip=.true.)
 end do; end do
 
 
@@ -52,9 +52,9 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-function logutp(v, n, samples, bootstrap)
+function logutp(v, n, samples, bootstrap, clip)
 	integer n; real(IO) logutp, v, samples(n)
-	logical, optional, value :: bootstrap
+	logical, optional, value :: bootstrap, clip
 	
 	! local storage
 	real(DP) X(n), F(n)
@@ -80,9 +80,13 @@ function logutp(v, n, samples, bootstrap)
 	! form a log-UTP for samples
 	forall (i=1:m) F(i) = log10((m+1-i)/real(m))
 	
-	! (bounded) linear interpolation
+	! linear interpolation of log-UTP
 	i = count(X < v); if (i < 1) i = 1; if (i > m-1) i = m-1
 	logutp = F(i) + (F(i+1)-F(i)) * (v-X(i))/(X(i+1)-X(i))
+	
+	! clip if requested
+	if (present(clip) .and. clip .and. v < X(1)) logutp = F(1)
+	if (present(clip) .and. clip .and. v > X(m)) logutp = F(m)
 end function
 
 end

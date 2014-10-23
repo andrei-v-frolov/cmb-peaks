@@ -15,6 +15,7 @@ for f in peaks-ksdev peaks-local; do
 	UTP="peaks-utp-${f#peaks-}.fits"
 	
 	if [ -f "../$MAP" ]; then
+		echo "Generating log-UTP map for $f..."
 		$BINDIR/remap "../$MAP" "$UTP" $SIMS/$MAP
 		map2gif -xsz 800 -bar .true. -inp "$UTP" -out "!${UTP%.fits}.gif"
 		map2gif -xsz 800 -bar .true. -min 1.3 -inp "$UTP" -out "!${UTP%.fits}-95.gif"

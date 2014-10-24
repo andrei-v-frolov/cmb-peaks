@@ -16,6 +16,8 @@ from peakstats import *
 from sys import argv, stdin
 from os.path import basename
 
+###############################################################################
+
 # filename handling
 def parse(path):
     """Parse peak data file name, extracting kernel type and FWHM"""

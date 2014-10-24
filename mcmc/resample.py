@@ -56,21 +56,29 @@ assert len(argv) > 4, 'Not enough simulations, only %i supplied' % (len(argv)-2)
 
 # load reference point data
 DATA = np.loadtxt(argv[1])
-x = reference(DATA[:,2]); n = len(x)
-
-# create storage for simulation CDFs
-nsims = len(argv)-2
-SIMS = np.zeros((n,nsims))
+x = reference(DATA[:,2])
+n = len(x); nsims = len(argv)-2
 
 # effective sigma brackets to output
 sigmas = np.linspace(-3.0,3.0,7)
 sigmas = np.vectorize(lambda nu: (1.0+erf(nu/sqrt(2.0)))/2.0)(sigmas)
 sigmas = np.concatenate(([0.0],sigmas,[1.0]))
 
-# resample CDFs to reference points
-for i in range(nsims):
-    SIMS[:,i] = resample(np.loadtxt(argv[i+2])[:,2], x)
 
-# output CDF brackets on a reference grid
-for i in range(n):
-    print x[i], ("%.16g " * len(sigmas)) % tuple(brackets(SIMS[i,:], sigmas))
+###############################################################################
+# run the job in parallel, if job control is available
+###############################################################################
+
+# parallel worker routines: resample to reference grid and output CDF brackets
+def readsim(i): return resample(np.loadtxt(argv[i+2])[:,2], x)
+def dumpcdf(i): print x[i], ("%.16g " * len(sigmas)) % tuple(brackets(SIMS[i,:], sigmas))
+
+try:
+    from joblib import Parallel, delayed
+    from multiprocessing import cpu_count
+    
+    SIMS = np.array(Parallel(n_jobs=cpu_count())(delayed(readsim)(i) for i in range(nsims)))
+    Parallel(n_jobs=cpu_count())(delayed(dumpcdf)(i) for i in range(n))
+except ImportError:
+    SIMS = np.array([readsim(i) for i in range(nsims)])
+    [dumpcdf(i) for i in range(n)]

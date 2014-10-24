@@ -48,11 +48,11 @@ for k in `cat FILES`; do
 	# further analysis for available data
 	if [ -f "../stat/$k" ]; then
 		# calculate peak distributions
-		echo "Calculating peak CDFs in $k"
+		echo "Calculating peak CDF in $k"
 		python resample.py "../stat/$k" $SIMS/"stat/$k" > "peakcdf/$k"
 		
 		# coldest peak significance
-		echo "Calculating outlier significance in $k"
+		echo "Calculating outliers in $k"
 		echo -n "COLDEST $k " >> SUMMARY
 		python bootstrap.py "../stat/$k" "coldest/$k" >> SUMMARY
 	fi

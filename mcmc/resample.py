@@ -24,10 +24,18 @@ def reference(X, xlim=[-6,6], pts=64):
     
     # extract peak CDF
     x, f, n = makecdf(X)
-    fit, cov = cdf_fit(x,f)
-    gamma, sigma, alpha = fit
     
-    return sigma*np.linspace(xlim[0], xlim[1], pts)
+    try:
+        fit, cov = cdf_fit(x,f)
+        gamma, sigma, alpha = fit
+        
+        a = sigma*xlim[0]
+        b = sigma*xlim[1]
+    except Exception:
+        a = min(x[0],-x[-1])
+        b = max(-x[0],x[-1])
+    
+    return np.linspace(a, b, pts)
 
 # resample CDF
 def resample(X, Y):

@@ -37,8 +37,17 @@ widths = map(float, argv[5].split(',')) if (len(argv) > 5) else [18.0, 12.0, 8.8
 # import peak data
 ###############################################################################
 
-# peak data format: theta, phi, value, kind (-1 => min, +1 => max);
-peaks = np.loadtxt(file if file != '-' else stdin)
+# load peak data, and bracketed sim CDFs
+try:
+    data,sims = file.split(':')
+    peaks = np.loadtxt(data if data != '-' else stdin)
+    sims  = np.loadtxt(sims if sims != '-' else stdin)
+except ValueError:
+    peaks = np.loadtxt(file if file != '-' else stdin)
+    sims = None
+
+# peak data format: theta, phi, value, kind;
+# sims data format: value, 9 percentile brackets;
 
 # form peak CDF
 x, f, n = makecdf(peaks[:,2])
@@ -55,7 +64,7 @@ gamma, sigma, alpha = fit
 north = []
 south = []
 
-if (dipole != None):
+if not(dipole is None):
     for i in range(n):
         q = np.dot(ang2vec(peaks[i,0], peaks[i,1]), dipole)
         
@@ -179,10 +188,17 @@ def plot_ks_panel(plot, xlim=[-6,6]):
     plt.hlines(0, xlim[0], xlim[1], linewidth=0.5, zorder=0) # x axis
     
     # Kolmogorov-Smirnov confidence levels
-    for i in [0.3989178859, 0.5137003373, 0.7170542898]:
-        plt.fill_between(xlim, -i, i, edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5)
+    if not(sims is None):
+        K = sqrt(n)+0.12+0.11/sqrt(n)
+        y = CDF(sims[:,0], fit[0], fit[1], fit[2])
+        
+        for i in [1,2,3]:
+            plt.fill_between(sims[:,0]/sigma, K*(sims[:,5-i]-y), K*(sims[:,5+i]-y), edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5-i)
+    else:
+        for i in [0.3989178859, 0.5137003373, 0.7170542898]:
+            plt.fill_between(xlim, -i, i, edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5)
     
-    if (dipole != None):
+    if not(dipole is None):
         kstest(north, color='b', marker='x', size=0.2, label="northern cap")
         kstest(south, color='g', marker='x', size=0.2, label="southern cap")
         kstest(x, marker='+', size=0.5, label="entire sky")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Calculate significance of the coldest peak (using simulation bootstrap)
-# usage: bootstrap [peak data] [coldest peak distribution]
+# usage: bootstrap <peak data> <coldest peak distribution>
 
 ###############################################################################
 # import libraries
@@ -52,6 +52,7 @@ def logutp(v, X):
 ###############################################################################
 # import peak data and do boostrap analysis of significance
 ###############################################################################
+assert len(argv) > 2, 'usage: bootstrap <peak data> <coldest peak distribution>'
 
 # parse kernel info
 kernel, fwhm = parse(argv[1])
@@ -61,11 +62,23 @@ DATA = np.loadtxt(argv[1]); p = DATA[0,2]
 SIMS = np.loadtxt(argv[2]); X = SIMS[:,2]
 
 # baseline significance
-sign = logutp(p, X); var  = 0.0; samples = 10000
+sign = logutp(p, X); samples = 10000
 
 # bootstrap
-for i in range(samples):
-    ds = logutp(p, bootstrap(X)) - sign; var += ds*ds
+###############################################################################
+# run the job in parallel, if job control is available
+###############################################################################
+
+# parallel worker routine: boostrap significance variance
+def varsign(i): return logutp(p, bootstrap(X)) - sign
+
+try:
+    from joblib import Parallel, delayed
+    from multiprocessing import cpu_count
+    
+    ds = np.array(Parallel(n_jobs=cpu_count())(delayed(varsign)(i) for i in range(samples)))
+except ImportError:
+    ds = np.array([varsign(i) for i in range(samples)])
 
 # output significance
-print fwhm, sign, sqrt(var/samples)
+print fwhm, sign, sqrt(np.sum(ds*ds)/samples)

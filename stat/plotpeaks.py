@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Plot peak distribution and deviation from Gaussian peak statistics
-# usage: peakplot KERNEL FWHM [input datafile] [plot basename] [width list (in cm)]
+# usage: peakplot <peaks.dat> <output basename> [width list (in cm)]
 
 ###############################################################################
 # import libraries
@@ -12,9 +12,21 @@ here = os.path.split(os.path.realpath(__file__))[0]
 sys.path.append(os.path.join(here, '../libs'))
 
 # import libraries
-from sys import argv, stdin
 from peakstats import *
 from spherical import *
+from sys import argv, stdin
+from os.path import basename
+
+# filename handling
+def parse(path):
+    """Parse peak data file name, extracting kernel type and FWHM"""
+    
+    name, dot, ext = basename(path).partition('.')
+    lmom, kernel, radius = name.split('-')
+    
+    return kernel, 2.0*float(radius)
+
+###############################################################################
 
 # plot style options
 aspect = 4/3.   # figure aspect ratio (default is 4:3)
@@ -26,34 +38,40 @@ ptlimit = 513   # point limit for scatter plots (decimate if necessary)
 dipole = iau2vec(227,-15); # dipole = None
 
 # parse arguments
-kernel = argv[1]
-fwhm = float(argv[2])
-file = argv[3] if (len(argv) > 3) else "L1-%s-%03i" % (kernel, fwhm/2) + ".dat"
-base = argv[4] if (len(argv) > 4) else "L1-%s-%03i" % (kernel, fwhm/2)
-widths = map(float, argv[5].split(',')) if (len(argv) > 5) else [18.0, 12.0, 8.8]
+assert len(argv) > 2, 'usage: peakplot <peaks.dat> <output basename> [width list (in cm)]'
+
+data = argv[1]
+base = argv[2]
+widths = map(float, argv[3].split(',')) if (len(argv) > 3) else [18.0, 12.0, 8.8]
 
 
 ###############################################################################
 # import peak data
 ###############################################################################
 
+# peak data format: theta, phi, value, kind;
+# sims data format: value, 9 percentile brackets;
+
 # load peak data, and bracketed sim CDFs
 try:
-    data,sims = file.split(':')
+    data,sims = data.split(':')
     peaks = np.loadtxt(data if data != '-' else stdin)
     sims  = np.loadtxt(sims if sims != '-' else stdin)
 except ValueError:
-    peaks = np.loadtxt(file if file != '-' else stdin)
+    peaks = np.loadtxt(data if data != '-' else stdin)
     sims = None
 
-# peak data format: theta, phi, value, kind;
-# sims data format: value, 9 percentile brackets;
+# parse kernel type and FWHM
+kernel,fwhm = parse(data)
 
 # form peak CDF
 x, f, n = makecdf(peaks[:,2])
 
 # fit Gaussian random peak distribution
-fit, cov = cdf_fit(x,f)
+if (sims is None):
+    fit, cov = cdf_fit(x,f)
+else:
+    fit, cov = cdf_fit(sims[:,0],sims[:,5])
 gamma, sigma, alpha = fit
 
 
@@ -87,12 +105,14 @@ datlbl = r"\texttt{%s} filter at $%.0f^{\scriptstyle\prime}$ {\small FWHM}" % (k
 count = r"\underline{\Large\bf %i peaks}" % n
 
 coldspot = r"coldest at $(%+.2f%+.2f)\sigma$" % (alpha, x[0]/sigma-alpha)
-coldsign = marginalize(lambda p: log(1.0 - (1.0-CDF(x[0], p[0], p[1], p[2]))**n), fit, cov)
-coldspot += "\n" + signlbl(coldsign)
+if (sims is None):
+    coldsign = marginalize(lambda p: log(1.0 - (1.0-CDF(x[0], p[0], p[1], p[2]))**n), fit, cov)
+    coldspot += "\n" + signlbl(coldsign)
 
 hotspot = r"hottest at $(%+.2f%+.2f)\sigma$" % (alpha, x[-1]/sigma-alpha)
-hotsign = marginalize(lambda p: log(1.0 - CDF(x[-1], p[0], p[1], p[2])**n), fit, cov)
-hotspot += "\n" + signlbl(hotsign)
+if (sims is None):
+    hotsign = marginalize(lambda p: log(1.0 - CDF(x[-1], p[0], p[1], p[2])**n), fit, cov)
+    hotspot += "\n" + signlbl(hotsign)
 
 
 ###############################################################################
@@ -203,7 +223,7 @@ def plot_ks_panel(plot, xlim=[-6,6]):
         kstest(south, color='g', marker='x', size=0.2, label="southern cap")
         kstest(x, marker='+', size=0.5, label="entire sky")
         
-        plot_setup(plot, ylim=[-1.3,1.3])
+        plot_setup(plot, ylim=[-1.4,1.4])
         plt.legend(loc='upper center', ncol=3, frameon=False)
     else:
         kstest(x, marker='+', size=0.5)

@@ -69,16 +69,20 @@ sigmas = np.concatenate(([0.0],sigmas,[1.0]))
 # run the job in parallel, if job control is available
 ###############################################################################
 
-# parallel worker routines: resample to reference grid and output CDF brackets
+# parallel worker routines: resample to reference grid and CDF brackets
 def readsim(i): return resample(np.loadtxt(argv[i+2])[:,2], x)
-def dumpcdf(i): print x[i], ("%.16g " * len(sigmas)) % tuple(brackets(SIMS[i,:], sigmas))
+def dumpcdf(i): return brackets(SIMS[:,i], sigmas)
 
 try:
     from joblib import Parallel, delayed
     from multiprocessing import cpu_count
     
     SIMS = np.array(Parallel(n_jobs=cpu_count())(delayed(readsim)(i) for i in range(nsims)))
-    Parallel(n_jobs=cpu_count())(delayed(dumpcdf)(i) for i in range(n))
+    BRKS = np.array(Parallel(n_jobs=cpu_count())(delayed(dumpcdf)(i) for i in range(n)))
 except ImportError:
     SIMS = np.array([readsim(i) for i in range(nsims)])
-    [dumpcdf(i) for i in range(n)]
+    BRKS = np.array([dumpcdf(i) for i in range(n)])
+
+# output CDF brackets on resampled grid
+for i in range(n):
+    print x[i], ("%.16g " * len(sigmas)) % tuple(BRKS[i,:])

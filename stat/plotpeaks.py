@@ -261,7 +261,7 @@ def plot_cdf_panel(plot, xlim=[-6,6], n=1024):
             textcoords = 'offset points', ha = 'center', va = 'top', color='white',
             bbox = dict(boxstyle = 'round,pad=0.3', ec='none', fc = 'red', alpha = 0.2),
             arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
-        plt.annotate(count +'\n' + (hotspot+"\n" if width > 10 else '')+coldspot, [xlim[1]-0.3,0.05], va='bottom', ha='right', linespacing=1.5)
+        plt.annotate(count +'\n' + (hotspot+"\n" if width > 8 else '')+coldspot, [xlim[1]-0.3,0.05], va='bottom', ha='right', linespacing=1.5)
     
     plot_setup(plot, xlim=xlim, legend='upper left')
     plot.xaxis.set_major_formatter(FormatStrFormatter('$%d\sigma$'))

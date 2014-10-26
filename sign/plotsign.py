@@ -120,6 +120,9 @@ for width in widths:
     else:
         plt.legend(loc='lower left', numpoints=1, frameon=False)
     
+    # override auto-scale
+    plt.ylim([-4,0])
+    
     # reduce white space around figure
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0, hspace=0)
     

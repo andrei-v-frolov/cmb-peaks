@@ -18,8 +18,8 @@ for f in peaks-ksdev peaks-local; do
 		echo "Generating log-UTP map for $f..."
 		$BINDIR/remap "../$MAP" "$UTP" $SIMS/$MAP
 		map2gif -xsz 800 -bar .true. -inp "$UTP" -out "!${UTP%.fits}.gif"
-		map2gif -xsz 800 -bar .true. -min 1.3 -max 2.7 -inp "$UTP" -out "!${UTP%.fits}-95.gif"
-		map2gif -xsz 800 -bar .true. -min 2.0 -max 2.7 -inp "$UTP" -out "!${UTP%.fits}-99.gif"
+		map2gif -xsz 800 -bar .true. -min 1.3 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-95.gif"
+		map2gif -xsz 800 -bar .true. -min 2.0 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-99.gif"
 	fi
 done
 

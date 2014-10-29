@@ -4,7 +4,7 @@
 set -u -e -o errexit
 
 # binaries location
-BINS=$BASE/bins/`uname -m`-`uname -s`
+BINS=./bins/`uname -m`-`uname -s`
 
 make
 make stat/L1-GAUSS-020.dat

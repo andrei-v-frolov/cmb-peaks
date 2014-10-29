@@ -93,6 +93,6 @@ try:
     from joblib import Parallel, delayed
     from multiprocessing import cpu_count
     
-    Parallel(n_jobs=cpu_count(), verbose=15)(delayed(lparams)(i) for i in range(npix))
+    Parallel(n_jobs=cpu_count())(delayed(lparams)(i) for i in range(npix))
 except ImportError:
     [lparams(i) for i in range(npix)]

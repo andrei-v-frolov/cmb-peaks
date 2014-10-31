@@ -72,11 +72,38 @@ select case (op)
 	case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
 	case ('inpaint'); call inpaint(M1, M2, Mout, nside, ord)
 	
+	! polarization operators
+	case ('QU->EB');
+		select case (nmaps)
+			case (2); call rotate_qu2eb(nside, 2000, M1(:,1:2), Mout(:,1:2))
+			case (3); call rotate_qu2eb(nside, 2000, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
+	
 	! unknown operator
 	case default; call abort(trim(op) // ": operation not supported")
 end select
 
 ! write output map
 call write_map(fout, Mout, nside, ord, creator='FCALC')
+
+contains
+
+! full-sky QU to EB rotation wrapper
+subroutine rotate_qu2eb(nside, lmax, QU, EB)
+	use alm_tools
+	
+	integer nside, lmax, spin
+	real(IO), dimension(0:12*nside**2-1,1:2) :: QU, EB
+	complex(SPC), allocatable :: alms(:,:,:)
+	
+	allocate(alms(1:2, 0:lmax, 0:lmax)); spin = 2
+	
+	call map2alm_spin(nside, lmax, lmax, spin, QU, alms)
+	call alm2map(nside, lmax, lmax, alms(1:1,:,:), EB(:,1))
+	call alm2map(nside, lmax, lmax, alms(2:2,:,:), EB(:,2))
+	
+	deallocate(alms)
+end subroutine
 
 end

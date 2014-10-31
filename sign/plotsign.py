@@ -17,7 +17,7 @@ import numpy as np
 from sys import argv, stdin
 
 # plot style options
-aspect = 16/9.  # figure aspect ratio (default is 4:3)
+aspect = 16/6.  # figure aspect ratio (default is 4:3)
 fill = False    # produce transparent plots if false
 grid = False    # do we want to render the plot grid?
 
@@ -82,7 +82,7 @@ for width in widths:
     
     ax = fig.add_subplot(111)
     
-    plt.title("Significance of the coldest spot on the sky")
+    plt.title("Significance of the coldest spot on the sky", y=1.2)
     plot_setup(ax, xlabel='filter kernel size [degrees full width half max]',
         ylabel='probability of Gaussian realization', ylim=[1.0e-4,1.0e0])
     
@@ -93,7 +93,7 @@ for width in widths:
     plt.xticks(xs, xs)
     
     # effective confidence nu is defined by P(excursion > nu) = P
-    plot_setup(ax.twinx(), ylabel=r'effective confidence level $[\sigma]$')
+    plot_setup(ax.twinx(), ylabel=r'effective confidence level [$\sigma$]')
     
     sigmas = np.linspace(0.5,3.5,7)
     ys = np.vectorize(lambda x: log10(erfc(x/sqrt(2.0))/2.0))(sigmas)
@@ -122,6 +122,18 @@ for width in widths:
     
     # override auto-scale
     plt.ylim([-4,0])
+    
+    # effective bandwidth axis
+    ax.twiny()
+    
+    BW = 3.97 # for GAUSS filters
+    BW = 4.17 # for SSGxx filters
+    
+    plt.xlabel(r'effective filter bandwidth [$\ell$ at which $b_\ell = b_{max}/2$]')
+    ls = [7,8,9,10,11,12,13,15,17,20,25,30,40,50,60,70,80,90,100,110]
+    xs = (BW - np.vectorize(log10)(np.array(ls)) - log10(120.0))/log10(1200.0/120.0)
+    
+    plt.xticks(xs, ls); plt.xlim([0,1])
     
     # reduce white space around figure
     plt.subplots_adjust(left=0, right=1, top=1, bottom=0, hspace=0)

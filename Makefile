@@ -3,8 +3,8 @@
 ################################################################
 
 # Multiple architecture support (sort of)
-BINDIR = bins/$(shell uname -m)-$(shell uname -s)
-BINS   = $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map remap)
+BINDIR := bins/$(shell uname -m)-$(shell uname -s)
+BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map remap)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
@@ -52,9 +52,10 @@ BEAMS = 060 062 064 065 067 069 071 073 076 078 080 082 085 087 \
 DIGITS = [0-9]\{1,\}
 ALNUMS = [[:alnum:]\-]\{1,\}
 
-FILT = $(shell expr '$*' : '\($(ALNUMS)\)-$(DIGITS)')
-FWHM = $(shell expr '$*' : '$(ALNUMS)-\($(DIGITS)\)' \* 2)
-KERN = $(shell expr '$*' : '$(ALNUMS)-\($(ALNUMS)\)-$(DIGITS)')
+EXPR := $(word 1,$(shell which gexpr expr))
+FILT = $(shell $(EXPR) '$*' : '\($(ALNUMS)\)-$(DIGITS)')
+FWHM = $(shell $(EXPR) '$*' : '$(ALNUMS)-\($(DIGITS)\)' \* 2)
+KERN = $(shell $(EXPR) '$*' : '$(ALNUMS)-\($(ALNUMS)\)-$(DIGITS)')
 
 MAPS  = $(foreach b,$(BEAMS),$(foreach k,$(KERNS),$(foreach s,$(STATS),$(s)-$(k)-$(b))))
 

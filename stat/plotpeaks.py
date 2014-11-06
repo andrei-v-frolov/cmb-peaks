@@ -204,17 +204,18 @@ def kstest(data, color='r', marker='+', size=1.0, label='', zorder=5):
 def plot_ks_panel(plot, xlim=[-6,6]):
     """Assemble Kolmogorov-Smirnov deviation panel plots"""
     
-    plt.title("Kolmogorov deviation from Gaussian peak CDF")
     plt.hlines(0, xlim[0], xlim[1], linewidth=0.5, zorder=0) # x axis
     
     # Kolmogorov-Smirnov confidence levels
     if not(sims is None):
+        plt.title("Kolmogorov deviation from FFP8 peak CDF")
         K = sqrt(n)+0.12+0.11/sqrt(n)
         y = CDF(sims[:,0], fit[0], fit[1], fit[2])
         
         for i in [1,2,3]:
             plt.fill_between(sims[:,0]/sigma, K*(sims[:,5-i]-y), K*(sims[:,5+i]-y), edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5-i)
     else:
+        plt.title("Kolmogorov deviation from Gaussian peak CDF")
         for i in [0.3989178859, 0.5137003373, 0.7170542898]:
             plt.fill_between(xlim, -i, i, edgecolor='none', color="darkgrey", alpha=0.2, zorder=-5)
     

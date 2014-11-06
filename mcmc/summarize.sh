@@ -10,16 +10,20 @@ BINDIR=../bins/`uname -m`-`uname -s`
 SIMS=base/cmb-mcmc-????
 
 # remap KS deviation maps (if available)
-for f in peaks-ksdev peaks-local; do
-	MAP="xtra/$f.fits"
-	UTP="peaks-utp-${f#peaks-}.fits"
+for f in KS-030 KS-060 KS-090; do
+	MAP="maps/$f.fits"
+	UTP="peaks-utp-ks${f#KS-}.fits"
+	NPK="peaks-utp-np${f#KS-}.fits"
 	
 	if [ -f "../$MAP" ]; then
 		echo "Generating log-UTP map for $f..."
 		$BINDIR/remap "../$MAP" "$UTP" $SIMS/$MAP
-		map2gif -xsz 800 -bar .true. -inp "$UTP" -out "!${UTP%.fits}.gif"
-		map2gif -xsz 800 -bar .true. -min 1.3 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-95.gif"
-		map2gif -xsz 800 -bar .true. -min 2.0 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-99.gif"
+		map2gif -xsz 1200 -bar .true. -sig 1 -inp "$UTP" -out "!${UTP%.fits}.gif"
+		map2gif -xsz 1200 -bar .true. -sig 1 -min 1.3 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-95.gif"
+		map2gif -xsz 1200 -bar .true. -sig 1 -min 2.0 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-99.gif"
+		map2gif -xsz 1200 -bar .true. -sig 2 -inp "$UTP" -out "!${NPK%.fits}.gif"
+		map2gif -xsz 1200 -bar .true. -sig 2 -min 1.3 -max 2.8 -inp "$UTP" -out "!${NPK%.fits}-95.gif"
+		map2gif -xsz 1200 -bar .true. -sig 2 -min 2.0 -max 2.8 -inp "$UTP" -out "!${NPK%.fits}-99.gif"
 	fi
 done
 

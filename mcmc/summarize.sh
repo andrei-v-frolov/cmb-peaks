@@ -12,19 +12,24 @@ SIMS=base/cmb-mcmc-????
 # remap KS deviation maps (if available)
 for f in KS-030 KS-060 KS-090 KS-120 KS-180; do
 	MAP="maps/$f.fits"
-	UTP="peaks-utp-ks${f#KS-}.fits"
-	NPK="peaks-mtp-np${f#KS-}.fits"
 	
 	if [ -f "../$MAP" ]; then
-		echo "Generating log-UTP map for $f..."
-		$BINDIR/remap utp "../$MAP" "$UTP" $SIMS/$MAP
-		$BINDIR/remap mtp "../$MAP" "$NPK" $SIMS/$MAP
-		map2gif -xsz 1200 -bar .true. -sig 1 -inp "$UTP" -out "!${UTP%.fits}.gif"
-		map2gif -xsz 1200 -bar .true. -sig 1 -min 1.3 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-95.gif"
-		map2gif -xsz 1200 -bar .true. -sig 1 -min 2.0 -max 2.8 -inp "$UTP" -out "!${UTP%.fits}-99.gif"
-		map2gif -xsz 1200 -bar .true. -sig 2 -inp "$NPK" -out "!${NPK%.fits}.gif"
-		map2gif -xsz 1200 -bar .true. -sig 2 -min 1.3 -max 2.8 -inp "$NPK" -out "!${NPK%.fits}-95.gif"
-		map2gif -xsz 1200 -bar .true. -sig 2 -min 2.0 -max 2.8 -inp "$NPK" -out "!${NPK%.fits}-99.gif"
+		for p in ltp mtp utp; do
+			xTP="$p-${f#KS-}.fits"
+			KSD="peaks-$p-ks${f#KS-}"
+			NPK="peaks-$p-np${f#KS-}"
+			
+			echo "Generating log-$p map for $f..."
+			$BINDIR/remap $p "../$MAP" "$xTP" $SIMS/$MAP
+			
+			map2gif -xsz 1200 -bar .true. -sig 2 -inp "$xTP" -out "!$NPK.gif"
+			map2gif -xsz 1200 -bar .true. -sig 2 -min 1.3 -max 2.8 -inp "$xTP" -out "!$NPK-95.gif"
+			map2gif -xsz 1200 -bar .true. -sig 2 -min 2.0 -max 2.8 -inp "$xTP" -out "!$NPK-99.gif"
+		done
+		
+		map2gif -xsz 1200 -bar .true. -sig 1 -inp "$xTP" -out "!$KSD.gif"
+		map2gif -xsz 1200 -bar .true. -sig 1 -min 1.3 -max 2.8 -inp "$xTP" -out "!$KSD-95.gif"
+		map2gif -xsz 1200 -bar .true. -sig 1 -min 2.0 -max 2.8 -inp "$xTP" -out "!$KSD-99.gif"
 	fi
 done
 

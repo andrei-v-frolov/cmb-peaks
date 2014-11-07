@@ -20,7 +20,7 @@ real(DP) peak(4,pks)
 integer i, n, m, status
 
 character(len=80) :: fout, fwhm
-integer :: nside = 64, ord = NEST
+integer :: nside = 256, ord = NEST
 real(IO), allocatable :: Map(:,:)
 real(DP), allocatable :: V(:,:)
 integer, allocatable :: idx(:)

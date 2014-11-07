@@ -17,7 +17,7 @@ integer :: datach = 1, maskch = 1, nmoms = 4		! defaults
 integer :: i, n, npix, nused, nside = 0, ord = 0	! map format
 
 character(len=80) :: fin, fout, fmask
-real(IO), allocatable :: Min(:), Mask(:), Mout(:,:)
+real(IO), allocatable :: Map(:), Mask(:), Mout(:,:)
 integer,  allocatable :: indx(:), rank(:)
 real(DP), allocatable :: M(:), P(:,:)
 
@@ -29,23 +29,23 @@ call getArgument(1, fin ); call parse(fin, datach)
 call getArgument(2, fout); call parse(fout, nmoms)
 
 ! read input map
-call read_channel(fin, Min, nside, datach, ord)
+call read_channel(fin, Map, nside, datach, ord)
 npix = nside2npix(nside); n = npix-1
 
 ! allocate dynamic arrays to store output maps and ranks
 allocate(Mout(0:n,nmoms), P(nmoms,nmoms))
-allocate(M(npix), indx(npix), rank(npix)); M = Min
+allocate(M(npix), indx(npix), rank(npix)); M = Map
 
 ! read mask if specified
 if (nArguments() < 3) then
-	allocate(Mask, mold=Min); Mask = 1.0
+	allocate(Mask, mold=Map); Mask = 1.0
 else
 	call getArgument(3, fmask); call parse(fmask, maskch)
 	call read_channel(fmask, Mask, nside, maskch, ord)
 end if
 
 ! masked pixels are not ranked
-where (isnan(Min)) Mask = 0.0
+where (isnan(Map)) Mask = 0.0
 where (Mask == 0.0) M = HUGE(M)
 nused = count(Mask /= 0.0)
 
@@ -63,7 +63,7 @@ call write_map(fout, Mout, nside, ord, creator='LMASK')
 if (nArguments() > 3) then
 	call getArgument(4, fout)
 	
-	forall (i=0:n) Mout(i,:) = Min(i) * Mout(i,:)
+	forall (i=0:n) Mout(i,:) = Map(i) * Mout(i,:)
 	
 	do i = 1,nmoms
 		write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'

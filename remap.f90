@@ -15,7 +15,7 @@ implicit none
 
 character(len=80) :: mapping, fin, fout, fsim
 integer :: i, m, n, nsims, nmaps = 0, nside = 0, ord = 0
-real(IO), allocatable :: Min(:,:), Mout(:,:), sims(:,:,:)
+real(IO), allocatable :: Map(:,:), Mout(:,:), sims(:,:,:)
 
 integer, parameter :: LTP = 1	! lower tail probability (i.e. #sims < v)
 integer, parameter :: UTP = 2	! upper tail probability (i.e. #sims > v)
@@ -34,10 +34,10 @@ call getArgument(3, fout)
 nsims = nArguments() - 3
 
 ! read input map
-call read_map(fin, Min, nside, nmaps, ord); n = nside2npix(nside)-1
+call read_map(fin, Map, nside, nmaps, ord); n = nside2npix(nside)-1
 
 ! allocate dynamic arrays
-allocate(Mout, mold=Min)
+allocate(Mout, mold=Map)
 allocate(sims(0:n,nmaps,nsims))
 
 ! read simulated maps
@@ -66,7 +66,7 @@ subroutine logp_map(mapping)
 	integer i, m, mapping
 	
 	do m = 1,nmaps; do i = 0,n
-		Mout(i,m) = -logutp(mapping, Min(i,m), nsims, sims(i,m,:), clip=.true.)
+		Mout(i,m) = -logutp(mapping, Map(i,m), nsims, sims(i,m,:), clip=.true.)
 	end do; end do
 end subroutine
 

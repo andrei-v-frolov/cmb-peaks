@@ -42,7 +42,7 @@ allocate(sims(0:n,nmaps,nsims))
 
 ! read simulated maps
 do i = 1,nsims
-	call getArgument(i+2, fsim)
+	call getArgument(i+3, fsim)
 	call read_map(fsim, Mout, nside, nmaps, ord); sims(:,:,i) = Mout
 end do
 

@@ -53,16 +53,22 @@ widths = map(float, argv[3].split(',')) if (len(argv) > 3) else [18.0, 12.0, 8.8
 # sims data format: value, 9 percentile brackets;
 
 # load peak data, and bracketed sim CDFs
-try:
-    data,sims = data.split(':')
+data = data.split(':'); args = len(data)
+
+if (args == 1):
     peaks = np.loadtxt(data if data != '-' else stdin)
-    sims  = np.loadtxt(sims if sims != '-' else stdin)
-except ValueError:
-    peaks = np.loadtxt(data if data != '-' else stdin)
-    sims = None
+    sims  = None
+elif (args <= 3):
+    peaks = np.loadtxt(data[0] if data[0] != '-' else stdin)
+    sims  = np.loadtxt(data[1] if data[1] != '-' else stdin)
+    
+    # scale simulation data if fudge factor is supplied
+    if (args == 3): sims[:,0] = sims[:,0] * float(data[2])
+else:
+    raise SystemExit("Don't know what to do with extra arguments to plot data, aborting...")
 
 # parse kernel type and FWHM
-kernel,fwhm = parse(data)
+kernel,fwhm = parse(data[0])
 
 # form peak CDF
 x, f, n = makecdf(peaks[:,2])

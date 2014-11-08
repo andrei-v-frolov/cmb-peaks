@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Calculate significance of the coldest peak (using simulation bootstrap)
-# usage: bootstrap <peak data> <coldest peak distribution>
+# usage: bootstrap <peak data> <coldest peak distribution> [scaling factor]
 
 ###############################################################################
 # import libraries
@@ -52,7 +52,7 @@ def logutp(v, X):
 ###############################################################################
 # import peak data and do boostrap analysis of significance
 ###############################################################################
-assert len(argv) > 2, 'usage: bootstrap <peak data> <coldest peak distribution>'
+assert len(argv) > 2 and len(argv) < 5, 'usage: bootstrap <peak data> <coldest peak distribution> [scaling factor]'
 
 # parse kernel info
 kernel, fwhm = parse(argv[1])
@@ -60,6 +60,9 @@ kernel, fwhm = parse(argv[1])
 # load peak data and statistics
 DATA = np.loadtxt(argv[1]); p = DATA[0,2]
 SIMS = np.loadtxt(argv[2]); X = SIMS[:,2]
+
+# scale sims if fudge factor is supplied
+if len(argv) == 4: X = X * float(argv[3])
 
 # baseline significance
 sign = logutp(p, X); samples = 10000

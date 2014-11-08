@@ -49,5 +49,6 @@ done
 
 # plot peak distributions
 for k in `head -2 FILES`; do
+	echo "Plotting peak CDF in $k..."
 	python ../stat/plotpeaks.py "../stat/$k:peakcdf/$k:$FUDGE" ${k%.dat} 10.0
 done

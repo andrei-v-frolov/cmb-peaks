@@ -115,6 +115,15 @@ for i in range(1,len(argv)):
 
 print 'Total %i nodes, %i edges' % (len(G.nodes()), len(G.edges()))
 
+# sets of nodes connected to coldest and hottest spots (at any scale)
+coldest = set(); hottest = set()
+for node,attr in G.nodes_iter(data=True):
+    if attr['rank'] == 0.0: coldest |= frozenset(nx.node_connected_component(G, node))
+    if attr['rank'] == 1.0: hottest |= frozenset(nx.node_connected_component(G, node))
+C = G.subgraph(coldest)
+H = G.subgraph(hottest)
+
+
 ###############################################################################
 # spherical projections
 ###############################################################################
@@ -160,20 +169,27 @@ south = plt.subplot(layout[0,2], projection='polar')
 
 # merger tree
 tree = plt.subplot(layout[1,:], yscale='log')
-plt.xlim([-0.01,1.01]); plt.ylim([min(scales)/1.05,max(scales)*1.05])
+plt.xlim([-0.01,1.01]); plt.ylim([max(600.0,min(scales))/1.05,max(scales)*1.05])
 
 # draw graph
 rank = [G.node[i]['rank'] for i in nx.nodes_iter(G)]
 size = [G.node[i]['size'] for i in nx.nodes_iter(G)]
 
 nx.draw_networkx_nodes(G, nx.get_node_attributes(G,'mollweide'), ax=sky,
-    with_labels=False, node_color=rank, node_size=size, linewidths=0.0, alpha=0.3)
+    with_labels=False, node_color=rank, node_size=size, linewidths=0.0,
+    alpha=0.3, vmin=0.0, vmax=1.0, cmap=healpix_cmap)
 nx.draw_networkx_nodes(G, nx.get_node_attributes(G,'north'), ax=north,
-    with_labels=False, node_color=rank, node_size=size, linewidths=0.0, alpha=0.3)
+    with_labels=False, node_color=rank, node_size=size, linewidths=0.0,
+    alpha=0.3, vmin=0.0, vmax=1.0, cmap=healpix_cmap)
 nx.draw_networkx_nodes(G, nx.get_node_attributes(G,'south'), ax=south,
-    with_labels=False, node_color=rank, node_size=size, linewidths=0.0, alpha=0.3)
+    with_labels=False, node_color=rank, node_size=size, linewidths=0.0,
+    alpha=0.3, vmin=0.0, vmax=1.0, cmap=healpix_cmap)
 nx.draw_networkx(G, nx.get_node_attributes(G,'tree'), ax=tree,
-    with_labels=False, node_color=rank, node_size=size, linewidths=0.0, alpha=0.3)
+    with_labels=False, node_color=rank, node_size=size, linewidths=0.0,
+    alpha=0.3, vmin=0.0, vmax=1.0, cmap=healpix_cmap)
+nx.draw_networkx_edges(C, nx.get_node_attributes(C,'tree'), ax=tree, width=1.5, edge_color='Navy')
+nx.draw_networkx_edges(H, nx.get_node_attributes(H,'tree'), ax=tree, width=1.5, edge_color='DarkRed')
+
 
 # finalize setup
 mollweide_setup(sky)

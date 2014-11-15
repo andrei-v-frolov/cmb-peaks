@@ -15,7 +15,8 @@ FUDGE=1.0134
 # kernel size sweep
 for i in {120..999}; do
 	make stat/$KERNEL-$i.dat; rm -f maps/$KERNEL-$i.fits
-	python stat/normalize.py stat/$KERNEL-$i.dat:mcmc/peakcdf/$KERNEL-$i.dat:$FUDGE > stat/$KERNEL-$i.sig
+	python stat/normalize.py stat/$KERNEL-$i.dat > stat/$KERNEL-$i.sig
+	#python stat/normalize.py stat/$KERNEL-$i.dat:mcmc/peakcdf/$KERNEL-$i.dat:$FUDGE > stat/$KERNEL-$i.sig
 done
 
 # make a merger map

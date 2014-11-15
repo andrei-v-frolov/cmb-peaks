@@ -56,7 +56,7 @@ widths = map(float, argv[3].split(',')) if (len(argv) > 3) else [18.0, 12.0, 8.8
 data = data.split(':'); args = len(data)
 
 if (args == 1):
-    peaks = np.loadtxt(data if data != '-' else stdin)
+    peaks = np.loadtxt(data[0] if data[0] != '-' else stdin)
     sims  = None
 elif (args <= 3):
     peaks = np.loadtxt(data[0] if data[0] != '-' else stdin)

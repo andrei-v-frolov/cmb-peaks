@@ -55,13 +55,17 @@ kernel,fwhm = parse(data[0])
 # form peak CDF
 x, f, n = makecdf(peaks[:,2])
 
-# fit Gaussian random peak distribution
-if (sims is None):
-    fit, cov = cdf_fit(x,f)
-else:
-    fit, cov = cdf_fit(sims[:,0],sims[:,5])
-gamma, sigma, alpha = fit
-
-# dump normalized peaks
-for i in range(n):
-    print peaks[i,0], peaks[i,1], peaks[i,2]/sigma, fwhm
+try:
+    # fit Gaussian random peak distribution
+    if (sims is None):
+        fit, cov = cdf_fit(x,f)
+    else:
+        fit, cov = cdf_fit(sims[:,0],sims[:,5])
+    gamma, sigma, alpha = fit
+    
+    # dump normalized peaks
+    for i in range(n):
+        print peaks[i,0], peaks[i,1], peaks[i,2]/sigma, fwhm
+except Exception:
+    # not converged, do nothing
+    pass

@@ -23,4 +23,4 @@ done
 # make a merger map
 cat stat/L1-$KERNEL-*.sig | $BINDIR/pxl2map maps/white.fits maps/merger.fits
 map2gif -inp maps/merger.fits -out '!gifs/merger.gif' -xsz 2400
-map2gif -inp maps/merger.fits -out '!gifs/merger-zoom.gif' -pro GNO -lat -56.73 -lon 209.96 -res 3.3 -xsz 1200 -bar true
+map2gif -inp maps/merger.fits -out '!gifs/merger-zoom.gif' -pro GNO -lat -57 -lon 210 -res 2 -xsz 1200 -bar true

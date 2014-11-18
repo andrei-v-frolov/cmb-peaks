@@ -21,6 +21,6 @@ for i in {40..600}; do
 done
 
 # make a merger map
-cat stat/L1-$KERNEL-*.sig | $BINDIR/pxl2map maps/white.fits maps/merger.fits
+cat stat/L1-$KERNEL-[0-4]*.sig | $BINDIR/pxl2map maps/white.fits maps/merger.fits
 map2gif -inp maps/merger.fits -out '!gifs/merger.gif' -xsz 2400
 map2gif -inp maps/merger.fits -out '!gifs/merger-zoom.gif' -pro GNO -lat -57 -lon 210 -res 2 -xsz 1200 -bar true

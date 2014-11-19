@@ -39,7 +39,7 @@ if (nArguments() < 2) then; Cl = 1.0; else
 	call data2cl(fin, Cl, lmax, ncl, header)
 	
 	! fill in missing multipoles
-	call intcls(Cl(0:8,1), 8)
+	if (all(Cl(0:1,1) == 0.0)) call intcls(Cl(0:8,1), 8)
 end if
 
 ! Wiener filter

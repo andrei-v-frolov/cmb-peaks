@@ -115,6 +115,9 @@ for i in range(1,len(argv)):
 
 print 'Total %i nodes, %i edges' % (len(G.nodes()), len(G.edges()))
 
+# prune graph to coldspot only...
+#G = G.subgraph(nx.node_connected_component(G, ('SSG84',800.0,0.0)))
+
 # sets of nodes connected to coldest and hottest spots (at any scale)
 coldest = set(); hottest = set()
 for node,attr in G.nodes_iter(data=True):

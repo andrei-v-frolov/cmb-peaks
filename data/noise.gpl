@@ -27,7 +27,7 @@ print "Effective l_beam = ", lbeam/sqrt(2)
 C0=0.0; C1=0.0; C2=0.0; C3=0.0; C4=0.0; C5=0.0; Cn=1.0
 
 fit [0:1] F(x) 'cl_hmhd_t1.txt' u (X($0)):($1*X($0)**alpha) via C0,C1,C2,C3,C4,C5
-fit [lbeam/sqrt(2.0):] Cn*N(x) 'cl_full_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) via Cn
+#fit [lbeam/sqrt(2.0):] Cn*N(x) 'cl_full_t1.txt' u 0:($1*$0*($0+1)/(2.0*pi)) via Cn
 #plot [0:1] 'cl_hmhd_t1.txt' u (X($0)):($1*X($0)**alpha) w l, F(x) w l
 
 # plot covariance model components

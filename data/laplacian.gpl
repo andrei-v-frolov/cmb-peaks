@@ -28,8 +28,8 @@ plot [2:lmax] \
 ! ../bins/epstopdf laplacian.eps
 
 # dump the tabulated model
-set table "noise.dat"; set format y "%.16g"
-plot [2:lmax] 'base_planck_lowl_lowLike_highL_post_lensing.bestfit_cl' u 1:(C($1))
+set table "noise.dat"; set samples lmax; unset logscale; set format y "%.16g"
+plot [1:lmax] C(x)
 unset table
 
 # select only valid data

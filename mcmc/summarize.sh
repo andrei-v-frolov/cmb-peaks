@@ -31,7 +31,7 @@ for k in `cat FILES`; do
 	# find hottest peak distribution
 	echo "Finding hottest peak in $k"
 	for i in $SIMS; do
-		head -1 "$i/stat/$k"
+		tail -1 "$i/stat/$k"
 	done | sort -k3g > "hottest/$k"
 	
 	# further analysis for available data

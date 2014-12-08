@@ -19,11 +19,12 @@ from os.path import basename
 ###############################################################################
 # import peak data and remove distribution mean
 ###############################################################################
-assert len(argv) == 2, 'usage: demean <peak data>'
+assert len(argv) > 1 and len(argv) < 4, 'usage: demean <peak data> [<output data>]'
 
 # load peak data and statistics
 DATA = np.loadtxt(argv[1])
 
 # write de-meaned data to stdout
 DATA[:,2] = demean(DATA[:,2])
-np.savetxt(stdout, DATA, fmt=['%24.16g','%24.16g','%24.16g','%i'])
+FOUT = argv[2] if len(argv) == 3 else stdout
+np.savetxt(FOUT, DATA, fmt=['%24.16g','%24.16g','%24.16g','%i'])

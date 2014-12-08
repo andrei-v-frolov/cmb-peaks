@@ -53,6 +53,14 @@ def lkurtosis(gamma, n=1000, xmax=6.0):
     
     return gamma, L4/L2, L2-L4
 
+def demean(data):
+    """Remove mean value from the data using L-moment estimator"""
+    
+    x, F, n = makecdf(data)
+    L1, L2, L3, L4 = lmoments(x, F)
+    
+    return data - (L1-L3)
+
 # gamma and sigma estimators are based on L-kurtosis LUT
 gamma_lut = np.vectorize(lkurtosis)(np.linspace(1.0, 0.0, 16))
 gamma_est = interp1d(gamma_lut[1], gamma_lut[0], kind='cubic')

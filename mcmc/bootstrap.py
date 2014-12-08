@@ -58,8 +58,8 @@ assert len(argv) > 2 and len(argv) < 5, 'usage: bootstrap <peak data> <coldest p
 kernel, fwhm = parse(argv[1])
 
 # load peak data and statistics
-DATA = np.loadtxt(argv[1]); p = DATA[0,2]
-SIMS = np.loadtxt(argv[2]); X = SIMS[:,2]
+DATA = np.loadtxt(argv[1]); p = demean(DATA[0,2])
+SIMS = np.loadtxt(argv[2]); X = demean(SIMS[:,2])
 
 # scale sims if fudge factor is supplied
 if len(argv) == 4: X = X * float(argv[3])

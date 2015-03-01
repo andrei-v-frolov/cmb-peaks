@@ -15,6 +15,7 @@ FUDGE=1.0134
 # create summary directories
 if [ ! -d coldest ]; then mkdir -pv coldest; fi
 if [ ! -d hottest ]; then mkdir -pv hottest; fi
+if [ ! -d minmaxa ]; then mkdir -pv minmaxa; fi
 if [ ! -d peakcdf ]; then mkdir -pv peakcdf; fi
 
 # backup previous results
@@ -33,6 +34,12 @@ for k in `cat FILES`; do
 	for i in $SIMS; do
 		tail -1 "$i/stat/$k"
 	done | sort -k3g > "hottest/$k"
+	
+	# find min/max average distribution
+	echo "Finding min/max avgs in $k"
+	for i in $SIMS; do
+		python minmax.py "$i/stat/$k"
+	done | sort -k3g > "minmaxa/$k"
 	
 	# further analysis for available data
 	if [ -f "../stat/$k" ]; then

@@ -37,9 +37,13 @@ for k in `cat FILES`; do
 	
 	# find min/max average distribution
 	echo "Finding min/max avgs in $k"
+	if [ -f minmaxa/$k ]; then
+		rm -f minmaxa/$k
+		touch minmaxa/$k
+	fi
 	for i in $SIMS; do
-		python minmax.py "$i/stat/$k"
-	done | sort -k3g > "minmaxa/$k"
+		echo "python minmax.py $i/stat/$k >> minmaxa/$k"
+	done | parallel
 	
 	# further analysis for available data
 	if [ -f "../stat/$k" ]; then

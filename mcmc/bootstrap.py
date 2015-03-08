@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Calculate significance of the coldest peak (using simulation bootstrap)
-# usage: bootstrap <peak data> <coldest peak distribution> [scaling factor]
+usage = 'bootstrap [log]{ltp|utp} <data[:column]> <distribution[:column]> [scaling factor]'
 
 ###############################################################################
 # import libraries
@@ -27,6 +27,15 @@ def parse(path):
     
     return kernel, 2.0*float(radius)
 
+# lookup value in 1d interpolation table
+def lut1d(v, x, f):
+    """Lookup value v in bounded 1D interpolation table"""
+    
+    if (v <= x[ 0]): return f[ 0]
+    if (v >= x[-1]): return f[-1]
+    
+    return interp1d(x, f, kind='linear')(v)
+
 # bootstrap
 def bootstrap(X):
     """Resample an array using bootstrap method"""
@@ -35,45 +44,61 @@ def bootstrap(X):
     
     return X[resample]
 
-# log-likelihood
+
+###############################################################################
+# callable significance routines, all have exactly two arguments
+###############################################################################
+
+def ltp(v, X):
+    """Lower tail probability to find value x in distribution X (i.e. #X < v)"""
+    x, f, n = makecdf(X); return lut1d(v, x, f)
+
+def utp(v, X):
+    """Upper tail probability to find value x in distribution X (i.e. #X > v)"""
+    x, f, n = makecdf(X); return lut1d(v, x, 1.0-f)
+
+def logltp(v, X):
+    """Log-lower tail probability to find value x in distribution X (i.e. #X < v)"""
+    x, f, n = makecdf(X); f[0] = 1.0/n; return lut1d(v, x, np.log10(f))
+
 def logutp(v, X):
-    """Log-upper tail probability to find value x in distribution X"""
-    
-    x, f, n = makecdf(X)
-    
-    if (v < x[ 0]): return log10(1.0/len(x))
-    if (v > x[-1]): return 0.0
-    
-    cdf = interp1d(x, f, kind='linear')
-    
-    return log10(cdf(v))
+    """Log-upper tail probability to find value x in distribution X (i.e. #X > v)"""
+    x, f, n = makecdf(X); f[-1] = (n-1.0)/n; return lut1d(v, x, np.log10(1.0-f))
 
 
 ###############################################################################
 # import peak data and do boostrap analysis of significance
 ###############################################################################
-assert len(argv) > 2 and len(argv) < 5, 'usage: bootstrap <peak data> <coldest peak distribution> [scaling factor]'
+
+# parse comand line arguments
+assert len(argv) > 3 and len(argv) < 6, usage
+assert argv[1] in locals(), usage
+
+significance = locals()[argv[1]]
+data,dcol = (argv[2]+':2').split(':')[0:2]
+sims,scol = (argv[3]+':2').split(':')[0:2]
+FUDGE = float(argv[4]) if len(argv) > 4 else None
 
 # parse kernel info
-kernel, fwhm = parse(argv[1])
+kernel, fwhm = parse(data)
 
 # load peak data and statistics
-DATA = np.loadtxt(argv[1]); p = DATA[0,2]
-SIMS = np.loadtxt(argv[2]); X = SIMS[:,2]
+DATA = np.loadtxt(data if data != '-' else stdin); p = DATA[0,dcol]
+SIMS = np.loadtxt(sims if sims != '-' else stdin); X = SIMS[:,scol]
 
 # scale sims if fudge factor is supplied
-if len(argv) == 4: X = X * float(argv[3])
+if FUDGE: X *= FUDGE
 
 # baseline significance
-sign = logutp(p, X); samples = 10000
+sign = significance(p, X); samples = 10000
 
-# bootstrap
+
 ###############################################################################
-# run the job in parallel, if job control is available
+# bootstrap, run the job in parallel if job control is available
 ###############################################################################
 
 # parallel worker routine: boostrap significance variance
-def varsign(i): return logutp(p, bootstrap(X)) - sign
+def varsign(i): return significance(p, bootstrap(X)) - sign
 
 try:
     from joblib import Parallel, delayed

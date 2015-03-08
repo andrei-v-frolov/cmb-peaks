@@ -54,7 +54,7 @@ for k in `cat FILES`; do
 		# coldest peak significance
 		echo "Calculating outliers in $k"
 		echo -n "COLDEST $k " >> SUMMARY
-		python bootstrap.py "../stat/$k" "coldest/$k" $FUDGE >> SUMMARY
+		python bootstrap.py logltp "../stat/$k" "coldest/$k" $FUDGE >> SUMMARY
 	fi
 done
 

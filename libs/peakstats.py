@@ -29,6 +29,13 @@ def CDF(x, gamma, sigma=1.0, alpha=0.0):
 # statistics primitives
 ###############################################################################
 
+def bootstrap(data):
+    """Resample a data array using bootstrap method"""
+    
+    n = len(data); resample = np.floor(np.random.rand(n)*n).astype(int)
+    
+    return data[resample]
+
 def makecdf(data):
     """Make CDF F(x) of supplied distribution data by sorting"""
     
@@ -36,6 +43,14 @@ def makecdf(data):
     n = len(x); F = np.linspace(0.0, 1.0, n)
     
     return x, F, n
+
+def lut1d(v, x, f):
+    """Lookup value v in a bounded 1D interpolation table"""
+    
+    if (v <= x[ 0]): return f[ 0]
+    if (v >= x[-1]): return f[-1]
+    
+    return interp1d(x, f, kind='linear')(v)
 
 def lmoments(x, F):
     """Calculate lower L-moments of the distribution described by (tabulated) CDF F(x)""" 

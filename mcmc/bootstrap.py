@@ -27,23 +27,6 @@ def parse(path):
     
     return kernel, 2.0*float(radius)
 
-# lookup value in 1d interpolation table
-def lut1d(v, x, f):
-    """Lookup value v in bounded 1D interpolation table"""
-    
-    if (v <= x[ 0]): return f[ 0]
-    if (v >= x[-1]): return f[-1]
-    
-    return interp1d(x, f, kind='linear')(v)
-
-# bootstrap
-def bootstrap(X):
-    """Resample an array using bootstrap method"""
-    
-    n = len(X); resample = np.floor(np.random.rand(n)*n).astype(int)
-    
-    return X[resample]
-
 
 ###############################################################################
 # callable significance routines, all have exactly two arguments
@@ -80,11 +63,14 @@ sims,scol = (argv[3]+':2').split(':')[0:2]
 FUDGE = float(argv[4]) if len(argv) > 4 else None
 
 # parse kernel info
-kernel, fwhm = parse(data)
+try:
+    kernel, fwhm = parse(data)
+except ValueError:
+    kernel, fwhm = parse(sims)
 
 # load peak data and statistics
-DATA = np.loadtxt(data if data != '-' else stdin); p = DATA[0,dcol]
-SIMS = np.loadtxt(sims if sims != '-' else stdin); X = SIMS[:,scol]
+DATA = np.loadtxt(data if data != '-' else stdin); p = DATA[0,int(dcol)] if DATA.ndim > 1 else (DATA[int(dcol)] if DATA.ndim > 0 else DATA)
+SIMS = np.loadtxt(sims if sims != '-' else stdin); X = SIMS[:,int(scol)] if SIMS.ndim > 1 else SIMS
 
 # scale sims if fudge factor is supplied
 if FUDGE: X *= FUDGE

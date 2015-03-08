@@ -16,7 +16,7 @@ FUDGE=1.0134
 if [ ! -d ksdistr ]; then mkdir -pv ksdistr; fi
 
 # backup previous results
-if [ -f SUMMARY ]; then mv -f SUMMARY SUMMARY.OLD; fi
+if [ -f SUMMARY ]; then mv -f SUMMARY SUMMARY.OLD; awk '$1 != "KSDEVSG" {print;}' SUMMARY.OLD > SUMMARY; fi
 
 # create MCMC digests
 for k in `cat FILES`; do

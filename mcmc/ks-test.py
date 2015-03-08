@@ -36,7 +36,7 @@ if (len(argv) > 3):
 
 # form peak CDF
 x, f, n = makecdf(peaks[:,2])
-y = interp1d(sims[:,0], sims[:,5], kind='linear')(x)
+y = np.vectorize(clint1d(sims[:,0], sims[:,5]))(x)
 
 # Kolmogorov-Smirnov deviation
 K = sqrt(n)+0.12+0.11/sqrt(n)

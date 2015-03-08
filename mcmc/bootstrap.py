@@ -34,19 +34,19 @@ def parse(path):
 
 def ltp(v, X):
     """Lower tail probability to find value x in distribution X (i.e. #X < v)"""
-    x, f, n = makecdf(X); return lut1d(v, x, f)
+    x, f, n = makecdf(X); return clint1d(x, f)(v)
 
 def utp(v, X):
     """Upper tail probability to find value x in distribution X (i.e. #X > v)"""
-    x, f, n = makecdf(X); return lut1d(v, x, 1.0-f)
+    x, f, n = makecdf(X); return clint1d(x, 1.0-f)(v)
 
 def logltp(v, X):
     """Log-lower tail probability to find value x in distribution X (i.e. #X < v)"""
-    x, f, n = makecdf(X); f[0] = 1.0/n; return lut1d(v, x, np.log10(f))
+    x, f, n = makecdf(X); f[0] = 1.0/n; return clint1d(x, np.log10(f))(v)
 
 def logutp(v, X):
     """Log-upper tail probability to find value x in distribution X (i.e. #X > v)"""
-    x, f, n = makecdf(X); f[-1] = (n-1.0)/n; return lut1d(v, x, np.log10(1.0-f))
+    x, f, n = makecdf(X); f[-1] = (n-1.0)/n; return clint1d(x, np.log10(1.0-f))(v)
 
 
 ###############################################################################

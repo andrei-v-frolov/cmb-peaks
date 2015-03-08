@@ -44,13 +44,10 @@ def makecdf(data):
     
     return x, F, n
 
-def lut1d(v, x, f):
-    """Lookup value v in a bounded 1D interpolation table"""
+def clint1d(x, f, kind='linear'):
+    """1D interpolation clipping to LUT bounds (assumes sorted LUT)"""
     
-    if (v <= x[ 0]): return f[ 0]
-    if (v >= x[-1]): return f[-1]
-    
-    return interp1d(x, f, kind='linear')(v)
+    return lambda v: f[0] if v < x[0] else (f[-1] if v > x[-1] else interp1d(x, f, kind=kind)(v))
 
 def lmoments(x, F):
     """Calculate lower L-moments of the distribution described by (tabulated) CDF F(x)""" 

@@ -25,7 +25,7 @@ peaks = np.loadtxt(sys.argv[1]); n,m = peaks.shape
 
 assert m > 3, "peak data malformed"
 
-mins = [peaks[i,2] for i in range(n) if peaks[i,3] < 0]
-maxs = [peaks[i,2] for i in range(n) if peaks[i,3] > 0]
+mins = [peaks[i,2] for i in range(n) if peaks[i,3] < 0]; nmin = len(mins)
+maxs = [peaks[i,2] for i in range(n) if peaks[i,3] > 0]; nmax = len(maxs)
 
-print -np.sum(mins)/len(mins), np.sum(maxs)/len(maxs)
+print -np.sum(mins)/nmins, np.sum(maxs)/nmaxs, nmin, nmax, n

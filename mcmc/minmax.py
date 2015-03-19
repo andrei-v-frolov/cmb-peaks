@@ -28,4 +28,4 @@ assert m > 3, "peak data malformed"
 mins = [peaks[i,2] for i in range(n) if peaks[i,3] < 0]; nmin = len(mins)
 maxs = [peaks[i,2] for i in range(n) if peaks[i,3] > 0]; nmax = len(maxs)
 
-print -np.sum(mins)/nmins, np.sum(maxs)/nmaxs, nmin, nmax, n
+print -np.sum(mins)/nmin, np.sum(maxs)/nmax, nmin, nmax, n

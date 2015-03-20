@@ -4,7 +4,7 @@
 
 # Multiple architecture support (sort of)
 BINDIR := bins/$(shell uname -m)-$(shell uname -s)
-BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map ksmap remap)
+BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map digest ksmap remap)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort

@@ -72,7 +72,7 @@ end subroutine
 
 ! calculate beam bl's for a kernel of angular FWHM alpha
 subroutine beam(Bl, lmax, k, alpha)
-	integer, parameter :: nmin = 8, nmax = 13
+	integer, parameter :: nmin = 8, nmax = 16
 	integer lmax; character(*) k; real x, w, alpha
 	real(DP) Bl(0:lmax), P(0:lmax), S(0:nmax,0:lmax), h(0:nmax)
 	integer i, ii, l, n

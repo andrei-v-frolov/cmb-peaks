@@ -32,6 +32,10 @@ def parse(path):
 # callable significance routines, all have exactly two arguments
 ###############################################################################
 
+def count(v, X):
+    """Tail count (i.e. #X <= v or #X >= v, whichever is less)"""
+    return min(np.sum(X<=v), np.sum(X>=v))/float(len(X))
+
 def ltp(v, X):
     """Lower tail probability to find value x in distribution X (i.e. #X < v)"""
     x, f, n = makecdf(X); return clint1d(x, f)(v)

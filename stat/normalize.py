@@ -13,8 +13,8 @@ sys.path.append(os.path.join(here, '../libs'))
 
 # import libraries
 from peakstats import *
-from sys import argv, stdin
 from os.path import basename
+from sys import argv, stdin, stderr
 
 # filename handling
 def parse(path):
@@ -66,6 +66,6 @@ try:
     # dump normalized peaks
     for i in range(n):
         print peaks[i,0], peaks[i,1], peaks[i,2]/sigma, fwhm
-except Exception:
+except ValueError:
     # not converged, do nothing
-    pass
+    print >> stderr, 'Warning: fit not converged for', kernel, fwhm

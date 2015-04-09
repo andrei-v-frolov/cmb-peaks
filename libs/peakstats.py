@@ -75,8 +75,8 @@ def demean(data):
 
 # gamma and sigma estimators are based on L-kurtosis LUT
 gamma_lut = np.vectorize(lkurtosis)(np.linspace(1.0, 0.0, 16))
-gamma_est = interp1d(gamma_lut[1], gamma_lut[0], kind='cubic')
-sigma_est = interp1d(gamma_lut[1], gamma_lut[2], kind='cubic')
+gamma_est = clint1d(gamma_lut[1], gamma_lut[0], kind='cubic')
+sigma_est = clint1d(gamma_lut[1], gamma_lut[2], kind='cubic')
 
 def estimate(x, F):
     """Estimate parameters of a peak distribution F(x) from its L-moments"""

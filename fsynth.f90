@@ -3,6 +3,7 @@
 ! invoke: wiener ... | fsynth <mmap-alms.fits> <map.fits[:mode]> [mask-alms.fits[:tdb]]
 !   - mode :iqu synthesizes IQU decomposition map of tidal tensor, outputs hot pixels
 !   - mode :inv synthesizes curvature invariants map, outputs Minkowski functionals
+!   - mode :skl synthesizes skeleton strucutural map, outputs skeleton location
 
 program fsynth
 
@@ -15,7 +16,7 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: default = 0, iqu = 1, inv = 2; integer :: mode = default
+integer, parameter :: default = 0, iqu = 1, inv = 2, skl = 3; integer :: mode = default
 
 character(len=80) :: fmap, fmask, fout
 integer, parameter :: lmax = 4000, nside = 2048, hmax = 256
@@ -35,12 +36,22 @@ beam = 0.0; do
 	beam(l) = b
 end do
 
-! make filtered map
+! parse map arguments
 call getArgument(1, fmap)
-call getArgument(2, fout)
+call getArgument(2, fout); i = index(fout, ":", .true.)
 
-i = index(fout, ":iqu", .true.); if (i > 0) then; fout(i:) = ""; mode = iqu; end if
-i = index(fout, ":inv", .true.); if (i > 0) then; fout(i:) = ""; mode = inv; end if
+if (i > 0) then
+	select case (fout(i+1:))
+		case ("iqu"); mode = iqu
+		case ("inv"); mode = inv
+		case ("skl"); mode = skl
+		case default; call abort("reconstruction mode modifier '" // trim(fout(i+1:)) // "' is not known, bailing out...")
+	end select
+	
+	fout(i:) = ""
+end if
+
+! make filtered map
 call make_map(fmap, beam, lmax, nside, mmap, n, nmaps, mode)
 
 ! make filtered mask
@@ -56,14 +67,14 @@ else
 	where (mask <= 0.0 .or. abs(log10(mask)) > tol/10.0) mask = 0.0
 end if
 
-! mask correction
+! apply mask correction
 allocate (map(0:n,nmaps)); forall (i = 0:n) map(i,:) = mmap(i,:)/mask(i,1)
 
 ! output map statistics
 select case (mode)
-	case (default,iqu); call extrema(map(:,1), mask(:,1), nside, n)	! extrema distribution
-	case (inv);         call minkowski(map, mask(:,1), nmaps, n, 1024)	! cumulative Minkowski functionals
-	!case (inv);         call skeleton(map(:,4), mask(:,1), nside, n)	! ...
+	case (default,iqu); call extrema(map(:,1), mask(:,1), nside, n)         ! extrema distribution
+	case (inv);         call minkowski(map, mask(:,1), nmaps, n, 1024)      ! Minkowski functionals
+	case (skl);         call skeleton(map(:,2), mask(:,1), nside, n)        ! skeleton structure
 end select
 
 ! output corrected map (in specified precision)
@@ -86,7 +97,7 @@ subroutine make_map(falms, bls, lmax, nside, map, n, nout, mode)
 	! read in alms data
 	nalms = number_of_alms(falms, next); n = nside2npix(nside)-1
 	select case (mode)
-		case (iqu,inv); next = 1; nout = 3
+		case (iqu,inv,skl); next = 1; nout = 3
 		case default; nout = next
 	end select
 	allocate(aks(nalms,4,next), alms(next,0:lmax,0:lmax), map(0:n,nout))
@@ -102,28 +113,36 @@ subroutine make_map(falms, bls, lmax, nside, map, n, nout, mode)
 	
 	! synthesize map (in nested ordering)
 	select case (mode)
-		case (iqu); call alm2map_iqu(nside, lmax, lmax, alms, map(:,1:nout))
-		case (inv); call alm2map_inv(nside, lmax, lmax, alms, map(:,1:nout))
+		case (iqu);     call alm2map_iqu(nside, lmax, lmax, alms, map(:,1:nout))
+		case (inv,skl); call alm2map_inv(nside, lmax, lmax, alms, map(:,1:nout), mode)
+		
 		case default;
-			if (next == 1) call alm2map(nside, lmax, lmax, alms, map(:,1))
-			if (next >  1) call alm2map(nside, lmax, lmax, alms, map(:,1:next))
+		if (next == 1)  call alm2map(nside, lmax, lmax, alms, map(:,1))
+		if (next >  1)  call alm2map(nside, lmax, lmax, alms, map(:,1:next))
 	end select
 	call convert_ring2nest(nside, map)
 	
 	deallocate(aks, alms)
 end subroutine
 
-! synthesize curvature invariants map for Minkowski functional evaluation (using canned HEALPix derivatives)
-subroutine alm2map_inv(nside, lmax, mmax, alms, Minv)
-	integer p, l, m, n, nside, lmax, mmax
+! synthesize curvature invariants map (using canned HEALPix derivatives)
+subroutine alm2map_inv(nside, lmax, mmax, alms, Map, mode)
+	integer p, l, m, n, nside, lmax, mmax, mode
+	real(DP) Map(0:12*nside**2-1,3), theta, phi
 	complex(DPC) alms(1,0:lmax,0:mmax)
-	real(DP) Minv(0:12*nside**2-1,3), theta, phi
 	
 	! temporary storage
 	real(DP), allocatable :: I(:), C(:), D1(:,:), D2(:,:)
 	
 	n = nside2npix(nside)-1
 	allocate(I(0:n), C(0:n), D1(0:n,2), D2(0:n,3))
+	
+	! compute alm's of inverse Laplacian map
+	if (mode == iqu) then
+		do l = 1,lmax; do m = 0,min(l,mmax)
+			alms(1,l,m) = -alms(1,l,m)/(l+1.0)/l
+		end do; end do
+	end if
 	
 	! synthesize component maps from alm's
 	call alm2map_der(nside, lmax, mmax, alms, I, D1, D2)
@@ -139,53 +158,25 @@ subroutine alm2map_inv(nside, lmax, mmax, alms, Minv)
 		! covariant gradient squared
 		C(p) = D1(p,1)**2 + D1(p,2)**2
 		
-		! Minkowski functional maps
-		Minv(p,1) = I(p)
-		Minv(p,2) = sqrt(C(p))
-		Minv(p,3) = - (D2(p,1)*D1(p,2)**2 - 2.0*D2(p,2)*D1(p,1)*D1(p,2) + D2(p,3)*D1(p,1)**2)/C(p)
-		
-		! skeleton map
-		!Minv(p,4) = (D2(p,3) - D2(p,1))*D1(p,1)*D1(p,2) + D2(p,2) * (D1(p,1)**2 - D1(p,2)**2)
+		! curvature invariants
+		select case (mode)
+			case (iqu) ! tidal tensor decomposition
+				Map(p,1) = D2(p,1) + D2(p,3)
+				Map(p,2) = D2(p,1) - D2(p,3)
+				Map(p,3) = 2.0*D2(p,2)
+			case (inv) ! Minkowski functional maps
+				Map(p,1) = I(p)
+				Map(p,2) = sqrt(C(p))
+				Map(p,3) = - (D2(p,1)*D1(p,2)**2 - 2.0*D2(p,2)*D1(p,1)*D1(p,2) + D2(p,3)*D1(p,1)**2)/C(p)
+			case (skl) ! skeleton strucutural maps
+				Map(p,1) = I(p)
+				Map(p,2) = (D2(p,3) - D2(p,1))*D1(p,1)*D1(p,2) + D2(p,2) * (D1(p,1)**2 - D1(p,2)**2)
+				Map(p,3) = - (D2(p,1)*D1(p,2)**2 - 2.0*D2(p,2)*D1(p,1)*D1(p,2) + D2(p,3)*D1(p,1)**2)/C(p)
+		end select
 	end do
 	
 	! clean up after ourselves
 	deallocate(I, C, D1, D2)
-end subroutine
-
-! synthesize an IQU decomposition map of tidal tensor (using canned HEALPix derivatives)
-subroutine alm2map_iqu_hpx(nside, lmax, mmax, alms, Miqu)
-	integer p, l, m, n, nside, lmax, mmax
-	complex(DPC) alms(1,0:lmax,0:mmax)
-	real(DP) Miqu(0:12*nside**2-1,3), theta, phi
-	
-	! temporary storage
-	real(DP), allocatable :: I(:), C(:), D1(:,:), D2(:,:)
-	complex(DPC), allocatable :: tlms(:,:,:)
-	
-	n = nside2npix(nside)-1
-	allocate(I(0:n), C(0:n), D1(0:n,2), D2(0:n,3), tlms(1,0:lmax,0:mmax))
-	
-	! compute alm's of derivative maps
-	do l = 1,lmax; do m = 0,min(l,mmax)
-		tlms(1,l,m) = -alms(1,l,m)/(l+1.0)/l
-	end do; end do
-	 
-	! synthesize component maps from alm's
-	call alm2map(nside, lmax, mmax, alms, I)
-	call alm2map_der(nside, lmax, mmax, tlms, C, D1, D2)
-
-	! synthesize cot(theta) map (in ring ordering)
-	do p = 0,n
-		call pix2ang_ring(nside, p, theta, phi); C(p) = cotan(theta)
-	end do
-	
-	! assemble output map from components
-	Miqu(:,1) = I
-	Miqu(:,2) = D2(:,1) - D2(:,3) - C*D1(:,1)
-	Miqu(:,3) = 2.0*(D2(:,2) - C*D1(:,2))
-	
-	! clean up after ourselves
-	deallocate(tlms, I, C, D1, D2)
 end subroutine
 
 ! synthesize an IQU decomposition map of tidal tensor (using a_lm coefficient recursion)

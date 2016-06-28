@@ -50,6 +50,7 @@ subroutine read_map(fin, M, nside, nmaps, ord)
 	character(*) fin
 	real(IO), allocatable :: M(:,:)
 	integer nside, npix, nmaps, ord
+	integer i
 	
 	! read header info
 	character(len=80) :: header(64)
@@ -59,17 +60,25 @@ subroutine read_map(fin, M, nside, nmaps, ord)
 	if (htot == -1) call abort(trim(fin) // ": file not found")
 	
 	! check if map format agrees with requested one
-	if (nside == 0) nside = hside;	if (hside /= nside) call abort(trim(fin) // ": map resolution does not conform")
-	if (nmaps == 0) nmaps = hmaps;	if (hmaps  < nmaps) call abort(trim(fin) // ": too few channels in an input map")
-					if (hmaps  > nmaps) call warning(trim(fin) // ": ignoring extra channels")
+	if (nside == 0) nside = hside;	if (hside /= nside) call   abort(trim(fin) // ": map resolution does not conform")
+	if (nmaps == 0) nmaps = hmaps;	if (hmaps  > nmaps) call warning(trim(fin) // ": ignoring extra channels")
+			if (hmaps < nmaps .and. hmaps == 1) call warning(trim(fin) // ": single channel will be replicated")
+			if (hmaps < nmaps .and. hmaps >  1) call   abort(trim(fin) // ": too few channels in an input map")
 	if (  ord == 0)   ord = hord;	if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
 	
 	! allocate storage if needed
 	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1,nmaps))
 	if (size(M,1) /= npix .or. size(M,2) < nmaps) call abort(trim(fin) // ": unexpected storage array shape")
 	
-	! read map data, converting order if needed
-	call input_map(fin, M, npix, nmaps)
+	! read map data, replicating single channel map if needed
+	if (hmaps > 1) then
+		call input_map(fin, M, npix, nmaps)
+	else
+		call input_map(fin, M(:,1:1), npix, hmaps)
+		do i = 2,nmaps; M(:,i) = M(:,1); end do
+	end if
+	
+	! convert map order if needed
 	if (hord == RING .and. ord == NEST) call convert_ring2nest(nside, M)
 	if (hord == NEST .and. ord == RING) call convert_nest2ring(nside, M)
 end subroutine read_map

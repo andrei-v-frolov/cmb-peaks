@@ -15,8 +15,10 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+integer, parameter :: lmax = 2000
+
 character(len=80) :: fin1, op, fin2, fout
-integer :: nmaps = 0, nside = 0, ord = 0, n = 0
+integer :: nmaps = 0, nside = 0, ord = 0, n = 0, i
 real(IO), dimension(:,:), allocatable :: M1, M2, Mout
 logical, dimension(:,:), allocatable :: valid
 
@@ -70,13 +72,18 @@ select case (op)
 	case ('invalid'); where (.not. valid) Mout = 1.0
 	case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
 	case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
-	case ('inpaint'); call inpaint(M1, M2, Mout, nside, ord)
+	case ('inpaint');
+		select case (nmaps)
+			! case(2) should do tensor inpainting on QU map
+			! case(3) should do tensor inpainting on IQU map
+			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord); end do
+		end select
 	
 	! polarization operators
 	case ('QU->EB');
 		select case (nmaps)
-			case (2); call rotate_qu2eb(nside, ord, 2000, M1(:,1:2), Mout(:,1:2))
-			case (3); call rotate_qu2eb(nside, ord, 2000, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
+			case (2); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2))
+			case (3); call rotate_qu2eb(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
 	

@@ -13,7 +13,7 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-character(len=80) :: mapping, fin, fout, fsim
+character(len=8000) :: mapping, fin, fout, fsim
 integer :: i, m, n, nsims, nmaps = 0, nside = 0, ord = 0
 real(IO), allocatable :: Map(:,:), Mout(:,:), sims(:,:,:)
 

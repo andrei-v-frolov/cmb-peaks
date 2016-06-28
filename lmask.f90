@@ -16,7 +16,7 @@ implicit none
 integer :: datach = 1, maskch = 1, nmoms = 4		! defaults
 integer :: i, n, npix, nused, nside = 0, ord = 0	! map format
 
-character(len=80) :: fin, fout, fmask
+character(len=8000) :: fin, fout, fmask
 real(IO), allocatable :: Map(:), Mask(:), Mout(:,:)
 integer,  allocatable :: indx(:), rank(:)
 real(DP), allocatable :: M(:), P(:,:)

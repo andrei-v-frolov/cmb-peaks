@@ -14,7 +14,7 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-character(len=80) :: fin, fout
+character(len=8000) :: fin, fout
 real(IO), allocatable :: M(:,:)
 integer, allocatable, target :: idx(:)
 integer :: nside = 0, nmaps = 0, ord = 0, n, status

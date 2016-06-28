@@ -19,7 +19,7 @@ real diam, qcut
 real(DP) peak(4,pks)
 integer i, n, m, status
 
-character(len=80) :: fout, fwhm
+character(len=8000) :: fout, fwhm
 integer :: nside = 256, ord = NEST
 real(IO), allocatable :: Map(:,:)
 real(DP), allocatable :: V(:,:)

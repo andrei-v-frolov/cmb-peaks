@@ -18,7 +18,7 @@ implicit none
 
 integer, parameter :: default = 0, iqu = 1, inv = 2, skl = 3; integer :: mode = default
 
-character(len=80) :: fmap, fmask, fout
+character(len=8000) :: fmap, fmask, fout
 integer, parameter :: lmax = 4000, nside = 2048, hmax = 256
 real(DP), allocatable :: mmap(:,:), mask(:,:), map(:,:)
 real(IO), allocatable :: mout(:,:)

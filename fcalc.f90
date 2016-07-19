@@ -15,10 +15,8 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-integer, parameter :: lmax = 2000
-
 character(len=8000) :: fin1, op, fin2, fout
-integer :: nmaps = 0, nside = 0, ord = 0, n = 0, i
+integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, n = 0, i
 real(IO), dimension(:,:), allocatable :: M1, M2, Mout
 logical, dimension(:,:), allocatable :: valid
 
@@ -36,7 +34,7 @@ if (fout .eq. '=>') call getArgument(5, fout)
 ! read input maps
 call read_map(fin1, M1, nside, nmaps, ord)
 call read_map(fin2, M2, nside, nmaps, ord)
-n = nside2npix(nside)-1
+n = nside2npix(nside)-1; lmax = 3*nside-1
 
 ! output storage
 allocate(Mout, mold=M1); Mout = 0.0

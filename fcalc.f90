@@ -84,6 +84,12 @@ select case (op)
 			case (3); call rotate_qu2eb(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
+	case ('EB->QU');
+		select case (nmaps)
+			case (2); call rotate_eb2qu(nside, ord, lmax, M1(:,1:2), Mout(:,1:2))
+			case (3); call rotate_eb2qu(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
+			case default; call abort(trim(op) // " conversion requires EB or IEB map format")
+		end select
 	
 	! unknown operator
 	case default; call abort(trim(op) // ": operation not supported")
@@ -113,6 +119,29 @@ subroutine rotate_qu2eb(nside, order, lmax, QU, EB)
 	call alm2map(nside, lmax, lmax, alms(2:2,:,:), map(:,2))
 	
 	if (order == NEST) call convert_ring2nest(nside, map); EB = map
+	
+	deallocate(map, alms)
+end subroutine
+
+! full-sky EB to QU rotation wrapper
+subroutine rotate_eb2qu(nside, order, lmax, EB, QU)
+	use alm_tools
+	
+	integer nside, npix, lmax, order, spin
+	real(IO), dimension(0:12*nside**2-1,1:2) :: EB, QU
+	real(DP), dimension(:,:), allocatable :: map
+	complex(DPC), allocatable :: alms(:,:,:)
+	
+	npix = nside2npix(nside); spin = 2
+	allocate(map(0:npix-1,1:2), alms(1:2, 0:lmax, 0:lmax))
+	
+	map = EB; if (order == NEST) call convert_nest2ring(nside, map)
+	
+	call map2alm(nside, lmax, lmax, map(:,1), alms(1:1,:,:))
+	call map2alm(nside, lmax, lmax, map(:,2), alms(2:2,:,:))
+	call alm2map_spin(nside, lmax, lmax, spin, alms, map)
+	
+	if (order == NEST) call convert_ring2nest(nside, map); QU = map
 	
 	deallocate(map, alms)
 end subroutine

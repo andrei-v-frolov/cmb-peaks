@@ -33,6 +33,9 @@ subroutine write_map(fout, M, nside, ord, creator, version)
 	if (present(creator)) mode = mode + 2
 	if (present(version)) mode = mode + 1
 	
+	! default ordering if none specified (i.e. all maps were literals)
+	if (ord == 0) ord = NEST
+	
 	! write output header
 	select case(mode)
 		case(3); call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator=creator, version=version)
@@ -52,10 +55,14 @@ subroutine read_map(fin, M, nside, nmaps, ord)
 	integer nside, npix, nmaps, ord
 	integer i
 	
-	! read header info
+	! header info
 	character(len=80) :: header(64)
 	integer hside, htot, hmaps, hord
 	
+	! if fin is a literal expression, we are done
+	if (literal_map(fin, M, nside, nmaps)) return
+	
+	! otherwise, read FITS header info
 	htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord)
 	if (htot == -1) call abort(trim(fin) // ": file not found")
 	
@@ -82,6 +89,38 @@ subroutine read_map(fin, M, nside, nmaps, ord)
 	if (hord == RING .and. ord == NEST) call convert_ring2nest(nside, M)
 	if (hord == NEST .and. ord == RING) call convert_nest2ring(nside, M)
 end subroutine read_map
+
+! initialize literal value map (value@nside:nmaps), allocating storage if necessary
+function literal_map(literal, M, nside, nmaps)
+	character(*) literal; real(IO) value
+	real(IO), allocatable :: M(:,:)
+	integer nside, npix, nmaps, i, j, status
+	logical literal_map; literal_map = .false.
+	
+	! parse literal specification
+	i = index(literal, "@")
+	j = index(literal, ":")
+	
+	if (nmaps == 0) nmaps = 1; status = 0
+	
+	if (i == 0) read(literal, *, iostat=status) value; if (status /= 0) return
+	if (i > 0 ) read(literal(:i-1), *, iostat=status) value; if (status /= 0) return
+	if (i > 0 .and. j > 0 ) read (literal(i+1:j-1), *, iostat=status) nside; if (status /= 0) return
+	if (i > 0 .and. j == 0) read (literal(i+1:), *, iostat=status) nside; if (status /= 0) return
+	if (j > 0) read (literal(j+1:), *, iostat=status) nmaps; if (status /= 0) return
+	
+	! check if map format is specified (in allocated storage?)
+	if (nside == 0 .and. allocated(M)) nside = npix2nside(size(M,1))
+	if (nmaps == 0 .and. allocated(M)) nmaps = size(M,2)
+	if (nside == 0 .or. nmaps == 0) call abort(trim(literal) // ": map dimensions not specified")
+	
+	! allocate storage if needed
+	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1,nmaps), source=value)
+	if (size(M,1) /= npix .or. size(M,2) < nmaps) call abort(trim(literal) // ": unexpected storage array shape")
+	
+	! literal map initialized
+	literal_map = .true.
+end function literal_map
 
 ! output warning message to stderr
 subroutine warning(msg)

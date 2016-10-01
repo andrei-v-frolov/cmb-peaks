@@ -18,10 +18,13 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!real, parameter :: pi = 3.141592653589793238462643383279502884197169399375Q0
+
 character(len=8000) :: op, fin1, fin2, fin3, fout
-integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, n = 0, i
+integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, n = 0
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
 logical, dimension(:,:), allocatable :: valid
+integer i, seed(2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -40,6 +43,10 @@ allocate(valid(0:n,nmaps), source=.true.)
 if (allocated(M1) .and. .not. allocated(M2) .and. .not. allocated(M3)) valid = .not. (isnan(M1))
 if (allocated(M1) .and. allocated(M2) .and. .not. allocated(M3)) valid = .not. (isnan(M1) .or. isnan(M2))
 if (allocated(M1) .and. allocated(M2) .and. allocated(M3)) valid = .not. (isnan(M1) .or. isnan(M2) .or. isnan(M3))
+
+! initialize random number generator (use urandom on clusters!)
+open (333, file="/dev/random", action='read', form='binary')
+read (333) seed; call random_seed(PUT=seed); close (333)
 
 ! apply operator
 select case (op)
@@ -74,6 +81,12 @@ select case (op)
 			! case(3) should do tensor inpainting on IQU map
 			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord); end do
 		end select
+	
+	! random map generators
+	case ('randomize');
+		allocate(M2, mold=M1); allocate(M3, mold=M1)
+		call random_number(M2); call random_number(M3)
+		Mout = M1 * sqrt(-2.0*log(M2)) * cos(2.0*pi*M3)
 	
 	! polarization operators
 	case ('QU->EB');
@@ -110,7 +123,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','valid','invalid','QU->EB','EB->QU')
+		case ('log','valid','invalid','randomize','QU->EB','EB->QU')
 		case default; return
 	end select
 	

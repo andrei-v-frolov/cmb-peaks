@@ -101,7 +101,7 @@ function literal_map(literal, M, nside, nmaps)
 	i = index(literal, "@")
 	j = index(literal, ":")
 	
-	if (nmaps == 0) nmaps = 1; status = 0
+	status = 0
 	
 	if (i == 0) read(literal, *, iostat=status) value; if (status /= 0) return
 	if (i > 0 ) read(literal(:i-1), *, iostat=status) value; if (status /= 0) return
@@ -112,7 +112,8 @@ function literal_map(literal, M, nside, nmaps)
 	! check if map format is specified (in allocated storage?)
 	if (nside == 0 .and. allocated(M)) nside = npix2nside(size(M,1))
 	if (nmaps == 0 .and. allocated(M)) nmaps = size(M,2)
-	if (nside == 0 .or. nmaps == 0) call abort(trim(literal) // ": map dimensions not specified")
+	if (nmaps == 0 .and. .not. allocated(M)) nmaps = 1
+	if (nside == 0) call abort(trim(literal) // ": map dimensions not specified")
 	
 	! allocate storage if needed
 	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1,nmaps), source=value)

@@ -82,6 +82,14 @@ select case (op)
 			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord); end do
 		end select
 	
+	! logarithm of a tensor map
+	case ('log');
+		select case (nmaps)
+			case (1); Mout = log(M1)
+			case (3); forall (i=0:n) Mout(i,:) = log_iqu(M1(i,:))
+			case default; call abort(trim(op) // " conversion requires I or IQU map format")
+		end select
+	
 	! random map generators
 	case ('randomize');
 		allocate(M2, mold=M1); allocate(M3, mold=M1)
@@ -219,6 +227,18 @@ function ternary()
 	
 	! output map name
 	call getArgument(6, fout); if (fout .eq. '=:') call getArgument(7, fout)
+end function
+
+! logarithm of polarization tensor
+pure function log_iqu(iqu)
+	real(IO) log_iqu(3), iqu(3); intent(in) iqu
+	real(DP) P, PxP
+	
+	associate (I => iqu(1), Q => iqu(2), U => iqu(3))
+		PxP = Q*Q + U*U; P = sqrt(PxP)
+		log_iqu(1) = log(I*I - PxP)/2.0
+		log_iqu(2:3) = [Q,U]/P * log((I+P)/(I-P))/2.0
+	end associate
 end function
 
 ! full-sky QU to EB rotation wrapper

@@ -26,13 +26,14 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! inpaint map using multigrid diffusion where mask is not unity
-subroutine inpaint(map, mask, mout, nside, order)
+subroutine inpaint(map, mask, mout, nside, order, fill)
 	integer nside, order, i
-	real(IO), dimension(0:12*nside**2-1) :: map, mask, mout
-	type(multigrid), allocatable :: mg(:)
+	real(IO), dimension(0:12*nside**2-1) :: map, mask, fill, mout
+	type(multigrid), allocatable :: mg(:); optional fill
 	
 	if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
-	call mg_init(mg, nside, order, map*mask, mask)
+	if (present(fill)) call mg_init(mg, nside, order, map*mask, mask, fill)
+	if (.not. present(fill)) call mg_init(mg, nside, order, map*mask, mask)
 	
 	associate(result => mg(1)%map, residual => mg(1)%tmp, m => mg(1)%m)
 	if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
@@ -60,10 +61,11 @@ subroutine inpaint(map, mask, mout, nside, order)
 end subroutine inpaint
 
 ! init multigrid structure
-subroutine mg_init(mg, fside, order, imap, imask)
+subroutine mg_init(mg, fside, order, imap, imask, fill)
 	type(multigrid), allocatable :: mg(:)
 	integer i, k, l, fside, order, levels
-	real(IO), dimension(0:12*fside**2-1) :: imap, imask
+	real(IO), dimension(0:12*fside**2-1) :: imap, imask, fill
+	optional fill
 	
 	! total multigrid levels
 	levels = log(fside/4.0)/log(2.0)
@@ -91,7 +93,7 @@ subroutine mg_init(mg, fside, order, imap, imask)
 		call udgrade_nest(mg(l-1)%tmp, mg(l-1)%nside, tmp, nside)
 	end associate; end do
 	
-	! initalize stencils
+	! initialize stencils
 	do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
 		k = 0; do i = 0,n; if (mask(i) /= 0.0) cycle
 			call stencil(nside, NEST, i, nn(:,k), Lw=LAPL(:,k)); k = k+1
@@ -99,6 +101,12 @@ subroutine mg_init(mg, fside, order, imap, imask)
 		
 		if (verbose) write (*,*) l, nside, m
 	end associate; end do
+	
+	! initialize RHS with laplacian of a source map
+	if (present(fill)) then; l = 1; associate($MGVARS$, src => mg(l)%tmp)
+		src = fill;  if (order == RING) call convert_ring2nest(nside, src)
+		forall (k=0:m) rhs(nn(1,k)) = sum(LAPL(:,k)*src(nn(:,k)))/h2
+	end associate; end if
 end subroutine mg_init
 
 ! deallocate multigrid structure

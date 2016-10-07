@@ -75,11 +75,19 @@ select case (op)
 	case ('invalid'); where (.not. valid) Mout = 1.0
 	case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
 	case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
+	
+	! inpainting and filling
 	case ('inpaint');
 		select case (nmaps)
 			! case(2) should do tensor inpainting on QU map
 			! case(3) should do tensor inpainting on IQU map
 			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord); end do
+		end select
+	case ('inpaintwith');
+		select case (nmaps)
+			! case(2) should do tensor inpainting on QU map
+			! case(3) should do tensor inpainting on IQU map
+			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord, fill=M3(:,i)); end do
 		end select
 	
 	! logarithm of a tensor map

@@ -272,7 +272,7 @@ subroutine percentile(nside, map, valid, cdf)
 	call indexx(npix, M, idx)
 	call rankx(npix, idx, rank)
 	
-	cdf = (rank-1.0)/(used-1)
+	cdf = (rank-1)/(used-1.0)
 	where (.not. valid) cdf = 1.0/0.0
 	
 	deallocate(M, idx, rank)

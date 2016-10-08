@@ -132,7 +132,7 @@ stat/%.pdf: stat/%.dat
 
 ################### Binaries & Dependencies ####################
 
-$(BINDIR)/fcalc: mapio.o pdetools.o
+$(BINDIR)/fcalc: mapio.o pdetools.o rank.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o

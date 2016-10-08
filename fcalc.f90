@@ -57,6 +57,8 @@ select case (op)
 	case ('/');  Mout = M1 / M2
 	case ('//'); Mout = floor(M1/M2)
 	case ('**'); Mout = M1 ** M2
+	case ('accumulate'); Mout = M1 + M2*M2
+	case ('accumulate-'); Mout = M1 + (M2-M3)**2
 	
 	! comparison operators
 	case ('<');  where (M1 < M2) Mout = 1.0
@@ -192,7 +194,7 @@ function binary()
 	! binary operation guard
 	select case (x)
 		case ('+','-','*','/','//','**')
-		case ('project on','orthogonal')
+		case ('project on','orthogonal', 'accumulate')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
 		case ('valid','invalid','mask','unmask','inpaint')
 		case default; return
@@ -223,6 +225,7 @@ function ternary()
 	! is it really ternary?
 	select case (x)
 		case ('inpaint'); if (y .eq. 'with') ternary = .true.
+		case ('accumulate'); if (y .eq. '-') ternary = .true.
 	end select
 	
 	! ternary operation guard

@@ -57,6 +57,7 @@ select case (op)
 	case ('/');  Mout = M1 / M2
 	case ('//'); Mout = floor(M1/M2)
 	case ('**'); Mout = M1 ** M2
+	case ('sqrt'); Mout = sqrt(M1)
 	case ('accumulate'); Mout = M1 + M2*M2
 	case ('accumulate-'); Mout = M1 + (M2-M3)**2
 	
@@ -67,6 +68,9 @@ select case (op)
 	case ('>='); where (M1 >= M2) Mout = 1.0
 	case ('=','=='); where (M1 == M2) Mout = 1.0
 	case ('!=','/=','<>'); where (M1 /= M2) Mout = 1.0
+	
+	! rank-order map, outputing CDF value for valid pixels (on per channel basis)
+	case ('rank'); do i = 1,nmaps; call percentile(nside, M1(:,i), valid(:,i), Mout(:,i)); end do
 	
 	! projection operators
 	case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
@@ -92,16 +96,19 @@ select case (op)
 			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord, fill=M3(:,i)); end do
 		end select
 	
-	! logarithm of a tensor map
-	case ('log');
-		select case (nmaps)
-			case (1); Mout = log(M1)
-			case (3); forall (i=0:n) Mout(i,:) = log_iqu(M1(i,:))
-			case default; call abort(trim(op) // " conversion requires I or IQU map format")
+	! conversion operators
+	case ('nest');
+		select case (ord)
+			case (NEST,0); Mout = M1; ord = NEST
+			case (RING);   Mout = M1; call convert_ring2nest(nside, Mout); ord = NEST
+			case default; call abort(trim(op) // " conversion encountered unkown ordering")
 		end select
-	
-	! rank-order map, outputing CDF value for valid pixels (on per channel basis)
-	case ('rank'); do i = 1,nmaps; call percentile(nside, M1(:,i), valid(:,i), Mout(:,i)); end do
+	case ('ring');
+		select case (ord)
+			case (RING,0); Mout = M1; ord = RING
+			case (NEST);   Mout = M1; call convert_nest2ring(nside, Mout); ord = RING
+			case default; call abort(trim(op) // " conversion encountered unkown ordering")
+		end select
 	
 	! random map generators
 	case ('randomize');
@@ -110,6 +117,12 @@ select case (op)
 		Mout = M1 * sqrt(-2.0*log(M2)) * cos(2.0*pi*M3)
 	
 	! polarization operators
+	case ('log');
+		select case (nmaps)
+			case (1); Mout = log(M1)
+			case (3); forall (i=0:n) Mout(i,:) = log_iqu(M1(i,:))
+			case default; call abort(trim(op) // " conversion requires I or IQU map format")
+		end select
 	case ('QU->EB');
 		select case (nmaps)
 			case (2); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2))
@@ -144,7 +157,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','rank','valid','invalid','randomize','QU->EB','EB->QU')
+		case ('log','rank','sqrt','valid','invalid','randomize','QU->EB','EB->QU')
 		case default; return
 	end select
 	
@@ -170,7 +183,7 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('QU->EB','EB->QU')
+		case ('nest','ring','QU->EB','EB->QU')
 		case default; return
 	end select
 	

@@ -100,6 +100,9 @@ select case (op)
 			case default; call abort(trim(op) // " conversion requires I or IQU map format")
 		end select
 	
+	! rank-order map, outputing CDF value for valid pixels (on per channel basis)
+	case ('rank'); do i = 1,nmaps; call percentile(nside, M1(:,i), valid(:,i), Mout(:,i)); end do
+	
 	! random map generators
 	case ('randomize');
 		allocate(M2, mold=M1); allocate(M3, mold=M1)
@@ -141,7 +144,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','valid','invalid','randomize','QU->EB','EB->QU')
+		case ('log','rank','valid','invalid','randomize','QU->EB','EB->QU')
 		case default; return
 	end select
 	
@@ -251,6 +254,29 @@ pure function log_iqu(iqu)
 		log_iqu(2:3) = [Q,U]/P * log((I+P)/(I-P))/2.0
 	end associate
 end function
+
+! rank-order map, outputing CDF value for valid pixels
+subroutine percentile(nside, map, valid, cdf)
+	integer nside, npix, used
+	real(IO), dimension(0:12*nside**2-1) :: map, cdf
+	logical, dimension(0:12*nside**2-1) :: valid
+	real(DP), allocatable :: M(:)
+	integer, allocatable :: idx(:), rank(:)
+	
+	npix = nside2npix(nside)
+	allocate(M(npix), idx(npix), rank(npix))
+	
+	where (.not. valid) map = HUGE(map)
+	M = map; used = count(valid)
+	
+	call indexx(npix, M, idx)
+	call rankx(npix, idx, rank)
+	
+	cdf = (rank-1.0)/(used-1)
+	where (.not. valid) cdf = 1.0/0.0
+	
+	deallocate(M, idx, rank)
+end subroutine
 
 ! full-sky QU to EB rotation wrapper
 subroutine rotate_qu2eb(nside, order, lmax, QU, EB)

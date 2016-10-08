@@ -9,7 +9,7 @@ BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc pxl2map digest ksmap 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
 FFLAGS = -O3 -ipo -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
-#LDFLAGS = -static-intel
+LDFLAGS = -static-intel
 
 # HEALPix libraries
 HEALPIX ?= /opt/healpix
@@ -19,12 +19,16 @@ HPXLIB = -L$(HEALPIX)/lib -lhealpix
 # CFITSIO libraries
 CFITSIO_DIR ?= /opt/local
 FITINC = -I$(CFITSIO_DIR)/include
-FITLIB = -L$(CFITSIO_DIR)/lib -lcfitsio
+FITLIB = -L$(HEALPIX)/lib -lcfitsio
 
 # LAPACK libraries (use MKL if compiling with Intel Fortran)
 MKLROOT ?= /opt/intel/mkl
 LAPINC = -I$(MKLROOT)/include
 LAPLIB = -L$(MKLROOT)/lib -lmkl_rt
+
+# Intel's dynamic libraries location
+#LDFLAGS += -Wl,-rpath,/opt/intel/lib
+LDFLAGS += -Wl,-rpath,$(MKLROOT)/lib
 
 INCS += $(HPXINC) $(FITINC) $(LAPINC)
 LIBS += $(HPXLIB) $(FITLIB) $(LAPLIB)

@@ -110,7 +110,11 @@ select case (op)
 			case default; call abort(trim(op) // " conversion encountered unkown ordering")
 		end select
 	
-	! random map generators
+	! reduction operators
+	case ('sum'); deallocate(Mout); nmaps = 1; allocate(Mout(0:n,nmaps)); Mout(:,1) = sum(M1,2)
+	case ('product'); deallocate(Mout); nmaps = 1; allocate(Mout(0:n,nmaps)); Mout(:,1) = product(M1,2)
+	
+	! randomize operators
 	case ('randomize');
 		allocate(M2, mold=M1); allocate(M3, mold=M1)
 		call random_number(M2); call random_number(M3)
@@ -157,7 +161,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','rank','sqrt','valid','invalid','randomize','QU->EB','EB->QU')
+		case ('log','rank','sqrt','valid','invalid','randomize','QU->EB','EB->QU','sum','product')
 		case default; return
 	end select
 	

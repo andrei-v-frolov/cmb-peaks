@@ -111,8 +111,8 @@ select case (op)
 		end select
 	
 	! reduction operators
-	case ('sum'); deallocate(Mout); nmaps = 1; allocate(Mout(0:n,nmaps)); Mout(:,1) = sum(M1,2)
-	case ('product'); deallocate(Mout); nmaps = 1; allocate(Mout(0:n,nmaps)); Mout(:,1) = product(M1,2)
+	case ('sum');     nmaps = 1; Mout(:,1) = sum(M1,2)
+	case ('product'); nmaps = 1; Mout(:,1) = product(M1,2)
 	
 	! randomize operators
 	case ('randomize');
@@ -145,7 +145,7 @@ select case (op)
 end select
 
 ! write output map
-call write_map(fout, Mout, nside, ord, creator='FCALC')
+call write_map(fout, Mout(:,1:nmaps), nside, ord, creator='FCALC')
 
 contains
 

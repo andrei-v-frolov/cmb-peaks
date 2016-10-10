@@ -81,6 +81,8 @@ select case (op)
 	case ('invalid'); where (.not. valid) Mout = 1.0
 	case ('mask'); Mout = M1*M2; where (M2 == 0.0) Mout = 1.0/0.0
 	case ('unmask'); Mout = M1/M2; where (M2 == 0.0) Mout = 1.0/0.0
+	case ('within:'); where (M1 >= M2 .and. M1 <= M3) Mout = 1.0
+	case ('apodize:'); Mout = apodize((M1-M2)/(M3-M2))
 	
 	! inpainting and filling
 	case ('inpaint');
@@ -246,6 +248,7 @@ function ternary()
 	select case (x)
 		case ('inpaint'); if (y .eq. 'with') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
+		case ('within','apodize'); if (y .eq. ':') ternary = .true.
 	end select
 	
 	! ternary operation guard
@@ -258,6 +261,17 @@ function ternary()
 	
 	! output map name
 	call getArgument(6, fout); if (fout .eq. '=:') call getArgument(7, fout)
+end function
+
+! apodization function smoothly interpolates between 0 and 1
+elemental function apodize(x)
+	real(IO) x, apodize; intent(in) x
+	
+	apodize = 0.0; if (x <= 0.0) return
+	apodize = 1.0; if (x >= 1.0) return
+	
+	!apodize = (1.0+tanh(tan(pi*(x-0.5))))/2.0
+	apodize = sin(pi/2.0*x)**2
 end function
 
 ! logarithm of polarization tensor

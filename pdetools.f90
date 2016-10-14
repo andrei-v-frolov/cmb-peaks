@@ -193,10 +193,10 @@ subroutine neighbours(nside, order, i, nn, k)
 end subroutine neighbours
 
 ! gnomonic coordinates (X,Y) of a pixel p around origin i (in arbitrary map ordering)
-subroutine pix2gno(nside, order, i, p, XY, R)
-	integer nside, order, i, p; real(DP) XY(2), R
+subroutine pix2gno(nside, order, i, p, XY, R2)
+	integer nside, order, i, p; real(DP) XY(2), R2
 	real(DP) theta, phi, U(3), V(3), W(3), X(3), Y(3)
-	optional XY, R
+	optional XY, R2
 	
 	! convert pixels to coordinates
 	select case(order)
@@ -213,7 +213,7 @@ subroutine pix2gno(nside, order, i, p, XY, R)
 	end select
 	
 	! project onto a tangent plane through origin
-	W = V/sum(U*V) - U; if (present(R)) R = sqrt(sum(W*W))
+	W = V/sum(U*V) - U; if (present(R2)) R2 = sum(W*W)
 	
 	! bail unless we want coordinates
 	if (.not. present(XY)) return
@@ -236,7 +236,6 @@ subroutine stencil(nside, order, i, nn, count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
 	optional count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
 	
 	! working variables
-	real, parameter :: gamma = -1.0
 	integer, parameter :: m = 9, n = 10
 	real(DP) x, y, XY(2), A(m), B(m), F(m,n), S(m), U(m,m), Q(n,m), V(n,n), W(m*n)
 	
@@ -253,10 +252,11 @@ subroutine stencil(nside, order, i, nn, count, La, Lw, Lx, Dx, Dy, Dxx, Dxy, Dyy
 	
 	! distance-weighted Laplacian stencil (better, still cheap to calculate)
 	if (present(Lw)) then
-		do j = 1,k; call pix2gno(nside, order, i, nn(j+1), R=S(j)); end do
-		W(1:k) = 4.0*S(1:k)**gamma/sum(S(1:k)**(gamma+2.0)); W(k+1:) = 0.0
+		do j = 1,k; call pix2gno(nside, order, i, nn(j+1), R2=S(j)); end do
+		S(1:k) = S(1:k) * nside**2/(pi/3.0); W(1:k) = exp(-S(1:k)/1.61)
+		W(1:k) = 4.0*W(1:k)/sum(S(1:k)*W(1:k)); W(k+1:) = 0.0
 		
-		Lw = (/ -sum(W(1:k)), W(1:8) /) * (pi/3.0)/nside**2
+		Lw = (/ -sum(W(1:k)), W(1:8) /)
 	end if
 	
 	! bail unless exact (and expensive!) stencils are requested

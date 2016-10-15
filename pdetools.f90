@@ -26,15 +26,26 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! inpaint map using multigrid diffusion where mask is not unity
-subroutine inpaint(map, mask, mout, nside, order, fill)
-	integer nside, order, i
-	real(IO), dimension(0:12*nside**2-1) :: map, mask, fill, mout
-	type(multigrid), allocatable :: mg(:); optional fill
+subroutine inpaint(map, mask, mout, nside, order, fill, apo)
+	integer nside, order, i, mode
+	real(IO), dimension(0:12*nside**2-1) :: map, mask, fill, apo, mout
+	type(multigrid), allocatable :: mg(:); optional fill, apo
 	
 	if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
-	if (present(fill)) call mg_init(mg, nside, order, map*mask, mask, fill)
-	if (.not. present(fill)) call mg_init(mg, nside, order, map*mask, mask)
 	
+	! inpainting mode
+	mode = 0
+	if (present(fill)) mode = mode + 1
+	if (present(apo))  mode = mode + 2
+	
+	select case (mode)
+		case (3); call mg_init(mg, nside, order, map*mask, mask, fill, apo)
+		case (2); call mg_init(mg, nside, order, map*mask, mask, map,  apo)
+		case (1); call mg_init(mg, nside, order, map*mask, mask, fill)
+		case (0); call mg_init(mg, nside, order, map*mask, mask)
+	end select
+	
+	! run multigrid iterations
 	associate(result => mg(1)%map, residual => mg(1)%tmp, m => mg(1)%m)
 	if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
 	do i = 1,18
@@ -61,11 +72,11 @@ subroutine inpaint(map, mask, mout, nside, order, fill)
 end subroutine inpaint
 
 ! init multigrid structure
-subroutine mg_init(mg, fside, order, imap, imask, fill)
+subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 	type(multigrid), allocatable :: mg(:)
 	integer i, k, l, fside, order, levels
-	real(IO), dimension(0:12*fside**2-1) :: imap, imask, fill
-	optional fill
+	real(IO), dimension(0:12*fside**2-1) :: imap, imask, fill, apo
+	optional fill, apo
 	
 	! total multigrid levels
 	levels = log(fside/4.0)/log(2.0)
@@ -106,6 +117,12 @@ subroutine mg_init(mg, fside, order, imap, imask, fill)
 	if (present(fill)) then; l = 1; associate($MGVARS$, src => mg(l)%tmp)
 		src = fill;  if (order == RING) call convert_ring2nest(nside, src)
 		forall (k=0:m) rhs(nn(1,k)) = sum(LAPL(:,k)*src(nn(:,k)))/h2
+	end associate; end if
+	
+	! apodize RHS if apodization mask is provided
+	if (present(apo)) then; l = 1; associate($MGVARS$, src => mg(l)%tmp)
+		src = apo;   if (order == RING) call convert_ring2nest(nside, src)
+		rhs = rhs*src
 	end associate; end if
 end subroutine mg_init
 

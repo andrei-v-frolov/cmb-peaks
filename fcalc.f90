@@ -97,6 +97,12 @@ select case (op)
 			! case(3) should do tensor inpainting on IQU map
 			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord, fill=M3(:,i)); end do
 		end select
+	case ('inpaintapodize');
+		select case (nmaps)
+			! case(2) should do tensor inpainting on QU map
+			! case(3) should do tensor inpainting on IQU map
+			case default; do i = 1,nmaps; call inpaint(M1(:,i), M2(:,i), Mout(:,i), nside, ord, apo=M3(:,i)); end do
+		end select
 	
 	! conversion operators
 	case ('nest');
@@ -246,7 +252,7 @@ function ternary()
 	
 	! is it really ternary?
 	select case (x)
-		case ('inpaint'); if (y .eq. 'with') ternary = .true.
+		case ('inpaint'); if (y .eq. 'with' .or. y .eq. 'apodize') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
 		case ('within','apodize'); if (y .eq. ':') ternary = .true.
 	end select

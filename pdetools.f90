@@ -26,7 +26,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! inpaint map using multigrid diffusion where mask is not unity
-subroutine inpaint(map, mask, mout, nside, order, fill, apo)
+subroutine inpaint(nside, order, map, mask, mout, fill, apo)
 	integer nside, order, i, mode
 	real(IO), dimension(0:12*nside**2-1) :: map, mask, fill, apo, mout
 	type(multigrid), allocatable :: mg(:); optional fill, apo

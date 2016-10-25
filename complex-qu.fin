@@ -6,3 +6,24 @@ subroutine VARIANT(convert_ring2nest)(nside, zmap)
 	call convert_ring2nest(nside, map(1,:))
 	call convert_ring2nest(nside, map(2,:))
 end subroutine
+
+subroutine VARIANT(convert_nest2ring)(nside, zmap)
+	integer nside; real(XP), pointer :: map(:,:)
+	complex(XP), dimension(0:12*nside**2-1), target :: zmap
+	
+	call C_F_POINTER(C_LOC(zmap), map, [2,12*nside**2])
+	call convert_nest2ring(nside, map(1,:))
+	call convert_nest2ring(nside, map(2,:))
+end subroutine
+
+subroutine VARIANT(udgrade_nest)(zmap_in, nside_in, zmap_out, nside_out)
+	integer nside_in, nside_out
+	real(XP), pointer :: map_in(:,:), map_out(:,:)
+	complex(XP), dimension(0:12*nside_in**2-1),  target :: zmap_in
+	complex(XP), dimension(0:12*nside_out**2-1), target :: zmap_out
+	
+	call C_F_POINTER(C_LOC(zmap_in),  map_in,  [2,12*nside_in**2] )
+	call C_F_POINTER(C_LOC(zmap_out), map_out, [2,12*nside_out**2])
+	call udgrade_nest(map_in(1,:), nside_in, map_out(1,:), nside_out)
+	call udgrade_nest(map_in(2,:), nside_in, map_out(2,:), nside_out)
+end subroutine

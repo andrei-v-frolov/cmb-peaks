@@ -144,7 +144,9 @@ $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
+complex-qu.o: complex-qu.fin
+
 $(BINDIR)/%: %.f90
 	$(FC) $(FFLAGS) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
 %.o %.mod: %.f90
-	$(FC) $(FFLAGS) $(INCS) $^ -c
+	$(FC) $(FFLAGS) $(INCS) $< -c

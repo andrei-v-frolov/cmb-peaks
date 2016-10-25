@@ -1,0 +1,8 @@
+subroutine VARIANT(convert_ring2nest)(nside, zmap)
+	integer nside; real(XP), pointer :: map(:,:)
+	complex(XP), dimension(0:12*nside**2-1), target :: zmap
+	
+	call C_F_POINTER(C_LOC(zmap), map, [2,12*nside**2])
+	call convert_ring2nest(nside, map(1,:))
+	call convert_ring2nest(nside, map(2,:))
+end subroutine

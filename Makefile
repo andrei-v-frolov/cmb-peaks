@@ -144,6 +144,7 @@ $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
+mapio.o: mapio.fin
 complex-qu.o: complex-qu.fin
 
 $(BINDIR)/%: %.f90

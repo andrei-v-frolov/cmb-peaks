@@ -145,6 +145,7 @@ $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
 mapio.o: mapio.fin
+pdetools.o: multigrid.fin
 complex-qu.o: complex-qu.fin
 
 $(BINDIR)/%: %.f90

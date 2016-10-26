@@ -28,7 +28,8 @@ contains
 ! inpaint map using multigrid diffusion where mask is not unity
 subroutine inpaint(nside, order, map, mask, mout, fill, apo)
 	integer nside, order, i, mode
-	real(IO), dimension(0:12*nside**2-1) :: map, mask, fill, apo, mout
+	real(IO), dimension(0:12*nside**2-1) :: map, fill, mout
+	real(IO), dimension(0:12*nside**2-1) :: mask, apo
 	type(grid), allocatable :: mg(:); optional fill, apo
 	
 	if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
@@ -75,7 +76,8 @@ end subroutine inpaint
 subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 	type(grid), allocatable :: mg(:)
 	integer i, k, l, fside, order, levels
-	real(IO), dimension(0:12*fside**2-1) :: imap, imask, fill, apo
+	real(IO), dimension(0:12*fside**2-1) :: imap, fill
+	real(IO), dimension(0:12*fside**2-1) :: imask, apo
 	optional fill, apo
 	
 	! total multigrid levels

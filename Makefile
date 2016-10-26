@@ -136,7 +136,7 @@ stat/%.pdf: stat/%.dat
 
 ################### Binaries & Dependencies ####################
 
-$(BINDIR)/fcalc: mapio.o pdetools.o rank.o
+# binaries
 $(BINDIR)/fcalc: mapio.o pdetools.o complex-qu.o rank.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
@@ -145,10 +145,12 @@ $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
+# modules
 mapio.o: mapio.fin
-pdetools.o: multigrid.fin
+pdetools.o: multigrid.fin complex-qu.o
 complex-qu.o: complex-qu.fin
 
+# generic rules
 $(BINDIR)/%: %.f90
 	$(FC) $(FFLAGS) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
 %.o %.mod: %.f90

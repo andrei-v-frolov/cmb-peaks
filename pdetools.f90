@@ -7,15 +7,15 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-type multigrid
-	integer nside, n, m; real(DP) h2		! grid specification
-	real(DP), dimension(:), allocatable :: map, rhs, tmp
-	real(DP), dimension(:,:), allocatable :: LAPL	! Laplacian stencil
-	integer,  dimension(:,:), allocatable :: nn	! nearest neighbours
+type grid
+	integer nside, n, m; real(DP) h2                        ! grid specification
+	real(DP), dimension(:), allocatable :: map, rhs, tmp    ! variables on a HEALPix grid (0:n)
+	real(DP), dimension(:,:), allocatable :: laplacian      ! packed Laplacian stencil  (9,0:m)
+	integer,  dimension(:,:), allocatable :: nn             ! packed nearest neighbours (9,0:m)
 end type
 
 #define $MG(X) X => mg(l)%X
-#define $MGVARS$ $MG(nside), $MG(n), $MG(m), $MG(h2), $MG(map), $MG(rhs), $MG(tmp), $MG(LAPL), $MG(nn)
+#define $MGVARS$ $MG(nside), $MG(n), $MG(m), $MG(h2), $MG(map), $MG(rhs), $MG(tmp), $MG(laplacian), $MG(nn)
 
 public :: inpaint, stencil
 
@@ -29,7 +29,7 @@ contains
 subroutine inpaint(nside, order, map, mask, mout, fill, apo)
 	integer nside, order, i, mode
 	real(IO), dimension(0:12*nside**2-1) :: map, mask, fill, apo, mout
-	type(multigrid), allocatable :: mg(:); optional fill, apo
+	type(grid), allocatable :: mg(:); optional fill, apo
 	
 	if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
 	
@@ -73,7 +73,7 @@ end subroutine inpaint
 
 ! init multigrid structure
 subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
-	type(multigrid), allocatable :: mg(:)
+	type(grid), allocatable :: mg(:)
 	integer i, k, l, fside, order, levels
 	real(IO), dimension(0:12*fside**2-1) :: imap, imask, fill, apo
 	optional fill, apo
@@ -90,7 +90,7 @@ subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 		h2 = (pi/3.0)/nside**2
 		
 		allocate(mg(l)%map(0:n), mg(l)%rhs(0:n), mg(l)%tmp(0:n), source=0.0)
-		allocate(mg(l)%nn(9,0:n), mg(l)%LAPL(9,0:n))
+		allocate(mg(l)%nn(9,0:n), mg(l)%laplacian(9,0:n))
 	end associate; end do
 	
 	! initialize finest grid
@@ -107,7 +107,7 @@ subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 	! initialize stencils
 	do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
 		k = 0; do i = 0,n; if (mask(i) /= 0.0) cycle
-			call stencil(nside, NEST, i, nn(:,k), Lw=LAPL(:,k)); k = k+1
+			call stencil(nside, NEST, i, nn(:,k), Lw=laplacian(:,k)); k = k+1
 		end do; m = k-1
 		
 		if (verbose) write (*,*) l, nside, m
@@ -116,7 +116,7 @@ subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 	! initialize RHS with laplacian of a source map
 	if (present(fill)) then; l = 1; associate($MGVARS$, src => mg(l)%tmp)
 		src = fill;  if (order == RING) call convert_ring2nest(nside, src)
-		forall (k=0:m) rhs(nn(1,k)) = sum(LAPL(:,k)*src(nn(:,k)))/h2
+		forall (k=0:m) rhs(nn(1,k)) = sum(laplacian(:,k)*src(nn(:,k)))/h2
 	end associate; end if
 	
 	! apodize RHS if apodization mask is provided
@@ -128,11 +128,11 @@ end subroutine mg_init
 
 ! deallocate multigrid structure
 subroutine mg_free(mg)
-	type(multigrid), allocatable :: mg(:); integer l
+	type(grid), allocatable :: mg(:); integer l
 	
 	! release multigrid storage
 	do l = 1,size(mg)
-		deallocate(mg(l)%map, mg(l)%rhs, mg(l)%tmp, mg(l)%LAPL, mg(l)%nn)
+		deallocate(mg(l)%map, mg(l)%rhs, mg(l)%tmp, mg(l)%laplacian, mg(l)%nn)
 	end do
 	
 	! release multigrid structure
@@ -141,11 +141,11 @@ end subroutine mg_free
 
 ! smooth map using Jacobi iteration
 subroutine mg_smooth(mg, l, iterations)
-	type(multigrid) mg(:); integer i, k, l, iterations
+	type(grid) mg(:); integer i, k, l, iterations
 	
 	associate($MGVARS$)
 	do i = 1,iterations
-		forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(LAPL(2:9,k)*map(nn(2:9,k))))/LAPL(1,k)
+		forall (k=0:m) tmp(k) = (h2*rhs(nn(1,k)) - sum(laplacian(2:9,k)*map(nn(2:9,k))))/laplacian(1,k)
 		forall (k=0:m) map(nn(1,k)) = tmp(k)
 	end do
 	end associate
@@ -153,16 +153,16 @@ end subroutine mg_smooth
 
 ! calculate residual
 subroutine mg_residual(mg, l)
-	type(multigrid) mg(:); integer k, l
+	type(grid) mg(:); integer k, l
 	
 	associate($MGVARS$); tmp = 0.0
-	forall (k=0:m) tmp(nn(1,k)) = rhs(nn(1,k)) - sum(LAPL(:,k)*map(nn(:,k)))/h2
+	forall (k=0:m) tmp(nn(1,k)) = rhs(nn(1,k)) - sum(laplacian(:,k)*map(nn(:,k)))/h2
 	end associate
 end subroutine mg_residual
 
 ! multigrid W-stroke: inpaints level-l map with L[map] = rhs where masked
 recursive subroutine mg_wstroke(mg, l)
-	type(multigrid) mg(:); integer i, k, l
+	type(grid) mg(:); integer i, k, l
 	
 	! pre-smooth
 	call mg_smooth(mg, l, 8)

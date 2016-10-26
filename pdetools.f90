@@ -1,7 +1,6 @@
 module pdetools ! PDE operations on a HEALPix grid
 
 use mapio
-use udgrade_nr
 use complex_qu
 
 implicit none

@@ -2,14 +2,22 @@ module pdetools ! PDE operations on a HEALPix grid
 
 use mapio
 use udgrade_nr
+use complex_qu
 
 implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-type grid
+type grid_dp
 	integer nside, n, m; real(DP) h2                        ! grid specification
 	real(DP), dimension(:), allocatable :: map, rhs, tmp    ! variables on a HEALPix grid (0:n)
+	real(DP), dimension(:,:), allocatable :: laplacian      ! packed Laplacian stencil  (9,0:m)
+	integer,  dimension(:,:), allocatable :: nn             ! packed nearest neighbours (9,0:m)
+end type
+
+type grid_zd
+	integer nside, n, m; real(DP) h2                        ! grid specification
+	complex(DP), dimension(:), allocatable :: map, rhs, tmp ! variables on a HEALPix grid (0:n)
 	real(DP), dimension(:,:), allocatable :: laplacian      ! packed Laplacian stencil  (9,0:m)
 	integer,  dimension(:,:), allocatable :: nn             ! packed nearest neighbours (9,0:m)
 end type
@@ -19,12 +27,29 @@ end type
 
 public :: inpaint, stencil
 
+! generic iterfaces are implemented using Fortran preprocessor
+#define GENERIC(name) interface name; module procedure name ## _sp, name ## _zs; end interface
+
+GENERIC(inpaint)
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! single precision, real maps
+#define XP SP
+#define DATA real
+#define GRID type(grid_dp)
+#define VARIANT(name) name ## _sp
+#include 'multigrid.fin'
+
+! single precision, complex maps
+#define XP SP
+#define DATA complex
+#define GRID type(grid_zd)
+#define VARIANT(name) name ## _zs
 #include 'multigrid.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

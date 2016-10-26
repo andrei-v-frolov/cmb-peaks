@@ -1,9 +1,9 @@
 ! inpaint map using multigrid diffusion where mask is not unity
-subroutine inpaint(nside, order, map, mask, mout, fill, apo)
+subroutine VARIANT(inpaint)(nside, order, map, mask, mout, fill, apo)
 	integer nside, order, i, mode
-	real(IO), dimension(0:12*nside**2-1) :: map, fill, mout
-	real(IO), dimension(0:12*nside**2-1) :: mask, apo
-	type(grid), allocatable :: mg(:); optional fill, apo
+	DATA(XP), dimension(0:12*nside**2-1) :: map, fill, mout
+	real(XP), dimension(0:12*nside**2-1) :: mask, apo
+	GRID, allocatable :: mg(:); optional fill, apo
 	
 	if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
 	
@@ -13,10 +13,10 @@ subroutine inpaint(nside, order, map, mask, mout, fill, apo)
 	if (present(apo))  mode = mode + 2
 	
 	select case (mode)
-		case (3); call mg_init(mg, nside, order, map*mask, mask, fill, apo)
-		case (2); call mg_init(mg, nside, order, map*mask, mask, map,  apo)
-		case (1); call mg_init(mg, nside, order, map*mask, mask, fill)
-		case (0); call mg_init(mg, nside, order, map*mask, mask)
+		case (3); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill, apo)
+		case (2); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, map,  apo)
+		case (1); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill)
+		case (0); call VARIANT(mg_init)(mg, nside, order, map*mask, mask)
 	end select
 	
 	! run multigrid iterations
@@ -24,14 +24,14 @@ subroutine inpaint(nside, order, map, mask, mout, fill, apo)
 	if (verbose) write (*,*) "Running W-stroke iterations, average/max residual:"
 	do i = 1,18
 		! run W-stroke
-		call mg_wstroke(mg, 1)
+		call VARIANT(mg_wstroke)(mg, 1)
 		
 		! feather up on the last iteration
-		if (i == 18) call mg_smooth(mg, 1, 8)
+		if (i == 18) call VARIANT(mg_smooth)(mg, 1, 8)
 		
 		! output residual
 		if (.not. verbose) cycle
-		call mg_residual(mg, 1)
+		call VARIANT(mg_residual)(mg, 1)
 		write (*,*) sqrt(sum(residual**2))/m, maxval(abs(residual))
 	end do
 	
@@ -39,18 +39,19 @@ subroutine inpaint(nside, order, map, mask, mout, fill, apo)
 	end associate
 	
 	! clean up
-	call mg_free(mg)
+	call VARIANT(mg_free)(mg)
 	
 	! convert back to original order
 	if (order == RING) call convert_nest2ring(nside, mout)
-end subroutine inpaint
+end subroutine
 
 ! init multigrid structure
-subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
-	type(grid), allocatable :: mg(:)
+subroutine VARIANT(mg_init)(mg, fside, order, imap, imask, fill, apo)
+	GRID, allocatable :: mg(:)
 	integer i, k, l, fside, order, levels
-	real(IO), dimension(0:12*fside**2-1) :: imap, fill
-	real(IO), dimension(0:12*fside**2-1) :: imask, apo
+	DATA(XP), dimension(0:12*fside**2-1) :: imap, fill
+	real(XP), dimension(0:12*fside**2-1) :: imask, apo
+	DATA(DP), parameter :: zero = 0.0
 	optional fill, apo
 	
 	! total multigrid levels
@@ -64,7 +65,7 @@ subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 		n = nside2npix(nside)-1
 		h2 = (pi/3.0)/nside**2
 		
-		allocate(mg(l)%map(0:n), mg(l)%rhs(0:n), mg(l)%tmp(0:n), source=0.0)
+		allocate(mg(l)%map(0:n), mg(l)%rhs(0:n), mg(l)%tmp(0:n), source=zero)
 		allocate(mg(l)%nn(9,0:n), mg(l)%laplacian(9,0:n))
 	end associate; end do
 	
@@ -99,11 +100,11 @@ subroutine mg_init(mg, fside, order, imap, imask, fill, apo)
 		src = apo;   if (order == RING) call convert_ring2nest(nside, src)
 		rhs = rhs*src
 	end associate; end if
-end subroutine mg_init
+end subroutine
 
 ! deallocate multigrid structure
-subroutine mg_free(mg)
-	type(grid), allocatable :: mg(:); integer l
+subroutine VARIANT(mg_free)(mg)
+	GRID, allocatable :: mg(:); integer l
 	
 	! release multigrid storage
 	do l = 1,size(mg)
@@ -112,11 +113,11 @@ subroutine mg_free(mg)
 	
 	! release multigrid structure
 	deallocate(mg)
-end subroutine mg_free
+end subroutine
 
 ! smooth map using Jacobi iteration
-subroutine mg_smooth(mg, l, iterations)
-	type(grid) mg(:); integer i, k, l, iterations
+subroutine VARIANT(mg_smooth)(mg, l, iterations)
+	GRID mg(:); integer i, k, l, iterations
 	
 	associate($MGVARS$)
 	do i = 1,iterations
@@ -124,40 +125,40 @@ subroutine mg_smooth(mg, l, iterations)
 		forall (k=0:m) map(nn(1,k)) = tmp(k)
 	end do
 	end associate
-end subroutine mg_smooth
+end subroutine
 
 ! calculate residual
-subroutine mg_residual(mg, l)
-	type(grid) mg(:); integer k, l
+subroutine VARIANT(mg_residual)(mg, l)
+	GRID mg(:); integer k, l
 	
 	associate($MGVARS$); tmp = 0.0
 	forall (k=0:m) tmp(nn(1,k)) = rhs(nn(1,k)) - sum(laplacian(:,k)*map(nn(:,k)))/h2
 	end associate
-end subroutine mg_residual
+end subroutine
 
 ! multigrid W-stroke: inpaints level-l map with L[map] = rhs where masked
-recursive subroutine mg_wstroke(mg, l)
-	type(grid) mg(:); integer i, k, l
+recursive subroutine VARIANT(mg_wstroke)(mg, l)
+	GRID mg(:); integer i, k, l
 	
 	! pre-smooth
-	call mg_smooth(mg, l, 8)
+	call VARIANT(mg_smooth)(mg, l, 8)
 	
 	! solve coarse problem (with at least a few pixels)
 	if (l < size(mg) .and. mg(l+1)%m > 16) then
-		associate($MGVARS$, cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
-		
+	associate($MGVARS$, cmap => mg(l+1)%map, crhs => mg(l+1)%rhs)
 		! downgrade residual
-		call mg_residual(mg, l)
+		call VARIANT(mg_residual)(mg, l)
 		call udgrade_nest(tmp, nside, crhs, mg(l+1)%nside)
 		
 		! W-stroke schedule
-		cmap = 0.0; do i = 1,2; call mg_wstroke(mg, l+1); end do
+		cmap = 0.0; do i = 1,2; call VARIANT(mg_wstroke)(mg, l+1); end do
 		
 		! upgrade correction and update the map
 		call udgrade_nest(cmap, mg(l+1)%nside, tmp, nside)
 		forall (k=0:m) map(nn(1,k)) = map(nn(1,k)) + tmp(nn(1,k))
-	end associate; else; call mg_smooth(mg, l, max(mg(l)%m-15,48)); end if
+	end associate
+	else; call VARIANT(mg_smooth)(mg, l, max(mg(l)%m-15,48)); end if
 	
 	! post-smooth
-	call mg_smooth(mg, l, 8)
-end subroutine mg_wstroke
+	call VARIANT(mg_smooth)(mg, l, 8)
+end subroutine

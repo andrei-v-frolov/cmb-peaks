@@ -32,7 +32,7 @@ subroutine VARIANT(inpaint)(nside, order, map, mask, mout, fill, apo)
 		! output residual
 		if (.not. verbose) cycle
 		call VARIANT(mg_residual)(mg, 1)
-		write (*,*) sqrt(sum(residual**2))/m, maxval(abs(residual))
+		write (*,*) sqrt(sum(abs(residual)**2)/(m+1)), maxval(abs(residual))
 	end do
 	
 	mout = result

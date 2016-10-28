@@ -83,7 +83,7 @@ subroutine VARIANT(mg_init)(mg, fside, order, imap, imask, fill, apo)
 	! initialize stencils
 	do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
 		k = 0; do i = 0,n; if (mask(i) /= 0.0) cycle
-			call stencil(nside, NEST, i, nn(:,k), Lw=laplacian(:,k)); k = k+1
+			call stencil(nside, NEST, i, nn(:,k), STENCIL=laplacian(:,k)); k = k+1
 		end do; m = k-1
 		
 		if (verbose) write (*,*) l, nside, m

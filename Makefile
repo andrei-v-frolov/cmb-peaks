@@ -148,7 +148,6 @@ $(BINDIR)/wiener: polint.o
 # modules
 mapio.o: mapio.fin
 pdetools.o: multigrid.fin complex-qu.o
-complex-qu.o: complex-qu.fin
 complex-qu.o: almtools.fin complex-qu.fin mapio.o
 
 # generic rules

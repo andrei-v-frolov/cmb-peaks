@@ -85,24 +85,9 @@ select case (op)
 	case ('apodize:'); Mout = apodize((M1-M2)/(M3-M2))
 	
 	! inpainting and filling
-	case ('inpaint');
-		select case (nmaps)
-			! case(2) should do tensor inpainting on QU map
-			! case(3) should do tensor inpainting on IQU map
-			case default; do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i)); end do
-		end select
-	case ('inpaintwith');
-		select case (nmaps)
-			! case(2) should do tensor inpainting on QU map
-			! case(3) should do tensor inpainting on IQU map
-			case default; do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), fill=M3(:,i)); end do
-		end select
-	case ('inpaintapodize');
-		select case (nmaps)
-			! case(2) should do tensor inpainting on QU map
-			! case(3) should do tensor inpainting on IQU map
-			case default; do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), apo=M3(:,i)); end do
-		end select
+	case ('inpaint'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i)); end do
+	case ('inpaintwith'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), fill=M3(:,i)); end do
+	case ('inpaintapodize'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), apo=M3(:,i)); end do
 	
 	! conversion operators
 	case ('nest');
@@ -147,6 +132,13 @@ select case (op)
 			case (3); call rotate_eb2qu(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires EB or IEB map format")
 		end select
+	case ('inpaint QU');
+		select case (nmaps)
+			case (2); call inpaint_qu(nside, ord, M1(:,1:2), M2(:,1), Mout(:,1:2))
+			case (3); call inpaint_qu(nside, ord, M1(:,2:3), M2(:,2), Mout(:,2:3))
+			          call inpaint(nside, ord, M1(:,1), M2(:,1), Mout(:,1))
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
 	
 	! unknown operator
 	case default; call abort(trim(op) // ": operation not supported")
@@ -156,6 +148,8 @@ end select
 call write_map(fout, Mout(:,1:nmaps), nside, ord, creator='FCALC')
 
 contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! parse prefix operator command line
 function prefix()
@@ -224,7 +218,7 @@ function binary()
 		case ('+','-','*','/','//','**')
 		case ('project on','orthogonal', 'accumulate')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
-		case ('valid','invalid','mask','unmask','inpaint')
+		case ('valid','invalid','mask','unmask','inpaint','inpaint QU')
 		case default; return
 	end select
 	
@@ -292,6 +286,8 @@ pure function log_iqu(iqu)
 	end associate
 end function
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ! rank-order map, outputing CDF value for valid pixels
 subroutine percentile(nside, map, valid, cdf)
 	integer nside, npix, used
@@ -313,6 +309,24 @@ subroutine percentile(nside, map, valid, cdf)
 	where (.not. valid) cdf = 1.0/0.0
 	
 	deallocate(M, idx, rank)
+end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! wrapper for tensor inpainting of QU maps
+subroutine inpaint_qu(nside, order, map, mask, mout)
+	integer nside, order
+	real(IO), dimension(0:12*nside**2-1,1:2) :: map, mout
+	real(IO), dimension(0:12*nside**2-1) :: mask
+	complex(IO), dimension(:), allocatable :: Z
+	
+	allocate(Z(0:12*nside**2-1))
+	
+	Z = cmplx(map(:,1), map(:,2))
+	call inpaint(nside, ord, Z, mask, Z)
+	mout(:,1) = real(Z); mout(:,2) = imag(Z)
+	
+	deallocate(Z)
 end subroutine
 
 end

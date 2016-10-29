@@ -64,3 +64,74 @@ subroutine VARIANT(purify_qu)(nside, order, lmax, QU, purified, scaleE, scaleB)
 	
 	deallocate(map, alms)
 end subroutine
+
+! full-sky Krylov subspace generator for pure E and B eigenmodes of QU map
+subroutine VARIANT(krylov_qu)(nside, order, lmax, QU, EQU, BQU, lambda)
+	integer nside, npix, lmax, order, spin, l, m
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU, EQU, BQU
+	real(DP), dimension(:,:), allocatable :: map
+	complex(DPC), dimension(:,:,:), allocatable :: alms, pure
+	real(XP), optional :: lambda
+	optional EQU, BQU
+	
+	! if we have nothing to do, bail out immediately
+	if (.not. present(EQU) .and. .not. present(BQU)) return
+	
+	npix = nside2npix(nside); spin = 2
+	allocate(map(0:npix-1,1:2), alms(1:2, 0:lmax, 0:lmax), pure(1:2, 0:lmax, 0:lmax))
+	
+	LOAD(map, QU); if (order == NEST) call convert_nest2ring(nside, map)
+	
+	call map2alm_spin(nside, lmax, lmax, spin, map, alms)
+	
+	if (present(EQU)) then
+		pure = 0.0; do l = 2,lmax; do m = 0,l
+			pure(1,l,m) = alms(1,l,m)/(l-1)/l/(l+1)/(l+2)
+		end do; end do
+		
+		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
+		if (order == NEST) call convert_ring2nest(nside, map)
+		COPY(map,EQU); if (present(lambda)) EQU = EQU + lambda*QU
+	end if
+	
+	if (present(BQU)) then
+		pure = 0.0; do l = 2,lmax; do m = 0,l
+			pure(2,l,m) = alms(2,l,m)/(l-1)/l/(l+1)/(l+2)
+		end do; end do
+		
+		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
+		if (order == NEST) call convert_ring2nest(nside, map)
+		COPY(map,EQU); if (present(lambda)) EQU = EQU + lambda*QU
+	end if
+	
+	deallocate(map, alms, pure)
+end subroutine
+
+! Lanczos iterator on a masked QU map
+subroutine VARIANT(lanczos_qu)(nside, order, lmax, k, QU, mask, out)
+	integer nside, order, lmax, i, k, n
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU, mask, out
+	real(DP), dimension(:,:), allocatable :: M, U, V, W
+	real(DP) beta
+	
+	n = nside2npix(nside)-1
+	allocate(M(0:n,1:2), U(0:n,1:2), V(0:n,1:2), W(0:n,1:2))
+	LOAD(V, QU);   if (order == NEST) call convert_nest2ring(nside, V)
+	LOAD(M, mask); if (order == NEST) call convert_nest2ring(nside, mask)
+	
+	! start Lanczos iterator
+	beta = 0.0; U = 0.0; V = M*V/sqrt(sum(M*V*V))
+	
+	do i = 1,k
+		call krylov_qu_dp(nside, RING, lmax, V, W)
+		
+		W = W - beta*U
+		W = W - sum(M*W*V)*V
+		beta = sqrt(sum(M*W*W))
+		U = V; V = M*W/beta
+	end do
+	
+	if (order == NEST) call convert_ring2nest(nside, V); COPY(V,out)
+	
+	deallocate(M,U,V,W)
+end subroutine

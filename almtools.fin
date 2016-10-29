@@ -43,9 +43,9 @@ subroutine VARIANT(rotate_eb2qu)(nside, order, lmax, EB, QU)
 end subroutine
 
 ! full-sky QU mode projector
-subroutine VARIANT(purify_qu)(nside, order, lmax, QU, purified, scaleE, scaleB)
+subroutine VARIANT(project_qu)(nside, order, lmax, QU, projected, scaleE, scaleB)
 	integer nside, npix, lmax, order, spin
-	MAPTYPE(XP, 0:12*nside**2-1) :: QU, purified
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU, projected
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
 	real(DP), optional :: scaleE, scaleB
@@ -60,7 +60,7 @@ subroutine VARIANT(purify_qu)(nside, order, lmax, QU, purified, scaleE, scaleB)
 	if (present(scaleB)) alms(2,:,:) = scaleB * alms(2,:,:)
 	call alm2map_spin(nside, lmax, lmax, spin, alms, map)
 	
-	if (order == NEST) call convert_ring2nest(nside, map); COPY(map,purified)
+	if (order == NEST) call convert_ring2nest(nside, map); COPY(map,projected)
 	
 	deallocate(map, alms)
 end subroutine
@@ -101,37 +101,78 @@ subroutine VARIANT(krylov_qu)(nside, order, lmax, QU, EQU, BQU, lambda)
 		
 		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
 		if (order == NEST) call convert_ring2nest(nside, map)
-		COPY(map,EQU); if (present(lambda)) EQU = EQU + lambda*QU
+		COPY(map,BQU); if (present(lambda)) BQU = BQU + lambda*QU
 	end if
 	
 	deallocate(map, alms, pure)
 end subroutine
 
-! Lanczos iterator on a masked QU map
-subroutine VARIANT(lanczos_qu)(nside, order, lmax, k, QU, mask, out)
-	integer nside, order, lmax, i, k, n
-	MAPTYPE(XP, 0:12*nside**2-1) :: QU, mask, out
-	real(DP), dimension(:,:), allocatable :: M, U, V, W
-	real(DP) beta
+! split masked QU map into pure E & B modes (by Krylov subspace construction) and residual
+subroutine VARIANT(purify_qu)(nside, order, lmax, lmin, ke, kb, map, mask, pure, residual)
+	integer nside, order, lmax, lmin, ke, kb, i, n
+	MAPTYPE(XP, 0:12*nside**2-1) :: map, mask, pure, residual
+	real(DP), dimension(:,:), allocatable :: M, U, V, W, R, P
+	real(DP) alpha, beta
 	
 	n = nside2npix(nside)-1
-	allocate(M(0:n,1:2), U(0:n,1:2), V(0:n,1:2), W(0:n,1:2))
-	LOAD(V, QU);   if (order == NEST) call convert_nest2ring(nside, V)
-	LOAD(M, mask); if (order == NEST) call convert_nest2ring(nside, mask)
+	allocate(M(0:n,1:2), U(0:n,1:2), V(0:n,1:2), W(0:n,1:2), R(0:n,1:2), P(0:n,1:2))
+	LOAD(R, map);  if (order == NEST) call convert_nest2ring(nside, R)
+	LOAD(M, mask); if (order == NEST) call convert_nest2ring(nside, M)
 	
-	! start Lanczos iterator
-	beta = 0.0; U = 0.0; V = M*V/sqrt(sum(M*V*V))
+	! initialize pure modes
+	P = 0.0
 	
-	do i = 1,k
-		call krylov_qu_dp(nside, RING, lmax, V, W)
+	! start Lanczos iterator for E mode extraction
+	call project_qu_dp(nside, RING, lmax, M*R, V, scaleB=0.0)
+	beta = 0.0; U = 0.0; V = V/sqrt(sum(M*V*V))
+	
+	! transfer mode from residual to pure map
+	alpha = sum(M*R*V)
+	R = R - alpha*V
+	P = P + alpha*V
+	
+	do i = 1,ke
+		! generate the next Krylov vector
+		call krylov_qu_dp(nside, RING, lmin, M*V, EQU=W)
 		
+		! Lanczos orthogonalization
 		W = W - beta*U
 		W = W - sum(M*W*V)*V
 		beta = sqrt(sum(M*W*W))
-		U = V; V = M*W/beta
+		U = V; V = W/beta
+		
+		! transfer mode from residual to pure map
+		alpha = sum(M*R*V)
+		R = R - alpha*V
+		P = P + alpha*V
 	end do
 	
-	if (order == NEST) call convert_ring2nest(nside, V); COPY(V,out)
+	! start Lanczos iterator for B mode extraction
+	call project_qu_dp(nside, RING, lmax, M*R, V, scaleE=0.0)
+	beta = 0.0; U = 0.0; V = V/sqrt(sum(M*V*V))
 	
-	deallocate(M,U,V,W)
+	alpha = sum(M*R*V)
+	R = R - alpha*V
+	P = P + alpha*V
+	
+	do i = 1,kb
+		! generate the next Krylov vector
+		call krylov_qu_dp(nside, RING, lmin, M*V, BQU=W)
+		
+		! Lanczos orthogonalization
+		W = W - beta*U
+		W = W - sum(M*W*V)*V
+		beta = sqrt(sum(M*W*W))
+		U = V; V = W/beta
+		
+		! transfer mode from residual to pure map
+		alpha = sum(M*R*V)
+		R = R - alpha*V
+		P = P + alpha*V
+	end do
+	
+	if (order == NEST) call convert_ring2nest(nside, P); COPY(P,pure)
+	if (order == NEST) call convert_ring2nest(nside, R); COPY(R,residual)
+	
+	deallocate(M,U,V,W,R,P)
 end subroutine

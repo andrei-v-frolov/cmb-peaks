@@ -32,11 +32,11 @@ public :: convert_ring2nest, convert_nest2ring, udgrade_nest
 
 GENERIC(rotate_qu2eb)
 GENERIC(rotate_eb2qu)
-GENERIC(purify_qu)
+GENERIC(project_qu)
 GENERIC(krylov_qu)
-GENERIC(lanczos_qu)
+GENERIC(purify_qu)
 
-public :: rotate_qu2eb, rotate_eb2qu, purify_qu, krylov_qu, lanczos_qu
+public :: rotate_qu2eb, rotate_eb2qu, project_qu, krylov_qu, purify_qu
 
 contains
 

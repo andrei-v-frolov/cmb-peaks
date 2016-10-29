@@ -137,7 +137,13 @@ select case (op)
 			case (2); call inpaint_qu(nside, ord, M1(:,1:2), M2(:,1), Mout(:,1:2))
 			case (3); call inpaint_qu(nside, ord, M1(:,2:3), M2(:,2), Mout(:,2:3))
 			          call inpaint(nside, ord, M1(:,1), M2(:,1), Mout(:,1))
-			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+			case default; call abort(trim(op) // " tensor inpainting requires QU or IQU map format")
+		end select
+	case ('purify');
+		select case (nmaps)
+			case (2); call purify_qu(nside, ord, lmax, 3*32-1, 32, 32, M1, M2, M1, Mout)
+			          call inpaint_qu(nside, ord, Mout, M2, Mout); Mout = M1 + Mout
+			case default; call abort(trim(op) // " pure inpainting requires QU or IQU map format")
 		end select
 	
 	! unknown operator
@@ -218,7 +224,7 @@ function binary()
 		case ('+','-','*','/','//','**')
 		case ('project on','orthogonal', 'accumulate')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
-		case ('valid','invalid','mask','unmask','inpaint','inpaint QU')
+		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','purify')
 		case default; return
 	end select
 	

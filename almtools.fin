@@ -120,7 +120,7 @@ subroutine VARIANT(purify_qu)(nside, order, lmax, lmin, ke, kb, map, mask, pure,
 	LOAD(M, mask); if (order == NEST) call convert_nest2ring(nside, M)
 	
 	! initialize pure modes
-	P = 0.0
+	P = 0.0; !if (verbose) write (*,*) "Peeling off pure modes, average/max residual:"
 	
 	! start Lanczos iterator for E mode extraction
 	call project_qu_dp(nside, RING, lmax, M*R, V, scaleB=0.0)
@@ -145,6 +145,8 @@ subroutine VARIANT(purify_qu)(nside, order, lmax, lmin, ke, kb, map, mask, pure,
 		alpha = sum(M*R*V)
 		R = R - alpha*V
 		P = P + alpha*V
+		
+		!if (verbose) write (*,*) sqrt(sum(M*R**2)/(n+1)), maxval(abs(M*R))
 	end do
 	
 	! start Lanczos iterator for B mode extraction
@@ -169,6 +171,8 @@ subroutine VARIANT(purify_qu)(nside, order, lmax, lmin, ke, kb, map, mask, pure,
 		alpha = sum(M*R*V)
 		R = R - alpha*V
 		P = P + alpha*V
+		
+		!if (verbose) write (*,*) sqrt(sum(M*R**2)/(n+1)), maxval(abs(M*R))
 	end do
 	
 	if (order == NEST) call convert_ring2nest(nside, P); COPY(P,pure)

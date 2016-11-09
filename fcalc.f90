@@ -106,6 +106,7 @@ select case (op)
 	! reduction operators
 	case ('sum');     nmaps = 1; Mout(:,1) = sum(M1,2)
 	case ('product'); nmaps = 1; Mout(:,1) = product(M1,2)
+	case ('select');  nmaps = 1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
 	
 	! randomize operators
 	case ('randomize');
@@ -222,8 +223,8 @@ function binary()
 	! binary operation guard
 	select case (x)
 		case ('+','-','*','/','//','**')
-		case ('project on','orthogonal', 'accumulate')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
+		case ('project on','orthogonal','accumulate','select')
 		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','purify')
 		case default; return
 	end select

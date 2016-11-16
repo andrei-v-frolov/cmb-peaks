@@ -144,6 +144,9 @@ select case (op)
 		select case (nmaps)
 			case (2); call purify_qu(nside, ord, lmax, 3*32-1, 32, 32, M1, M2, M1, Mout)
 			          call inpaint_qu(nside, ord, Mout, M2, Mout); Mout = M1 + Mout
+			case (3); call purify_qu(nside, ord, lmax, 3*32-1, 32, 32, M1(:,2:3), M2(:,2:3), M1(:,2:3), Mout(:,2:3))
+			          call inpaint_qu(nside, ord, Mout(:,2:3), M2(:,2:3), Mout(:,2:3)); Mout(:,2:3) = M1(:,2:3) + Mout(:,2:3)
+			          call inpaint(nside, ord, M1(:,1), M2(:,1), Mout(:,1))
 			case default; call abort(trim(op) // " pure inpainting requires QU or IQU map format")
 		end select
 	

@@ -147,6 +147,7 @@ $(BINDIR)/wiener: polint.o
 
 # modules
 mapio.o: mapio.fin
+imageio.o: imageio.fin
 pdetools.o: multigrid.fin complex-qu.o
 complex-qu.o: almtools.fin complex-qu.fin mapio.o
 

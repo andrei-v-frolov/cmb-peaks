@@ -21,6 +21,11 @@ CFITSIO_DIR ?= /opt/local
 FITINC = -I$(CFITSIO_DIR)/include
 FITLIB = -L$(HEALPIX)/lib -lcfitsio
 
+# WIGXJPF libraries
+WIGXJPF ?= /opt/wigxjpf
+WIGINC = -I$(WIGXJPF)/mod
+WIGLIB = -L$(WIGXJPF)/lib -lwigxjpf
+
 # LAPACK libraries (use MKL if compiling with Intel Fortran)
 MKLROOT ?= /opt/intel/mkl
 LAPINC = -I$(MKLROOT)/include
@@ -30,8 +35,8 @@ LAPLIB = -L$(MKLROOT)/lib -lmkl_rt
 #LDFLAGS += -Wl,-rpath,/opt/intel/lib
 LDFLAGS += -Wl,-rpath,$(MKLROOT)/lib
 
-INCS += $(HPXINC) $(FITINC) $(LAPINC)
-LIBS += $(HPXLIB) $(FITLIB) $(LAPLIB)
+INCS += $(HPXINC) $(FITINC) $(WIGINC) $(LAPINC)
+LIBS += $(HPXLIB) $(FITLIB) $(WIGLIB) $(LAPLIB)
 
 
 ################################################################

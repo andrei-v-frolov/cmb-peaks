@@ -9,6 +9,7 @@ BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc leakage pxl2map diges
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
 FFLAGS = -O3 -ipo -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
+FFLAGS_OMP = $(subst parallel,qopenmp,$(FFLAGS))
 LDFLAGS = -static-intel
 
 # HEALPix libraries
@@ -143,13 +144,16 @@ stat/%.pdf: stat/%.dat
 
 # binaries
 $(BINDIR)/fcalc: mapio.o pdetools.o complex-qu.o rank.o
-$(BINDIR)/leakage: imageio.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o
 $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
+
+# OpenMP binaries
+$(BINDIR)/leakage: leakage.f90 imageio.o
+	$(FC) $(FFLAGS_OMP) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
 
 # modules
 mapio.o: mapio.fin

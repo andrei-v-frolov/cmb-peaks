@@ -4,7 +4,7 @@
 
 # Multiple architecture support (sort of)
 BINDIR := bins/$(shell uname -m)-$(shell uname -s)
-BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc leakage pxl2map digest ksmap remap)
+BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc leakage-3j leakage-mc pxl2map digest ksmap remap)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
@@ -152,7 +152,8 @@ $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
 # OpenMP binaries
-$(BINDIR)/leakage: leakage.f90 imageio.o
+$(BINDIR)/leakage-mc: mapio.o imageio.o
+$(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
 	$(FC) $(FFLAGS_OMP) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
 
 # modules

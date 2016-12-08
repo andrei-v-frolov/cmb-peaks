@@ -1,7 +1,7 @@
 ! power leakage matrix calculated using Wigner 3j symbols
-! invoke: leakage mask-cls.fits leakage.fits
+! invoke: leakage-3j mask-cls.fits leakage.fits
 
-program leakage
+program leakage_3j
 
 ! HEALPix includes
 use imageio

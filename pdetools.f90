@@ -27,7 +27,7 @@ end type
 public :: inpaint, stencil
 
 ! generic iterfaces are implemented using Fortran preprocessor
-#define GENERIC(name) interface name; module procedure name ## _sp, name ## _zs; end interface
+#define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp, name ## _zs, name ## _zd; end interface
 
 GENERIC(inpaint)
 
@@ -37,20 +37,36 @@ contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! single precision, real maps
-#define XP SP
+! real maps
 #define DATA real
 #define GRID type(grid_dp)
 #define STENCIL Lw
+
+! single precision
+#define XP SP
 #define VARIANT(name) name ## _sp
 #include 'multigrid.fin'
 
-! single precision, complex maps
-#define XP SP
+! double precision
+#define XP DP
+#define VARIANT(name) name ## _dp
+#include 'multigrid.fin'
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! complex maps
 #define DATA complex
 #define GRID type(grid_zd)
 #define STENCIL Lz
+
+! single precision
+#define XP SP
 #define VARIANT(name) name ## _zs
+#include 'multigrid.fin'
+
+! double precision
+#define XP DP
+#define VARIANT(name) name ## _zd
 #include 'multigrid.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

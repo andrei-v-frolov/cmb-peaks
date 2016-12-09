@@ -17,12 +17,12 @@ implicit none
 
 character(len=8000) :: file, output
 integer :: nmaps = 0, nside = 0, ord = 0
-real(DP), dimension(:,:), allocatable :: mask
-real(DP), allocatable :: map(:,:), W(:,:,:)
+real(DP), dimension(:,:), allocatable :: mask, map
+real(DP), allocatable :: K(:,:,:), W(:,:,:), Q(:)
 complex(DPC), allocatable :: alms(:,:,:)
 
-integer, parameter :: lcut = 128
-integer n, lmax, l1, l2, seed(2)
+integer, parameter :: lcut = 512
+integer i, n, lmax, l1, l2, seed(2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -43,27 +43,29 @@ end select
 
 ! allocate storage
 n = nside2npix(nside)-1
-allocate(alms(1:3,0:lmax,0:lmax), map(0:n,3), W(4,0:lmax,0:lmax))
+allocate(alms(1:3,0:lmax,0:lmax), map(0:n,3), K(4,0:lmax,0:lmax))
+allocate(W(4,0:lmax,0:lmax), Q(0:lmax), source = 0.0)
 
 ! initialize random number generator (use urandom on clusters!)
 open (333, file="/dev/random", action='read', form='binary')
 read (333) seed; call random_seed(PUT=seed); close (333)
 
-! compute leakage matrix
-!$omp parallel do
-do l2 = 0,lmax
-	call leakage(W(:,:,l2),l2)
+
+do i = 1,16
+	! accumulate leakage matrix
+	do l2 = 0,lmax
+		call accumulate_leakage(l2,W(:,:,l2),Q(l2)); K(:,:,l2) = W(:,:,l2)/Q(l2)
+	end do
+	
+	! output current average
+	call image2fits(output, K, [0.0,real(lmax)], [0.0,real(lmax)], ['K','K+','K-','Kx'])
 end do
-
-!forall (l1=0:lmax,l2=0:lmax) W(1,l1,l2) = log(W(1,l1,l2)**2/W(1,l1,l1)/W(1,l2,l2))/2.0
-
-call image2fits(output, W, [0.0,real(lmax)], [0.0,real(lmax)], ['K','K+','K-','Kx'])
 
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-subroutine leakage(W, l2)
+subroutine accumulate_leakage(l2, W, Q)
 	integer l1, l2; real Q, U(0:l2), V(0:l2), W(4,0:lmax)
 	real, parameter :: twopi = 6.283185307179586476925286766559005768394338798750Q0
         
@@ -73,16 +75,16 @@ subroutine leakage(W, l2)
         alms(1,l2,0:l2) = sqrt(-2.0*log(U)) * exp((0,twopi)*V)
         alms(2,l2,0:l2) = alms(1,l2,:)
         
-        Q = sum(abs(alms(1,l2,0:l2)*alms(1,l2,0:l2)))/(2*l2+1)
+        Q = Q + sum(abs(alms(1,l2,0:l2)*alms(1,l2,0:l2)))/(2*l2+1)
         
         call alm2map(nside, lmax, lmax, alms, map)
         call map2alm_iterative(nside, lmax, lmax, 1, map, alms, mask=mask)
         
         do l1 = 0,lmax
-                W(1,l1) = sum(abs(alms(1,l1,0:l1)*alms(1,l1,0:l1)))/Q
-                W(2,l1) = sum(abs(alms(2,l1,0:l1)*alms(2,l1,0:l1)))/Q
-                W(3,l1) = sum(abs(alms(3,l1,0:l1)*alms(3,l1,0:l1)))/Q
-                W(4,l1) = sum(abs(alms(1,l1,0:l1)*alms(2,l1,0:l1)))/Q
+                W(1,l1) = W(1,l1) + sum(abs(alms(1,l1,0:l1)*alms(1,l1,0:l1)))
+                W(2,l1) = W(2,l1) + sum(abs(alms(2,l1,0:l1)*alms(2,l1,0:l1)))
+                W(3,l1) = W(3,l1) + sum(abs(alms(3,l1,0:l1)*alms(3,l1,0:l1)))
+                W(4,l1) = W(4,l1) + sum(abs(alms(1,l1,0:l1)*alms(2,l1,0:l1)))
         end do
 end subroutine
 

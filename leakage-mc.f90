@@ -1,11 +1,12 @@
 ! power leakage matrix calculated using Monte-Carlo
-! invoke: leakage-mc mask.fits leakage.fits
+! invoke: leakage-mc {mask|inpaint|purify} mask.fits leakage.fits
 
 program leakage_mc
 
 ! HEALPix includes
 use mapio
 use imageio
+use pdetools
 use alm_tools
 use extension
 
@@ -14,8 +15,7 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-
-character(len=8000) :: file, output
+character(len=8000) :: method, file, output
 integer :: nmaps = 0, nside = 0, ord = 0
 real(DP), dimension(:,:), allocatable :: mask, map
 real(DP), allocatable :: K(:,:,:), W(:,:,:), Q(:)
@@ -27,8 +27,8 @@ integer i, n, lmax, l1, l2, seed(2)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! parse arguments
-if (nArguments() /= 2) call abort("cannot parse command line expression supplied")
-call getArgument(1, file); call getArgument(2, output)
+if (nArguments() /= 3) call abort("cannot parse command line expression supplied")
+call getArgument(1, method); call getArgument(2, file); call getArgument(3, output)
 
 ! read in mask map
 call read_map(file, mask, nside, nmaps, ord); lmax = 3*nside-1; if (lmax > lcut) lmax = lcut
@@ -78,7 +78,21 @@ subroutine accumulate_leakage(l2, W, Q)
         Q = Q + sum(abs(alms(1,l2,0:l2)*alms(1,l2,0:l2)))/(2*l2+1)
         
         call alm2map(nside, lmax, lmax, alms, map)
-        call map2alm_iterative(nside, lmax, lmax, 1, map, alms, mask=mask)
+        
+        select case (method)
+        	case ('mask')
+        		call map2alm_iterative(nside, lmax, lmax, 1, map, alms, mask=mask)
+        	case ('inpaint')
+        		call inpaint(nside, ord, map(:,1), mask(:,1), map(:,1))
+        		call inpaint_qu(nside, ord, map(:,2:3), mask(:,1), map(:,2:3))
+        		call map2alm_iterative(nside, lmax, lmax, 1, map, alms)
+        	case ('purify')
+        		call inpaint(nside, ord, map(:,1), mask(:,1), map(:,1))
+        		call inpaint_purified_qu(nside, ord, lmax, map(:,2:3), mask(:,1), map(:,2:3))
+        		call map2alm_iterative(nside, lmax, lmax, 1, map, alms)
+        	case default
+        		call abort("Unknown method requested in leakage-mc!")
+        end select
         
         do l1 = 0,lmax
                 W(1,l1) = W(1,l1) + sum(abs(alms(1,l1,0:l1)*alms(1,l1,0:l1)))

@@ -36,8 +36,8 @@ LAPLIB = -L$(MKLROOT)/lib -lmkl_rt
 #LDFLAGS += -Wl,-rpath,/opt/intel/lib
 LDFLAGS += -Wl,-rpath,$(MKLROOT)/lib
 
-INCS += $(HPXINC) $(FITINC) $(WIGINC) $(LAPINC)
-LIBS += $(HPXLIB) $(FITLIB) $(WIGLIB) $(LAPLIB)
+INCS += $(HPXINC) $(FITINC) $(LAPINC)
+LIBS += $(HPXLIB) $(FITLIB) $(LAPLIB)
 
 
 ################################################################
@@ -152,9 +152,9 @@ $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
 # OpenMP binaries
-$(BINDIR)/leakage-mc: mapio.o imageio.o
+$(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o complex-qu.o
 $(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
-	$(FC) $(FFLAGS_OMP) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
+	$(FC) $(FFLAGS_OMP) $(WIGINC) $(INCS) $^ -o $@ $(LDFLAGS) $(WIGLIB) $(LIBS)
 
 # modules
 mapio.o: mapio.fin

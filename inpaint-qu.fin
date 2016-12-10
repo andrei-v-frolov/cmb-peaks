@@ -1,0 +1,33 @@
+! wrapper for tensor inpainting of QU maps
+subroutine VARIANT(inpaint_qu)(nside, order, map, mask, mout)
+	integer nside, order
+	real(XP), dimension(0:12*nside**2-1,1:2) :: map, mout
+	real(XP), dimension(0:12*nside**2-1) :: mask
+	complex(XP), dimension(:), allocatable :: Z
+	
+	allocate(Z(0:12*nside**2-1))
+	
+	Z = cmplx(map(:,1), map(:,2))
+	call inpaint(nside, order, Z, mask, Z)
+	mout(:,1) = real(Z); mout(:,2) = imag(Z)
+	
+	deallocate(Z)
+end subroutine
+
+! wrapper for purified tensor inpainting of QU maps
+subroutine VARIANT(inpaint_purified_qu)(nside, order, lmax, map, mask, mout)
+	integer nside, order, lmax
+	real(XP), dimension(0:12*nside**2-1,1:2) :: map, mout
+	real(XP), dimension(0:12*nside**2-1) :: mask
+	
+	! purification is always done in double precision
+	real(DP), dimension(:,:), allocatable :: M1, M2, M3
+	allocate(M1(0:12*nside**2-1,1:2), M2(0:12*nside**2-1,1:2), M3(0:12*nside**2-1,1:2))
+	
+	M1 = map; M2(:,1) = mask; M2(:,2) = mask
+	
+	call purify_qu(nside, order, lmax, 3*32-1, 32, 32, M1, M2, M1, M3)
+	call inpaint_qu(nside, order, M3, M2(:,1), M3); mout = M1 + M3
+	
+	deallocate(M1, M2, M3)
+end subroutine

@@ -24,7 +24,10 @@ end type
 #define $MG(X) X => mg(l)%X
 #define $MGVARS$ $MG(nside), $MG(n), $MG(m), $MG(h2), $MG(map), $MG(rhs), $MG(tmp), $MG(laplacian), $MG(nn)
 
-public :: inpaint, stencil
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! multigrid inpainter, real and complex variants, in single & double precision
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! generic iterfaces are implemented using Fortran preprocessor
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp, name ## _zs, name ## _zd; end interface
@@ -32,6 +35,16 @@ public :: inpaint, stencil
 GENERIC(inpaint)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! wrapper routines for inpainting of common HEALPix CMB map formats
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! generic iterfaces are implemented using Fortran preprocessor
+#define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp; end interface
+
+GENERIC(inpaint_qu)
+GENERIC(inpaint_purified_qu)
+
+public :: inpaint, inpaint_qu, inpaint_purified_qu, stencil
 
 contains
 
@@ -46,11 +59,13 @@ contains
 #define XP SP
 #define VARIANT(name) name ## _sp
 #include 'multigrid.fin'
+#include 'inpaint-qu.fin'
 
 ! double precision
 #define XP DP
 #define VARIANT(name) name ## _dp
 #include 'multigrid.fin'
+#include 'inpaint-qu.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

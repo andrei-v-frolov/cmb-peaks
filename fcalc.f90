@@ -142,12 +142,10 @@ select case (op)
 		end select
 	case ('purify');
 		select case (nmaps)
-			case (2); call purify_qu(nside, ord, lmax, 3*32-1, 32, 32, M1, M2, M1, Mout)
-			          call inpaint_qu(nside, ord, Mout, M2, Mout); Mout = M1 + Mout
-			case (3); call purify_qu(nside, ord, lmax, 3*32-1, 32, 32, M1(:,2:3), M2(:,2:3), M1(:,2:3), Mout(:,2:3))
-			          call inpaint_qu(nside, ord, Mout(:,2:3), M2(:,2:3), Mout(:,2:3)); Mout(:,2:3) = M1(:,2:3) + Mout(:,2:3)
+			case (2); call inpaint_purified_qu(nside, ord, lmax, M1(:,1:2), M2(:,1), Mout(:,1:2))
+			case (3); call inpaint_purified_qu(nside, ord, lmax, M1(:,2:3), M2(:,2), Mout(:,2:3))
 			          call inpaint(nside, ord, M1(:,1), M2(:,1), Mout(:,1))
-			case default; call abort(trim(op) // " pure inpainting requires QU or IQU map format")
+			case default; call abort(trim(op) // " purified inpainting requires QU or IQU map format")
 		end select
 	
 	! unknown operator
@@ -273,6 +271,8 @@ function ternary()
 	call getArgument(6, fout); if (fout .eq. '=:') call getArgument(7, fout)
 end function
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ! apodization function smoothly interpolates between 0 and 1
 elemental function apodize(x)
 	real(IO) x, apodize; intent(in) x
@@ -296,8 +296,6 @@ pure function log_iqu(iqu)
 	end associate
 end function
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 ! rank-order map, outputing CDF value for valid pixels
 subroutine percentile(nside, map, valid, cdf)
 	integer nside, npix, used
@@ -319,24 +317,6 @@ subroutine percentile(nside, map, valid, cdf)
 	where (.not. valid) cdf = 1.0/0.0
 	
 	deallocate(M, idx, rank)
-end subroutine
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! wrapper for tensor inpainting of QU maps
-subroutine inpaint_qu(nside, order, map, mask, mout)
-	integer nside, order
-	real(IO), dimension(0:12*nside**2-1,1:2) :: map, mout
-	real(IO), dimension(0:12*nside**2-1) :: mask
-	complex(IO), dimension(:), allocatable :: Z
-	
-	allocate(Z(0:12*nside**2-1))
-	
-	Z = cmplx(map(:,1), map(:,2))
-	call inpaint(nside, ord, Z, mask, Z)
-	mout(:,1) = real(Z); mout(:,2) = imag(Z)
-	
-	deallocate(Z)
 end subroutine
 
 end

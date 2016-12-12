@@ -1,14 +1,16 @@
 ! wrapper for tensor inpainting of QU maps
-subroutine VARIANT(inpaint_qu)(nside, order, map, mask, mout)
+subroutine VARIANT(inpaint_qu)(nside, order, map, mask, mout, apo)
 	integer nside, order
 	real(XP), dimension(0:12*nside**2-1,1:2) :: map, mout
-	real(XP), dimension(0:12*nside**2-1) :: mask
+	real(XP), dimension(0:12*nside**2-1) :: mask, apo
 	complex(XP), dimension(:), allocatable :: Z
+	optional apo
 	
 	allocate(Z(0:12*nside**2-1))
 	
 	Z = cmplx(map(:,1), map(:,2))
-	call inpaint(nside, order, Z, mask, Z)
+	if (present(apo)) call inpaint(nside, order, Z, mask, Z, apo=apo)
+	if (.not. present(apo)) call inpaint(nside, order, Z, mask, Z)
 	mout(:,1) = real(Z); mout(:,2) = imag(Z)
 	
 	deallocate(Z)

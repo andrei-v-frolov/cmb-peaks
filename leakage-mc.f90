@@ -17,7 +17,7 @@ implicit none
 
 character(len=8000) :: method, file, output
 integer :: nmaps = 0, nside = 0, ord = 0
-real(DP), dimension(:,:), allocatable :: mask, map
+real(DP), dimension(:,:), allocatable :: mask, map, hard
 real(DP), allocatable :: K(:,:,:), W(:,:,:), Q(:)
 complex(DPC), allocatable :: alms(:,:,:)
 
@@ -45,6 +45,12 @@ end select
 n = nside2npix(nside)-1
 allocate(alms(1:3,0:lmax,0:lmax), map(0:n,3), K(4,0:lmax,0:lmax))
 allocate(W(4,0:lmax,0:lmax), Q(0:lmax), source = 0.0)
+
+! hard mask for apodization
+if (method == 'apodize') then
+        allocate(hard, source=mask)
+        where (mask < 1.0) hard = 0.0
+end if
 
 ! initialize random number generator (use urandom on clusters!)
 open (333, file="/dev/random", action='read', form='binary')
@@ -86,6 +92,10 @@ subroutine accumulate_leakage(l2, W, Q)
         		call inpaint(nside, ord, map(:,1), mask(:,1), map(:,1))
         		call inpaint_qu(nside, ord, map(:,2:3), mask(:,1), map(:,2:3))
         		call map2alm_iterative(nside, lmax, lmax, 1, map, alms)
+                case ('apodize')
+                        call inpaint(nside, ord, map(:,1), hard(:,1), map(:,1), apo=mask(:,1))
+                        call inpaint_qu(nside, ord, map(:,2:3), hard(:,1), map(:,2:3), apo=mask(:,1))
+                        call map2alm_iterative(nside, lmax, lmax, 1, map, alms)
         	case ('purify')
         		call inpaint(nside, ord, map(:,1), mask(:,1), map(:,1))
         		call inpaint_purified_qu(nside, ord, lmax, map(:,2:3), mask(:,1), map(:,2:3))

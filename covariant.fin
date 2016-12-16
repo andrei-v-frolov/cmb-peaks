@@ -1,0 +1,62 @@
+! synthesize covariant derivative maps (using canned HEALPix derivatives)
+subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, mask)
+	integer nside, lmax, mmax, p, n
+	complex(XP) alms(1,0:lmax,0:mmax)
+	real(XP), dimension(0:12*nside**2-1,3), optional :: tqu, mink, skel
+	real(XP), dimension(0:12*nside**2-1,5), optional :: mask
+	
+	! allocate local storage
+	real(XP), allocatable :: M(:), C2(:), D1(:,:), D2(:,:)
+	real(DP) theta, phi
+	
+	n = nside2npix(nside)-1
+	allocate(M(0:n), C2(0:n), D1(0:n,2), D2(0:n,3))
+	
+	! synthesize component maps from alm's
+	call alm2map_der(nside, lmax, mmax, alms, M, D1, D2)
+	
+	do p = 0,n
+		! cot(theta) map (in ring ordering)
+		call pix2ang_ring(nside, p, theta, phi); C2(p) = cotan(theta)
+		
+		! second covariant dervatives
+		D2(p,2) = D2(p,2) - C2(p) * D1(p,2)
+		D2(p,3) = D2(p,3) + C2(p) * D1(p,1)
+		
+		! covariant gradient squared
+		C2(p) = D1(p,1)**2 + D1(p,2)**2
+		
+		! tidal tensor decomposition
+		if (present(tqu)) then
+			tqu(p,1) = D2(p,1) + D2(p,3)
+			tqu(p,2) = D2(p,1) - D2(p,3)
+			tqu(p,3) = 2.0*D2(p,2)
+		end if
+		
+		! Minkowski functional maps
+		if (present(mink)) then
+			mink(p,1) = M(p)
+			mink(p,2) = sqrt(C2(p))
+			mink(p,3) = - (D2(p,1)*D1(p,2)**2 - 2.0*D2(p,2)*D1(p,1)*D1(p,2) + D2(p,3)*D1(p,1)**2)/C2(p)
+		end if
+		
+		! skeleton strucutural maps
+		if (present(skel)) then
+			skel(p,1) = M(p)
+			skel(p,2) = (D2(p,3) - D2(p,1))*D1(p,1)*D1(p,2) + D2(p,2) * (D1(p,1)**2 - D1(p,2)**2)
+			skel(p,3) = - (D2(p,1)*D1(p,2)**2 - 2.0*D2(p,2)*D1(p,1)*D1(p,2) + D2(p,3)*D1(p,1)**2)/C2(p)
+		end if
+		
+		! mask covariant derivatives (in QUXYM packing)
+		if (present(mask)) then
+			mask(p,1) = D2(p,1) - D2(p,3)
+			mask(p,2) = 2.0*D2(p,2)
+			mask(p,3) = D1(p,1)
+			mask(p,4) = D1(p,2)
+			mask(p,5) = M(p)
+		end if
+	end do
+	
+	! clean up after ourselves
+	deallocate(M, C2, D1, D2)
+end subroutine

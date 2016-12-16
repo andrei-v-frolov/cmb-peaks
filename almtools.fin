@@ -21,16 +21,16 @@ subroutine VARIANT(map2alm_pure)(nside, lmax, mmax, QU, mask, alms)
 	call map2alm_spin(nside, lmax, mmax, spin, tmp, alms2)
 	
 	spin = 1
-	forall (i=0:n) tmp(i,:) = [map(i,Q)*mask(i,Y) - map(i,U)*mask(i,X), map(i,Q)*mask(i,X) + map(i,U)*mask(i,Y)]
+	forall (i=0:n) tmp(i,:) = -[map(i,Q)*mask(i,X) + map(i,U)*mask(i,Y), map(i,U)*mask(i,X) - map(i,Q)*mask(i,Y)]
 	call map2alm_spin(nside, lmax, mmax, spin, tmp, alms1)
 	
 	spin = 0
-	forall (i=0:n) tmp(i,:) = [map(i,Q)*mask(i,Q) + map(i,U)*mask(i,U), map(i,Q)*mask(i,U) - map(i,U)*mask(i,Q)]
+	forall (i=0:n) tmp(i,:) =  [map(i,Q)*mask(i,Q) + map(i,U)*mask(i,U), map(i,U)*mask(i,Q) - map(i,Q)*mask(i,U)]
 	call map2alm_spin(nside, lmax, mmax, spin, tmp, alms0)
 	
 	! combine spin harmonics into pure alms
 	do l = 2,lmax; m = min(l,mmax)
-		c1 = 2.0/sqrt((l-1.0)*l)
+		c1 = 2.0/sqrt((l-1.0)*(l+2.0))
 		c0 = 1.0/sqrt((l-1.0)*l*(l+1.0)*(l+2.0))
 		alms(:,l,0:m) = alms2(:,l,0:m) + c1*alms1(:,l,0:m) + c0*alms0(:,l,0:m)
 	end do

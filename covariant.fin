@@ -49,11 +49,7 @@ subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, 
 		
 		! mask covariant derivatives (in QUXYM packing)
 		if (present(mask)) then
-			mask(p,1) = D2(p,1) - D2(p,3)
-			mask(p,2) = 2.0*D2(p,2)
-			mask(p,3) = D1(p,1)
-			mask(p,4) = D1(p,2)
-			mask(p,5) = M(p)
+			mask(p,:) = [D2(p,1)-D2(p,3), 2*D2(p,2), D1(p,:), M(p)]
 		end if
 	end do
 	

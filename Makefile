@@ -143,7 +143,7 @@ stat/%.pdf: stat/%.dat
 ################### Binaries & Dependencies ####################
 
 # binaries
-$(BINDIR)/fcalc: mapio.o pdetools.o complex-qu.o rank.o
+$(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o
@@ -152,15 +152,15 @@ $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
 
 # OpenMP binaries
-$(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o complex-qu.o
+$(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o
 $(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
 	$(FC) $(FFLAGS_OMP) $(WIGINC) $(INCS) $^ -o $@ $(LDFLAGS) $(WIGLIB) $(LIBS)
 
 # modules
 mapio.o: mapio.fin
 imageio.o: imageio.fin
-pdetools.o: multigrid.fin inpaint-qu.fin complex-qu.o
-complex-qu.o: almtools.fin covariant.fin complex-qu.fin mapio.o
+pdetools.o: multigrid.fin inpaint-qu.fin almtools.o
+almtools.o: almtools.fin covariant.fin complex-qu.fin mapio.o
 
 # generic rules
 $(BINDIR)/%: %.f90

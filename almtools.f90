@@ -1,4 +1,4 @@
-module complex_qu ! complex representation of linearly polarized maps Z = Q + iU
+module almtools ! complex representation of linearly polarized maps Z = Q + iU
 
 ! complex array slicing is implemented via pointers
 use, intrinsic :: ISO_C_BINDING

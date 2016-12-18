@@ -67,7 +67,7 @@ if (nArguments() > 3) then
 	
 	do i = 1,nmoms
 		write (fmask,'(A,A1,I1,A5)') trim(fout), '-', i, '.fits'
-		call write_map(fmask, Mout(:,(/i/)), nside, ord, creator='LMASK')
+		call write_map(fmask, Mout(:,[i]), nside, ord, creator='LMASK')
 	end do
 end if
 

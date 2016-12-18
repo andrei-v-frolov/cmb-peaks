@@ -138,17 +138,17 @@ subroutine pix2gno(nside, order, i, p, XY, Z, R2, zeta)
 	if (.not. needXY) return
 	
 	! project onto local orthonormal basis in (theta,phi) directions
-	X = (/ cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta) /)
-	Y = (/ -sin(phi), cos(phi), 0.0 /)
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
 	
-	if (present(XY)) XY = (/ sum(W*X), sum(W*Y) /)
+	if (present(XY)) XY = [sum(W*X), sum(W*Y)]
 	
 	! bail unless we want rotation
 	if (.not. needAB) return
 	
 	! pixel p has different basis orientation, rotated by angle theta
-	A = (/ cos(alpha)*cos(beta), cos(alpha)*sin(beta), -sin(alpha) /)
-	B = (/ -sin(beta), cos(beta), 0.0 /)
+	A = [cos(alpha)*cos(beta), cos(alpha)*sin(beta), -sin(alpha)]
+	B = [-sin(beta), cos(beta), 0.0]
 	
 	! project A and B onto tangent plane
 	!ua = sum(U*A); A = (A - ua*U)/sqrt(1.0 - ua*ua)
@@ -184,7 +184,7 @@ subroutine stencil(nside, order, i, nn, count, La, Lw, Lz, Lx, Dx, Dy, Dxx, Dxy,
 	if (present(La)) then
 		W(1:k) = (8.0/3.0)/k; W(k+1:) = 0.0
 		
-		La = (/ -sum(W(1:k)), W(1:8) /)
+		La = [-sum(W(1:k)), W(1:8)]
 	end if
 	
 	! distance-weighted Laplacian stencil (better, still cheap to calculate)
@@ -193,7 +193,7 @@ subroutine stencil(nside, order, i, nn, count, La, Lw, Lz, Lx, Dx, Dy, Dxx, Dxy,
 		S(1:k) = S(1:k) * nside**2/(pi/3.0); W(1:k) = exp(-S(1:k)/1.61)
 		W(1:k) = 4.0*W(1:k)/sum(S(1:k)*W(1:k)); W(k+1:) = 0.0
 		
-		Lw = (/ -sum(W(1:k)), W(1:8) /)
+		Lw = [-sum(W(1:k)), W(1:8)]
 	end if
 	
 	! distance-weighted complex Laplacian stencil for QU maps
@@ -202,18 +202,18 @@ subroutine stencil(nside, order, i, nn, count, La, Lw, Lz, Lx, Dx, Dy, Dxx, Dxy,
 		S(1:k) = S(1:k) * nside**2/(pi/3.0); W(1:k) = exp(-S(1:k)/1.61)
 		W(1:k) = 4.0*W(1:k)/sum(S(1:k)*W(1:k)); W(k+1:) = 0.0
 		
-		Lz = (/ cmplx(-sum(W(1:k))), Z * W(1:8) /)
+		Lz = [cmplx(-sum(W(1:k))), Z * W(1:8)]
 	end if
 	
 	! bail unless exact (and expensive!) stencils are requested
-	if (.not. any((/ present(Lx), present(Dx), present(Dy), present(Dxx), present(Dxy), present(Dyy) /))) return
+	if (.not. any([present(Lx), present(Dx), present(Dy), present(Dxx), present(Dxy), present(Dyy)])) return
 	
 	! local polynomial basis (in gnomonic coordinates)
 	do j = 1,m
 		call pix2gno(nside, order, i, nn(j), XY)
 		XY = nside/sqrt(pi/3.0) * XY; x = XY(1); y = XY(2)
 		
-		F(j,:) = (/ 1.0, x, y, x*x, x*y, y*y, x*x*x, x*x*y, x*y*y, y*y*y /)
+		F(j,:) = [1.0, x, y, x*x, x*y, y*y, x*x*x, x*x*y, x*y*y, y*y*y]
 	end do
 	
 	! calculate singular value decomposition of basis matrix

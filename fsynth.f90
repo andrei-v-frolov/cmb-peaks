@@ -294,7 +294,7 @@ subroutine minkowski(M, mask, nmaps, n, bins)
 	F = 0.0; s = k/bins; o = (k - bins*s)/2 + 1
 	
 	do i = 1,k; p = pxl(idx(i))
-		F = F + (/ 1.0, M(p,2:) /)
+		F = F + [1.0, M(p,2:)]
 		if (mod(i-o,s) == 0) write (*,'(8G24.16)') M(p,1), F/k
 	end do
 	

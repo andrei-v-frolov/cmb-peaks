@@ -84,7 +84,7 @@ end subroutine
 function ksdev(idx, m, n)
 	integer m, n, idx(n); real ksdev
 	
-	ksdev = sqrt(real(n*m)/real(n+m)) * maxval(abs( ((/1:m/)-1.0)/(m-1.0) - (idx(1:m)-1.0)/(n-1.0) ))
+	ksdev = sqrt(real(n*m)/real(n+m)) * maxval(abs( ([1:m]-1.0)/(m-1) - (idx(1:m)-1.0)/(n-1) ))
 end function ksdev
 
 end

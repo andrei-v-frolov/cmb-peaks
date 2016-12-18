@@ -210,7 +210,7 @@ subroutine intcls(Cl, lmax)
 	real(DP), dimension(0:lmax) :: Cl, x, y, w
 	
 	! interpolation is done on a scaled Cl's
-	x = (/0:lmax/); w = x*x+0.7071067812; y = w*Cl
+	x = [0:lmax]; w = x*x+0.7071067812; y = w*Cl
 	
 	! find what multipoles are missing
 	do l = 0,lmax/2; if (Cl(l) > 0.0) exit; end do

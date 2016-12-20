@@ -1,7 +1,7 @@
 module pdetools ! PDE operations on a HEALPix grid
 
 use mapio
-use complex_qu
+use almtools
 
 implicit none
 

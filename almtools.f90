@@ -18,8 +18,9 @@ implicit none
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp; end interface
 
 GENERIC(alm2map_covariant)
+GENERIC(mask2spins_ring)
 
-public :: alm2map_covariant
+public :: alm2map_covariant, mask2spins_ring
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! HEALPix routine wrappers, complex QU, in single and double precision

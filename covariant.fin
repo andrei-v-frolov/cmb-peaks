@@ -1,4 +1,4 @@
-! synthesize covariant derivative maps (using canned HEALPix derivatives)
+! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)
 subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, mask)
 	integer nside, lmax, mmax, p, n
 	complex(XP) alms(1,0:lmax,0:mmax)
@@ -55,4 +55,30 @@ subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, 
 	
 	! clean up after ourselves
 	deallocate(M, C2, D1, D2)
+end subroutine
+
+! synthesize spin bundle from apodized mask (spin bundle is always output in RING ordering!)
+subroutine VARIANT(mask2spins_ring)(nside, order, lmax, mask, spins)
+	integer nside, lmax, order
+	real(XP), dimension(0:12*nside**2-1) :: mask
+	real(XP), dimension(0:12*nside**2-1,1:5) :: spins
+	complex(XP), allocatable :: alms(:,:,:)
+	real(XP), allocatable :: copy(:)
+	
+	allocate(alms(1,0:lmax,0:lmax))
+	
+	select case(order)
+		case(RING)
+			call map2alm(nside, lmax, lmax, mask, alms, [-1.0,1.0])
+		case(NEST)
+			allocate(copy, source=mask); call convert_nest2ring(nside, copy)
+			call map2alm(nside, lmax, lmax, copy, alms, [-1.0,1.0])
+			deallocate(copy)
+		case default
+			call abort(": ordering not supported")
+	end select
+	
+	call alm2map_covariant(nside, lmax, lmax, alms, mask=spins)
+	
+	deallocate(alms)
 end subroutine

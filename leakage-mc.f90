@@ -1,5 +1,5 @@
 ! power leakage matrix calculated using Monte-Carlo
-! invoke: leakage-mc {mask|inpaint|purify} mask.fits leakage.fits
+! invoke: leakage-mc {mask|pure|inpaint|purify} mask.fits leakage.fits
 
 program leakage_mc
 
@@ -17,7 +17,7 @@ implicit none
 
 character(len=8000) :: method, file, output
 integer :: nmaps = 0, nside = 0, ord = 0
-real(DP), dimension(:,:), allocatable :: mask, map, hard
+real(DP), dimension(:,:), allocatable :: mask, map, hard, spins
 real(DP), allocatable :: K(:,:,:), W(:,:,:), Q(:)
 complex(DPC), allocatable :: alms(:,:,:)
 
@@ -50,6 +50,12 @@ allocate(W(4,0:lmax,0:lmax), Q(0:lmax), source = 0.0)
 if (method == 'apodize') then
         allocate(hard, source=mask)
         where (mask < 1.0) hard = 0.0
+end if
+
+! mask derivatives for testing
+if (method == 'pure') then
+        allocate(spins(0:12*nside**2-1,1:5))
+        call mask2spins_ring(nside, RING, 3*nside-1, mask(:,1), spins)
 end if
 
 ! initialize random number generator (use urandom on clusters!)
@@ -88,6 +94,9 @@ subroutine accumulate_leakage(l2, W, Q)
         select case (method)
         	case ('mask')
         		call map2alm_iterative(nside, lmax, lmax, 1, map, alms, mask=mask)
+                case ('pure')
+                        call map2alm_iterative(nside, lmax, lmax, 1, map(:,1:1), alms(1:1,:,:), mask=mask)
+                        call map2alm_pure(nside, lmax, lmax, map(:,2:3), spins, alms(2:3,:,:))
         	case ('inpaint')
         		call inpaint(nside, ord, map(:,1), mask(:,1), map(:,1))
         		call inpaint_qu(nside, ord, map(:,2:3), mask(:,1), map(:,2:3))

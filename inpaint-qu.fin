@@ -23,13 +23,13 @@ subroutine VARIANT(inpaint_purified_qu)(nside, order, lmax, map, mask, mout)
 	real(XP), dimension(0:12*nside**2-1) :: mask
 	
 	! purification is always done in double precision
-	real(DP), dimension(:,:), allocatable :: M1, M2, M3
-	allocate(M1(0:12*nside**2-1,1:2), M2(0:12*nside**2-1,1:2), M3(0:12*nside**2-1,1:2))
+	real(DP), allocatable :: P(:,:), R(:,:), M(:)
+	allocate(P(0:12*nside**2-1,1:2), R(0:12*nside**2-1,1:2), M(0:12*nside**2-1))
 	
-	M1 = map; M2(:,1) = mask; M2(:,2) = mask
+	P = map; M = mask
 	
-	call purify_qu(nside, order, lmax, 3*32-1, 32, 32, M1, M2, M1, M3)
-	call inpaint_qu(nside, order, M3, M2(:,1), M3); mout = M1 + M3
+	call purify_qu(nside, order, lmax, 3*32-1, 32, 32, P, M, P, R)
+	call inpaint_qu(nside, order, R, M, R); mout = P + R
 	
-	deallocate(M1, M2, M3)
+	deallocate(P, R, M)
 end subroutine

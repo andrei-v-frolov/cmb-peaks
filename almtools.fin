@@ -1,6 +1,6 @@
 ! masked sky QU to pure alms wrapper
-subroutine VARIANT(map2alm_pure)(nside, lmax, mmax, QU, mask, alms)
-	integer nside, lmax, mmax
+subroutine VARIANT(map2alm_pure)(nside, order, lmax, mmax, QU, mask, alms)
+	integer nside, order, lmax, mmax
 	MAPTYPE(XP, 0:12*nside**2-1) ::  QU
 	real(XP), dimension(0:12*nside**2-1,1:5) :: mask
 	complex(XP), dimension(1:2, 0:lmax, 0:mmax) :: alms
@@ -11,8 +11,8 @@ subroutine VARIANT(map2alm_pure)(nside, lmax, mmax, QU, mask, alms)
 	real(DP), dimension(:,:), allocatable :: map, tmp
 	complex(DPC), allocatable :: alms2(:,:,:), alms1(:,:,:), alms0(:,:,:)
 	
-	n = nside2npix(nside) - 1
-	allocate(map(0:n,1:2), tmp(0:n,1:2)); LOAD(map,QU)
+	n = nside2npix(nside) - 1; alms = 0.0
+	allocate(map(0:n,1:2), tmp(0:n,1:2)); LOAD(map,QU); if (order == NEST) call convert_nest2ring(nside, map)
 	allocate(alms2(1:2, 0:lmax, 0:mmax), alms1(1:2, 0:lmax, 0:mmax), alms0(1:2, 0:lmax, 0:mmax))
 	
 	! compute mask-weighted spin harmonics
@@ -40,14 +40,14 @@ end subroutine
 
 ! full-sky QU to EB rotation wrapper
 subroutine VARIANT(rotate_qu2eb)(nside, order, lmax, QU, EB)
-	integer nside, npix, lmax, order, spin
+	integer nside, order, lmax, spin, n
 	MAPTYPE(XP, 0:12*nside**2-1) ::  QU
 	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
 	
-	npix = nside2npix(nside); spin = 2
-	allocate(map(0:npix-1,1:2), alms(1:2, 0:lmax, 0:lmax))
+	n = nside2npix(nside) - 1; spin = 2
+	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	LOAD(map,QU); if (order == NEST) call convert_nest2ring(nside, map)
 	
@@ -62,14 +62,14 @@ end subroutine
 
 ! full-sky EB to QU rotation wrapper
 subroutine VARIANT(rotate_eb2qu)(nside, order, lmax, EB, QU)
-	integer nside, npix, lmax, order, spin
+	integer nside, order, lmax, spin, n
 	MAPTYPE(XP, 0:12*nside**2-1) ::  QU
 	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
 	
-	npix = nside2npix(nside); spin = 2
-	allocate(map(0:npix-1,1:2), alms(1:2, 0:lmax, 0:lmax))
+	n = nside2npix(nside) - 1; spin = 2
+	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	map = EB; if (order == NEST) call convert_nest2ring(nside, map)
 	
@@ -84,14 +84,14 @@ end subroutine
 
 ! full-sky QU mode projector
 subroutine VARIANT(project_qu)(nside, order, lmax, QU, projected, scaleE, scaleB)
-	integer nside, npix, lmax, order, spin
+	integer nside, order, lmax, spin, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU, projected
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
 	real(DP), optional :: scaleE, scaleB
 	
-	npix = nside2npix(nside); spin = 2
-	allocate(map(0:npix-1,1:2), alms(1:2, 0:lmax, 0:lmax))
+	n = nside2npix(nside) - 1; spin = 2
+	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	LOAD(map, QU); if (order == NEST) call convert_nest2ring(nside, map)
 	
@@ -106,42 +106,39 @@ subroutine VARIANT(project_qu)(nside, order, lmax, QU, projected, scaleE, scaleB
 end subroutine
 
 ! full-sky Krylov subspace generator for pure E and B eigenmodes of QU map
-subroutine VARIANT(krylov_qu)(nside, order, lmax, QU, EQU, BQU, lambda)
-	integer nside, npix, lmax, order, spin, l, m
+subroutine VARIANT(krylov_qu)(nside, order, lmax, QU, EQU, BQU)
+	integer nside, order, lmax, spin, l, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU, EQU, BQU
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), dimension(:,:,:), allocatable :: alms, pure
-	real(XP), optional :: lambda
 	optional EQU, BQU
 	
 	! if we have nothing to do, bail out immediately
 	if (.not. present(EQU) .and. .not. present(BQU)) return
 	
-	npix = nside2npix(nside); spin = 2
-	allocate(map(0:npix-1,1:2), alms(1:2, 0:lmax, 0:lmax), pure(1:2, 0:lmax, 0:lmax))
+	n = nside2npix(nside) - 1; spin = 2
+	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax), pure(1:2, 0:lmax, 0:lmax))
 	
 	LOAD(map, QU); if (order == NEST) call convert_nest2ring(nside, map)
 	
 	call map2alm_spin(nside, lmax, lmax, spin, map, alms)
 	
 	if (present(EQU)) then
-		pure = 0.0; do l = 2,lmax; do m = 0,l
-			pure(1,l,m) = alms(1,l,m)/(l-1)/l/(l+1)/(l+2)
-		end do; end do
+		pure = 0.0; do l = 2,lmax
+			pure(1,l,0:l) = alms(1,l,0:l)/(l-1)/l/(l+1)/(l+2)
+		end do
 		
 		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
-		if (order == NEST) call convert_ring2nest(nside, map)
-		COPY(map,EQU); if (present(lambda)) EQU = EQU + lambda*QU
+		if (order == NEST) call convert_ring2nest(nside, map); COPY(map,EQU)
 	end if
 	
 	if (present(BQU)) then
-		pure = 0.0; do l = 2,lmax; do m = 0,l
-			pure(2,l,m) = alms(2,l,m)/(l-1)/l/(l+1)/(l+2)
-		end do; end do
+		pure = 0.0; do l = 2,lmax
+			pure(2,l,0:l) = alms(2,l,0:l)/(l-1)/l/(l+1)/(l+2)
+		end do
 		
 		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
-		if (order == NEST) call convert_ring2nest(nside, map)
-		COPY(map,BQU); if (present(lambda)) BQU = BQU + lambda*QU
+		if (order == NEST) call convert_ring2nest(nside, map); COPY(map,BQU)
 	end if
 	
 	deallocate(map, alms, pure)
@@ -150,14 +147,17 @@ end subroutine
 ! split masked QU map into pure E & B modes (by Krylov subspace construction) and residual
 subroutine VARIANT(purify_qu)(nside, order, lmax, lmin, ke, kb, map, mask, pure, residual)
 	integer nside, order, lmax, lmin, ke, kb, i, n
-	MAPTYPE(XP, 0:12*nside**2-1) :: map, mask, pure, residual
+	MAPTYPE(XP, 0:12*nside**2-1) :: map, pure, residual
+	real(XP), dimension(0:12*nside**2-1) :: mask
 	real(DP), dimension(:,:), allocatable :: M, U, V, W, R, P
 	real(DP) alpha, beta
 	
-	n = nside2npix(nside)-1
+	n = nside2npix(nside) - 1
 	allocate(M(0:n,1:2), U(0:n,1:2), V(0:n,1:2), W(0:n,1:2), R(0:n,1:2), P(0:n,1:2))
-	LOAD(R, map);  if (order == NEST) call convert_nest2ring(nside, R)
-	LOAD(M, mask); if (order == NEST) call convert_nest2ring(nside, M)
+	
+	LOAD(R, map); forall (i=0:n) M(i,:) = mask(i)
+	if (order == NEST) call convert_nest2ring(nside, R)
+	if (order == NEST) call convert_nest2ring(nside, M)
 	
 	! initialize pure modes
 	P = 0.0; !if (verbose) write (*,*) "Peeling off pure modes, average/max residual:"

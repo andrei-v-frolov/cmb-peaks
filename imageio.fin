@@ -40,9 +40,9 @@ subroutine VARIANT(image2fits)(file, array, xx, yy, vars, coords)
                 
                 if (present(vars)) then
                         if (present(coords)) then
-                                call ftpkys(unit, 'EXTNAME', vars(i)//coords, 'variable stored in extension', status)
+                                call ftpkys(unit, 'EXTNAME', trim(vars(i))//coords, 'variable stored in extension', status)
                         else
-                                call ftpkys(unit, 'EXTNAME', vars(i), 'variable stored in extension', status)
+                                call ftpkys(unit, 'EXTNAME', trim(vars(i)), 'variable stored in extension', status)
                         end if
                 end if
                 if (present(xx)) then

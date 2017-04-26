@@ -10,7 +10,7 @@ BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc leakage-3j leakage-mc
 FC = ifort
 FFLAGS = -O3 -ipo -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
 FFLAGS_OMP = $(subst parallel,qopenmp,$(FFLAGS))
-LDFLAGS = -static-intel
+#LDFLAGS = -static-intel
 
 # HEALPix libraries
 HEALPIX ?= /opt/healpix

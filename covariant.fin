@@ -58,15 +58,18 @@ subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, 
 end subroutine
 
 ! synthesize spin bundle from apodized mask (spin bundle is always output in RING ordering!)
-subroutine VARIANT(mask2spins_ring)(nside, order, lmax, mask, spins)
-	integer nside, lmax, order
+subroutine VARIANT(mask2spins_ring)(nside, order, lmax, mask, spins, strict)
+	integer nside, lmax, order, i
 	real(XP), dimension(0:12*nside**2-1) :: mask
 	real(XP), dimension(0:12*nside**2-1,1:5) :: spins
+	logical, optional :: strict
+	
+	! allocate local storage
 	complex(XP), allocatable :: alms(:,:,:)
 	real(XP), allocatable :: copy(:)
-	
 	allocate(alms(1,0:lmax,0:lmax))
 	
+	! process ordering
 	select case(order)
 		case(RING)
 			call map2alm(nside, lmax, lmax, mask, alms, [-1.0,1.0])
@@ -78,7 +81,11 @@ subroutine VARIANT(mask2spins_ring)(nside, order, lmax, mask, spins)
 			call abort(": ordering not supported")
 	end select
 	
+	! synthesize spin-weighted mask components
 	call alm2map_covariant(nside, lmax, lmax, alms, mask=spins)
+	
+	! zero out leakage into masked region if strict mode is requested
+	if (present(strict) .and. strict) forall (i=0:12*nside**2-1, mask(i) == 0.0) spins(i,:) = 0.0
 	
 	deallocate(alms)
 end subroutine

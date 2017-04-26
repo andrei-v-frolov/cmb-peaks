@@ -1,7 +1,7 @@
 ! masked sky QU to pure alms wrapper
 subroutine VARIANT(map2alm_pure)(nside, order, lmax, mmax, QU, mask, alms)
 	integer nside, order, lmax, mmax
-	MAPTYPE(XP, 0:12*nside**2-1) ::  QU
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU
 	real(XP), dimension(0:12*nside**2-1,1:5) :: mask
 	complex(XP), dimension(1:2, 0:lmax, 0:mmax) :: alms
 	integer, parameter :: Q = 1, U = 2, X = 3, Y = 4, W = 5
@@ -38,10 +38,35 @@ subroutine VARIANT(map2alm_pure)(nside, order, lmax, mmax, QU, mask, alms)
 	deallocate(map, tmp, alms2, alms1, alms0)
 end subroutine
 
+! masked QU to pure EB rotation wrapper
+subroutine VARIANT(rotate_qu2eb_pure)(nside, order, lmax, QU, mask, EB)
+	integer nside, order, lmax, n
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU
+	real(XP), dimension(0:12*nside**2-1) :: mask
+	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
+	real(DP), dimension(:,:), allocatable :: map, spins
+	complex(DPC), allocatable :: alms(:,:,:)
+	
+	n = nside2npix(nside) - 1
+	allocate(map(0:n,1:2), spins(0:n,1:5), alms(1:2, 0:lmax, 0:lmax))
+	
+	LOAD(map,QU); if (order == NEST) call convert_nest2ring(nside, map)
+	spins(:,1) = mask; if (order == NEST) call convert_nest2ring(nside, spins(:,1))
+	
+	call mask2spins_ring(nside, RING, lmax, spins(:,1), spins)
+	call map2alm_pure(nside, RING, lmax, lmax, map, spins, alms)
+	call alm2map(nside, lmax, lmax, alms(1:1,:,:), map(:,1))
+	call alm2map(nside, lmax, lmax, alms(2:2,:,:), map(:,2))
+	
+	if (order == NEST) call convert_ring2nest(nside, map); EB = map
+	
+	deallocate(map, spins, alms)
+end subroutine
+
 ! full-sky QU to EB rotation wrapper
 subroutine VARIANT(rotate_qu2eb)(nside, order, lmax, QU, EB)
 	integer nside, order, lmax, spin, n
-	MAPTYPE(XP, 0:12*nside**2-1) ::  QU
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU
 	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
@@ -63,7 +88,7 @@ end subroutine
 ! full-sky EB to QU rotation wrapper
 subroutine VARIANT(rotate_eb2qu)(nside, order, lmax, EB, QU)
 	integer nside, order, lmax, spin, n
-	MAPTYPE(XP, 0:12*nside**2-1) ::  QU
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU
 	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
@@ -124,18 +149,14 @@ subroutine VARIANT(krylov_qu)(nside, order, lmax, QU, EQU, BQU)
 	call map2alm_spin(nside, lmax, lmax, spin, map, alms)
 	
 	if (present(EQU)) then
-		pure = 0.0; do l = 2,lmax
-			pure(1,l,0:l) = alms(1,l,0:l)/(l-1)/l/(l+1)/(l+2)
-		end do
+		pure = 0.0; forall (l=2:lmax) pure(1,l,0:l) = alms(1,l,0:l)/(l-1)/l/(l+1)/(l+2)
 		
 		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
 		if (order == NEST) call convert_ring2nest(nside, map); COPY(map,EQU)
 	end if
 	
 	if (present(BQU)) then
-		pure = 0.0; do l = 2,lmax
-			pure(2,l,0:l) = alms(2,l,0:l)/(l-1)/l/(l+1)/(l+2)
-		end do
+		pure = 0.0; forall (l=2:lmax) pure(2,l,0:l) = alms(2,l,0:l)/(l-1)/l/(l+1)/(l+2)
 		
 		call alm2map_spin(nside, lmax, lmax, spin, pure, map)
 		if (order == NEST) call convert_ring2nest(nside, map); COPY(map,BQU)

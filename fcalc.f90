@@ -133,6 +133,12 @@ select case (op)
 			case (3); call rotate_eb2qu(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires EB or IEB map format")
 		end select
+	case ('QU->pure EB');
+		select case (nmaps)
+			case (2); call rotate_qu2eb_pure(nside, ord, lmax, M1(:,1:2), M2(:,1), Mout(:,1:2))
+			case (3); call rotate_qu2eb_pure(nside, ord, lmax, M1(:,2:3), M2(:,2), Mout(:,2:3)); Mout(:,1) = M1(:,1)
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
 	case ('inpaint QU');
 		select case (nmaps)
 			case (2); call inpaint_qu(nside, ord, M1(:,1:2), M2(:,1), Mout(:,1:2))
@@ -226,7 +232,7 @@ function binary()
 		case ('+','-','*','/','//','**')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
 		case ('project on','orthogonal','accumulate','select')
-		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','purify')
+		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','QU->pure EB','purify')
 		case default; return
 	end select
 	

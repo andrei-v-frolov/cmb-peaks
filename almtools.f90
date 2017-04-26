@@ -43,13 +43,14 @@ public :: convert_ring2nest, convert_nest2ring, udgrade_nest
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp, name ## _zs, name ## _zd; end interface
 
 GENERIC(map2alm_pure)
+GENERIC(rotate_qu2eb_pure)
 GENERIC(rotate_qu2eb)
 GENERIC(rotate_eb2qu)
 GENERIC(project_qu)
 GENERIC(krylov_qu)
 GENERIC(purify_qu)
 
-public :: map2alm_pure, rotate_qu2eb, rotate_eb2qu, project_qu, krylov_qu, purify_qu
+public :: map2alm_pure, rotate_qu2eb_pure, rotate_qu2eb, rotate_eb2qu, project_qu, krylov_qu, purify_qu
 
 contains
 

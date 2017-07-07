@@ -114,13 +114,21 @@ select case (op)
 		call random_number(M2); call random_number(M3)
 		Mout = M1 * sqrt(-2.0*log(M2)) * cos(2.0*pi*M3)
 	
-	! polarization operators
+	! one-point operators
 	case ('log');
 		select case (nmaps)
 			case (1); Mout = log(M1)
 			case (3); forall (i=0:n) Mout(i,:) = log_iqu(M1(i,:))
 			case default; call abort(trim(op) // " conversion requires I or IQU map format")
 		end select
+	case ('exp');
+		select case (nmaps)
+			case (1); Mout = exp(M1)
+			case (3); forall (i=0:n) Mout(i,:) = exp_iqu(M1(i,:))
+			case default; call abort(trim(op) // " conversion requires I or IQU map format")
+		end select
+	
+	! polarization operators
 	case ('QU->EB');
 		select case (nmaps)
 			case (2); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2))
@@ -177,7 +185,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','rank','sqrt','valid','invalid','randomize','QU->EB','EB->QU','sum','product')
+		case ('log','exp','rank','sqrt','valid','invalid','randomize','QU->EB','EB->QU','sum','product')
 		case default; return
 	end select
 	
@@ -301,6 +309,19 @@ pure function log_iqu(iqu)
 		log_iqu(2:3) = [Q,U]/P * log((I+P)/(I-P))/2.0
 	end associate
 end function
+
+! exponent of polarization tensor
+pure function exp_iqu(iqu)
+	real(IO) exp_iqu(3), iqu(3); intent(in) iqu
+	real(DP) P, PxP
+	
+	associate (I => iqu(1), Q => iqu(2), U => iqu(3))
+		PxP = Q*Q + U*U; P = sqrt(PxP)
+		exp_iqu(1) = exp(I) * cosh(P)
+		exp_iqu(2:3) = [Q,U]/P * exp(I) * sinh(P)
+	end associate
+end function
+
 
 ! rank-order map, outputing CDF value for valid pixels
 subroutine percentile(nside, map, valid, cdf)

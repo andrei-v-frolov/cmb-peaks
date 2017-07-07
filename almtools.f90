@@ -65,13 +65,13 @@ contains
 #define XP SP
 #define VARIANT(name) name ## _sp
 #include 'almtools.fin'
-#include 'covariant.fin'
+#include 'maptools.fin'
 
 ! double precision
 #define XP DP
 #define VARIANT(name) name ## _dp
 #include 'almtools.fin'
-#include 'covariant.fin'
+#include 'maptools.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

@@ -160,7 +160,7 @@ $(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
 mapio.o: mapio.fin
 imageio.o: imageio.fin
 pdetools.o: multigrid.fin inpaint-qu.fin almtools.o
-almtools.o: almtools.fin covariant.fin complex-qu.fin mapio.o
+almtools.o: almtools.fin maptools.fin complex-qu.fin mapio.o
 
 # generic rules
 $(BINDIR)/%: %.f90

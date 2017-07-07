@@ -24,7 +24,7 @@ character(len=8000) :: op, fin1, fin2, fin3, fout
 integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, n = 0
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
 logical, dimension(:,:), allocatable :: valid
-integer i, seed(2)
+integer i, j, seed(2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -113,6 +113,11 @@ select case (op)
 		allocate(M2, mold=M1); allocate(M3, mold=M1)
 		call random_number(M2); call random_number(M3)
 		Mout = M1 * sqrt(-2.0*log(M2)) * cos(2.0*pi*M3)
+	case ('shuffle');
+		allocate(M2, mold=M1); call random_number(M2)
+		do i = 0,n; j = n - floor((n-i+1)*M2(i,1))
+			Mout(i,:) = M1(j,:); M1(j,:)=M1(i,:)
+		end do
 	
 	! one-point operators
 	case ('log');
@@ -185,7 +190,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','exp','rank','sqrt','valid','invalid','randomize','QU->EB','EB->QU','sum','product')
+		case ('log','exp','rank','sqrt','valid','invalid','randomize','shuffle','QU->EB','EB->QU','sum','product')
 		case default; return
 	end select
 	

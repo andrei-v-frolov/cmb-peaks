@@ -118,6 +118,26 @@ select case (op)
 		do i = 0,n; j = n - floor((n-i+1)*M2(i,1))
 			Mout(i,:) = M1(j,:); M1(j,:)=M1(i,:)
 		end do
+	case ('randomize-alm');
+		select case (nmaps)
+			case (1); call randomize(nside, ord, 1, lmax, M1(:,1), Mout(:,1))
+			case (3); call randomize(nside, ord, 1, lmax, M1(:,1), Mout(:,1))
+			          call randomize_qu(nside, ord, 1, lmax, M1(:,2:3), Mout(:,2:3), .true., .true.)
+			case (2); call randomize_qu(nside, ord, 1, lmax, M1(:,1:2), Mout(:,1:2), .true., .true.)
+			case default; call abort(trim(op) // " conversion requires I, QU or IQU map format")
+		end select
+	case ('randomize-blm');
+		select case (nmaps)
+			case (2); call randomize_qu(nside, ord, 1, lmax, M1(:,1:2), Mout(:,1:2), randomizeB=.true.)
+			case (3); call randomize_qu(nside, ord, 1, lmax, M1(:,2:3), Mout(:,2:3), randomizeB=.true.); Mout(:,1) = M1(:,1)
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
+	case ('randomize-elm');
+		select case (nmaps)
+			case (2); call randomize_qu(nside, ord, 1, lmax, M1(:,1:2), Mout(:,1:2), randomizeE=.true.)
+			case (3); call randomize_qu(nside, ord, 1, lmax, M1(:,2:3), Mout(:,2:3), randomizeE=.true.); Mout(:,1) = M1(:,1)
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
 	
 	! one-point operators
 	case ('log');
@@ -190,7 +210,9 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','exp','rank','sqrt','valid','invalid','randomize','shuffle','QU->EB','EB->QU','sum','product')
+		case ('log','exp','rank','sqrt','valid','invalid','sum','product')
+		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
+		case ('QU->EB','EB->QU')
 		case default; return
 	end select
 	

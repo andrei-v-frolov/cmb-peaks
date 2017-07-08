@@ -1,3 +1,29 @@
+! full-sky alm phase randomizer
+subroutine VARIANT(randomize)(nside, order, lmin, lmax, map, randomized)
+	integer nside, order, lmin, lmax, n
+	real(XP), dimension(0:12*nside**2-1) :: map, randomized
+	complex(XP), allocatable :: alms(:,:,:)
+	real(XP), allocatable :: phases(:,:)
+	
+	real, parameter :: twopi = 6.283185307179586476925286766559005768394338798750Q0
+	
+	n = nside2npix(nside) - 1
+	allocate(alms(1, 0:lmax, 0:lmax))
+	
+	! rotate phases of complex alm's (m=0 ones are always real)
+	allocate(phases(lmin:lmax, 1:lmax)); call random_number(phases)
+	
+	randomized = map; if (order == NEST) call convert_nest2ring(nside, randomized)
+	
+	call map2alm(nside, lmax, lmax, randomized, alms)
+	alms(1,lmin:lmax,1:lmax) = exp((0,twopi)*phases(:,:)) * alms(1,lmin:lmax,1:lmax)
+	call alm2map(nside, lmax, lmax, alms, randomized)
+	
+	if (order == NEST) call convert_ring2nest(nside, randomized)
+	
+	deallocate(alms, phases)
+end subroutine
+
 ! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)
 subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, mask)
 	integer nside, lmax, mmax, p, n

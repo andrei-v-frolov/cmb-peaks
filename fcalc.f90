@@ -187,6 +187,13 @@ select case (op)
 			case default; call abort(trim(op) // " purified inpainting requires QU or IQU map format")
 		end select
 	
+	! reconstruction operators
+	case ('magnetic');
+		select case (nmaps)
+			case (1); call magnetic(nside, ord, 1, 3, M1(:,1), Mout(:,1))
+			case default; call abort(trim(op) // " reconstruction requires cos(gamma)^2 map as input")
+		end select
+	
 	! unknown operator
 	case default; call abort(trim(op) // ": operation not supported")
 end select
@@ -238,7 +245,7 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('nest','ring','QU->EB','EB->QU')
+		case ('nest','ring','QU->EB','EB->QU','magnetic')
 		case default; return
 	end select
 	
@@ -349,7 +356,6 @@ pure function exp_iqu(iqu)
 	end associate
 end function
 
-
 ! rank-order map, outputing CDF value for valid pixels
 subroutine percentile(nside, map, valid, cdf)
 	integer nside, npix, used
@@ -371,6 +377,81 @@ subroutine percentile(nside, map, valid, cdf)
 	where (.not. valid) cdf = 1.0/0.0
 	
 	deallocate(M, idx, rank)
+end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! ...
+subroutine magnetic(nside, order, lmin, lmax, map, fit)
+	integer nside, order, lmin, lmax, i, j, k, n, status
+	real(IO), dimension(0:12*nside**2-1) :: map, fit
+	
+	! allocatable storage for (large) temporary maps
+	real(DP), allocatable :: cos2(:), field(:,:), basis(:,:,:)
+	real(DP), allocatable :: A(:,:), B(:,:)
+	integer, allocatable :: pivot(:)
+	
+	! temporary alms are much smaller, allocate on stack
+	complex(DP), dimension(1,0:lmax,0:lmax) :: alms, blms
+	real(DP) u, v, pack((lmax+1)**2 - lmin**2)
+	
+	! allocate temporary storage
+	n = nside2npix(nside) - 1; k = (lmax+1)**2 - lmin**2
+	allocate(cos2(0:n), field(0:n,3), basis(0:n,3,k), A(k,k), B(k,1), pivot(k))
+	
+	! initialize cos^2(gamma) map
+	u = minval(map); v = maxval(map); cos2 = (map-v)/(u-v)
+	if (order == NEST) call convert_nest2ring(nside, cos2)
+	if (verbose) write (*,*) "Preparing reconstruction basis..."
+	
+	! initialize magnetic field basis maps
+	do i = 1,k
+		alms = 0.0; pack = 0.0; pack(i) = 1.0
+		call unpack_alms(lmin, lmax, pack, alms(1,lmin:lmax,0:lmax))
+		call alm2map_magnetic(nside, lmax, lmax, alms, basis(:,:,i))
+	end do
+	
+	! initial guess for magnetic potential alms
+	!call map2alm(nside, lmax, lmax, cos2, blms, [-1.0,1.0])
+	blms = 0.0; blms(1,lmin,0) = 1.0
+	
+	if (verbose) write (*,*) "Reconstructing magnetic field potential, alm residual:"
+	
+	do j = 1,32
+		! reconstruction residual
+		call alm2map_magnetic(nside, lmax, lmax, blms, field)
+		call map2alm_magnetic(nside, lmax, lmax, field, field, cos2, alms)
+		call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), B(:,1)); B = -B/2.0
+		
+		if (verbose) write (*,*) sqrt(sum(B**2))
+		
+		! construct Newton iteration matrix
+		do i = 1,k
+			call map2alm_magnetic(nside, lmax, lmax, field, basis(:,:,i), cos2, alms)
+			call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), A(:,i))
+		end do
+		
+		! solve for Newton's correction
+		call dgesv(k, 1, A, k, pivot, B, k, status)
+		
+		! bail at first sign of trouble
+		if (status /= 0) call abort
+		
+		! unpack correction alms
+		alms = 0.0; call unpack_alms(lmin, lmax, B(:,1), alms(1,lmin:lmax,0:lmax))
+		
+		! update reconstructed alms
+		blms = blms + alms
+		
+		write (*,*) abs(blms)
+	end do
+	
+	! cos^2(gamma) map for reconstructed magnetic field
+	call alm2map_magnetic(nside, lmax, lmax, blms, field)
+	forall (i=0:n) fit(i) = sum(field(i,2:3)**2)/sum(field(i,:)**2)
+	if (order == NEST) call convert_ring2nest(nside, fit)
+	
+	deallocate(cos2, field, basis, A, B, pivot)
 end subroutine
 
 end

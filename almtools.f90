@@ -17,11 +17,15 @@ implicit none
 ! generic iterfaces are implemented using Fortran preprocessor
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp; end interface
 
+GENERIC(pack_alms)
+GENERIC(unpack_alms)
 GENERIC(randomize)
+GENERIC(alm2map_magnetic)
+GENERIC(map2alm_magnetic)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
-public :: randomize, alm2map_covariant, mask2spins_ring
+public :: pack_alms, unpack_alms, alm2map_magnetic, map2alm_magnetic, randomize, alm2map_covariant, mask2spins_ring
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! HEALPix routine wrappers, complex QU, in single and double precision

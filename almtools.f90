@@ -21,11 +21,10 @@ GENERIC(pack_alms)
 GENERIC(unpack_alms)
 GENERIC(randomize)
 GENERIC(alm2map_magnetic)
-GENERIC(map2alm_magnetic)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
-public :: pack_alms, unpack_alms, alm2map_magnetic, map2alm_magnetic, randomize, alm2map_covariant, mask2spins_ring
+public :: pack_alms, unpack_alms, randomize, alm2map_magnetic, alm2map_covariant, mask2spins_ring
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! HEALPix routine wrappers, complex QU, in single and double precision

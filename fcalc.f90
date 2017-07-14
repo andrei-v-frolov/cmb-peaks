@@ -190,7 +190,7 @@ select case (op)
 	! reconstruction operators
 	case ('magnetic');
 		select case (nmaps)
-			case (1); call magnetic(nside, ord, 1, 3, M1(:,1), Mout(:,1))
+			case (1); call magnetic(nside, ord, 1, 10, M1(:,1), Mout(:,1))
 			case default; call abort(trim(op) // " reconstruction requires cos(gamma)^2 map as input")
 		end select
 	
@@ -383,21 +383,23 @@ end subroutine
 
 ! ...
 subroutine magnetic(nside, order, lmin, lmax, map, fit)
-	integer nside, order, lmin, lmax, i, j, k, n, status
+	integer nside, order, lmin, lmax, i, j, k, n, iteration, status
 	real(IO), dimension(0:12*nside**2-1) :: map, fit
 	
 	! allocatable storage for (large) temporary maps
-	real(DP), allocatable :: cos2(:), field(:,:), basis(:,:,:)
+	real(DP), allocatable :: cos2(:), M1(:), M2(:,:)
+	real(DP), allocatable :: field(:,:), basis(:,:,:)
 	real(DP), allocatable :: A(:,:), B(:,:)
 	integer, allocatable :: pivot(:)
 	
 	! temporary alms are much smaller, allocate on stack
-	complex(DP), dimension(1,0:lmax,0:lmax) :: alms, blms
-	real(DP) u, v, pack((lmax+1)**2 - lmin**2)
+	complex(DP) alms(1,0:lmax,0:lmax)
+	real(DP) pack((lmax+1)**2 - lmin**2)
+	real(DP) u, v, chi2, proposed, lambda
 	
 	! allocate temporary storage
 	n = nside2npix(nside) - 1; k = (lmax+1)**2 - lmin**2
-	allocate(cos2(0:n), field(0:n,3), basis(0:n,3,k), A(k,k), B(k,1), pivot(k))
+	allocate(cos2(0:n), M1(0:n), M2(0:n,k), field(0:n,3), basis(0:n,3,k), A(k,k), B(k,1), pivot(k))
 	
 	! initialize cos^2(gamma) map
 	u = minval(map); v = maxval(map); cos2 = (map-v)/(u-v)
@@ -412,46 +414,86 @@ subroutine magnetic(nside, order, lmin, lmax, map, fit)
 	end do
 	
 	! initial guess for magnetic potential alms
-	!call map2alm(nside, lmax, lmax, cos2, blms, [-1.0,1.0])
-	blms = 0.0; blms(1,lmin,0) = 1.0
+	call map2alm(nside, lmax, lmax, cos2, alms, [-1.0,1.0])
+	call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), pack)
 	
-	if (verbose) write (*,*) "Reconstructing magnetic field potential, alm residual:"
+	if (verbose) write (*,*) "Reconstructing magnetic field potential, cos^2 residual:"
 	
-	do j = 1,32
-		! reconstruction residual
-		call alm2map_magnetic(nside, lmax, lmax, blms, field)
-		call map2alm_magnetic(nside, lmax, lmax, field, field, cos2, alms)
-		call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), B(:,1)); B = -B/2.0
-		
-		if (verbose) write (*,*) sqrt(sum(B**2))
-		
-		! construct Newton iteration matrix
+	! initial reconstruction residual
+	call unpack_alms(lmin, lmax, pack, alms(1,lmin:lmax,0:lmax))
+	call alm2map_magnetic(nside, lmax, lmax, alms, field)
+	call magnetic_fit_residual(nside, field, cos2, M1)
+	chi2 = sum(M1**2)/(n+1); lambda = 0.1
+	
+	do iteration = 1,320
+		! construct Levenberg–Marquardt matrices
 		do i = 1,k
-			call map2alm_magnetic(nside, lmax, lmax, field, basis(:,:,i), cos2, alms)
-			call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), A(:,i))
+			call magnetic_fit_derivative(nside, field, basis(:,:,i), M2(:,i))
+			
+			B(i,1) = -0.5*sum(M1*M2(:,i))
+			
+			do j = 1,i
+				A(i,j) = sum(M2(:,i)*M2(:,j))
+				A(j,i) = A(i,j)
+			end do
+			
+			A(i,i) = A(i,i) * (1.0 + lambda)
 		end do
 		
-		! solve for Newton's correction
+		! solve for best fit correction
 		call dgesv(k, 1, A, k, pivot, B, k, status)
 		
 		! bail at first sign of trouble
 		if (status /= 0) call abort
 		
-		! unpack correction alms
-		alms = 0.0; call unpack_alms(lmin, lmax, B(:,1), alms(1,lmin:lmax,0:lmax))
+		! new reconstruction residual
+		call unpack_alms(lmin, lmax, pack+B(:,1), alms(1,lmin:lmax,0:lmax))
+		call alm2map_magnetic(nside, lmax, lmax, alms, field)
+		call magnetic_fit_residual(nside, field, cos2, M1)
+		proposed = sum(M1**2)/(n+1)
 		
-		! update reconstructed alms
-		blms = blms + alms
+		write (*,*) sqrt(proposed), sqrt(sum(B**2)), lambda
 		
-		write (*,*) abs(blms)
+		! damping schedule
+		if (proposed > chi2) then
+			lambda = 10.0*lambda
+			continue
+		else
+			lambda = lambda/2.0
+		end if
+		
+		! iteration accepted
+		chi2 = proposed
+		pack = pack + B(:,1)
 	end do
 	
 	! cos^2(gamma) map for reconstructed magnetic field
-	call alm2map_magnetic(nside, lmax, lmax, blms, field)
+	call unpack_alms(lmin, lmax, pack, alms(1,lmin:lmax,0:lmax))
+	call alm2map_magnetic(nside, lmax, lmax, alms, field)
 	forall (i=0:n) fit(i) = sum(field(i,2:3)**2)/sum(field(i,:)**2)
 	if (order == NEST) call convert_ring2nest(nside, fit)
 	
-	deallocate(cos2, field, basis, A, B, pivot)
+	deallocate(cos2, M1, M2, field, basis, A, B, pivot)
+end subroutine
+
+subroutine magnetic_fit_residual(nside, B, cos2, map)
+	integer nside, i, n
+	real(DP), dimension(0:12*nside**2-1,3) :: B
+	real(DP), dimension(0:12*nside**2-1) :: cos2, map
+	
+	n = nside2npix(nside) - 1
+	
+	forall (i=0:n) map(i) = cos2(i) - sum(B(i,2:3)**2)/sum(B(i,:)**2)
+end subroutine
+
+subroutine magnetic_fit_derivative(nside, B1, B2, map)
+	integer nside, i, n
+	real(DP), dimension(0:12*nside**2-1,3) :: B1, B2
+	real(DP), dimension(0:12*nside**2-1) :: map
+	
+	n = nside2npix(nside) - 1
+	
+	forall (i=0:n) map(i) = (sum(B1(i,2:3)**2)*B1(i,1)*B2(i,1) - B1(i,1)**2*sum(B1(i,2:3)*B2(i,2:3)))/sum(B1(i,:)**2)**2
 end subroutine
 
 end

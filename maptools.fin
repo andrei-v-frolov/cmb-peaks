@@ -75,23 +75,6 @@ subroutine VARIANT(alm2map_magnetic)(nside, lmax, mmax, alms, field)
 	call alm2map(nside, lmax, mmax, rlms, field(:,1))
 end subroutine
 
-! compute alms of magnetic field alignment map in RING ordering
-subroutine VARIANT(map2alm_magnetic)(nside, lmax, mmax, B1, B2, cos2, alms)
-	integer nside, lmax, mmax, i, n
-	real(XP), dimension(0:12*nside**2-1,3) :: B1, B2
-	real(XP), dimension(0:12*nside**2-1) :: cos2
-	real(XP), dimension(:), allocatable :: map
-	complex(XP) alms(1,0:lmax,0:mmax)
-	
-	n = nside2npix(nside) - 1; allocate(map(0:n))
-	
-	!map = B1(:,1)*B2(:,1)*cos2 - (B1(:,2)*B2(:,2) + B1(:,3)*B2(:,3))*(1.0 - cos2)
-	forall (i=0:n) map(i) = sum(B1(i,:)*B2(i,:))*cos2(i) - sum(B1(i,2:3)*B2(i,2:3))
-	call map2alm(nside, lmax, mmax, map, alms, [-1.0,1.0])
-	
-	deallocate(map)
-end subroutine
-
 ! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)
 subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, mask)
 	integer nside, lmax, mmax, p, n

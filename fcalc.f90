@@ -140,6 +140,11 @@ select case (op)
 		end select
 	
 	! one-point operators
+	case ('frac');
+		select case (nmaps)
+			case (3); forall (i=0:n) Mout(i,:) = fraction(M1(i,:))
+			case default; call abort(trim(op) // " conversion requires IQU map format")
+		end select
 	case ('log');
 		select case (nmaps)
 			case (1); Mout = log(M1)
@@ -217,7 +222,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('log','exp','rank','sqrt','valid','invalid','sum','product')
+		case ('frac','log','exp','rank','sqrt','valid','invalid','sum','product')
 		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
 		case ('QU->EB','EB->QU')
 		case default; return
@@ -330,6 +335,15 @@ elemental function apodize(x)
 	
 	!apodize = (1.0+tanh(tan(pi*(x-0.5))))/2.0
 	apodize = sin(pi/2.0*x)**2
+end function
+
+! polarization fraction
+pure function fraction(iqu)
+	real(IO) fraction(3), iqu(3); intent(in) iqu
+	
+	associate (I => iqu(1), Q => iqu(2), U => iqu(3))
+		fraction = iqu/(I + sqrt(Q*Q+U*U))
+	end associate
 end function
 
 ! logarithm of polarization tensor

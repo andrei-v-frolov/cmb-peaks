@@ -195,8 +195,8 @@ select case (op)
 	! reconstruction operators
 	case ('magnetic');
 		select case (nmaps)
-			case (1); call magnetic_fit_cos2(nside, ord, 1, 10, M1(:,1), Mout(:,1))
-			case default; call abort(trim(op) // " reconstruction requires cos(gamma)^2 map as input")
+			case (3); call magnetic_fit(nside, ord, 1, 10, M1, Mout)
+			case default; call abort(trim(op) // " reconstruction requires IQU/(I+P) map as input")
 		end select
 	
 	! unknown operator
@@ -395,13 +395,13 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! fit magnetic field potential to cos^2(gamma) polarization fraction map
-subroutine magnetic_fit_cos2(nside, order, lmin, lmax, map, fit)
+! fit magnetic field potential to polarization fraction map
+subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	integer nside, order, lmin, lmax
-	real(IO), dimension(0:12*nside**2-1) :: map, fit
+	real(IO), dimension(0:12*nside**2-1,3) :: map, fit
 	
 	! allocatable storage for (large) temporary maps
-	real(DP), allocatable :: cos2(:), M1(:,:), M2(:,:)
+	real(DP), allocatable :: pqu(:,:), M1(:,:,:), M2(:,:,:)
 	real(DP), allocatable :: field(:,:,:), basis(:,:,:)
 	real(DP), allocatable :: A(:,:), B(:,:), pack(:,:)
 	integer, allocatable :: pivot(:)
@@ -416,15 +416,19 @@ subroutine magnetic_fit_cos2(nside, order, lmin, lmax, map, fit)
 	
 	! allocate temporary storage
 	n = nside2npix(nside) - 1; k = (lmax+1)**2 - lmin**2; best = 1; next = 2
-	allocate(cos2(0:n), M1(0:n,2), M2(0:n,k), field(0:n,3,2), basis(0:n,3,k))
+	allocate(pqu(0:n,3), M1(0:n,3,2), M2(0:n,3,k), field(0:n,3,2), basis(0:n,3,k))
 	allocate(A(k,k), B(k,1), pack(k,2), pivot(k))
 	
-	! initialize cos^2(gamma) map
-	u = minval(map); v = maxval(map); cos2 = (map-v)/(u-v)
-	if (order == NEST) call convert_nest2ring(nside, cos2)
-	if (verbose) write (*,*) "Preparing reconstruction basis..."
+	! initialize polarization fraction map
+	u = minval(map(:,1))
+	v = maxval(map(:,1))
+	pqu(:,1) = (v-map(:,1))/(v-u)
+	pqu(:,2:3) = map(:,2:3)/(v-u)
+	if (order == NEST) call convert_nest2ring(nside, pqu)
 	
 	! initialize magnetic field basis maps
+	if (verbose) write (*,*) "Preparing reconstruction basis..."
+	
 	do i = 1,k; associate(pack => pack(:,1))
 		alms = 0.0; pack = 0.0; pack(i) = 1.0
 		call unpack_alms(lmin, lmax, pack, alms(1,lmin:lmax,0:lmax))
@@ -432,38 +436,40 @@ subroutine magnetic_fit_cos2(nside, order, lmin, lmax, map, fit)
 	end associate; end do
 	
 	! initial guess for magnetic potential alms
+	if (verbose) write (*,*) "Initializing magnetic field guess..."
+	
 	pack(:,best) = 0.0; chi2(best) = HUGE(chi2); lambda = 0.1; slow = 0
-	call map2alm(nside, lmax, lmax, cos2, alms, [-1.0,1.0])
+	call map2alm(nside, lmax, lmax, pqu(:,1), alms, [-1.0,1.0])
 	call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), pack(:,next))
 	
-	if (verbose) write (*,*) "Reconstructing magnetic field potential, RMS(cos^2 residual):"
+	if (verbose) write (*,*) "Reconstructing magnetic field potential, RMS(residual):"
 	
 	do iteration = 1,1000
 		! reconstruction residual
 		call unpack_alms(lmin, lmax, pack(:,next), alms(1,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,next))
-		call magnetic_fit_residual(nside, field(:,:,next), cos2, M1(:,next))
-		chi2(next) = sum(M1(:,next)**2)/(n+1)
+		call magnetic_fit_residual(nside, field(:,:,next), pqu, M1(:,:,next))
+		chi2(next) = sum(M1(:,:,next)**2)/(n+1)
 		
 		if (verbose) write (*,*) sqrt(chi2(next)), sqrt(sum((pack(:,next)-pack(:,best))**2)), lambda
 		
 		! damping schedule
 		if (chi2(next) < chi2(best)) then
-			if (chi2(best)/chi2(next) - 1.0 < 1.0e-5) slow = slow + 1
+			if (chi2(best)/chi2(next) - 1.0 < 1.0e-4) slow = slow + 1
 			best = next; if (slow > k) exit
 			lambda = lambda/2.0
 		else
-			lambda = 10.0*lambda
+			lambda = 10.0*lambda + 1.0e-3
 		end if
 		
 		! construct Levenberg–Marquardt matrices
 		do i = 1,k
-			call magnetic_fit_derivative(nside, field(:,:,best), basis(:,:,i), M2(:,i))
+			call magnetic_fit_derivative(nside, field(:,:,best), basis(:,:,i), M2(:,:,i))
 			
-			B(i,1) = -0.5*sum(M1(:,best)*M2(:,i))
+			B(i,1) = sum(M1(:,:,best)*M2(:,:,i))
 			
 			do j = 1,i
-				A(i,j) = sum(M2(:,i)*M2(:,j))
+				A(i,j) = sum(M2(:,:,i)*M2(:,:,j))
 				A(j,i) = A(i,j)
 			end do
 			
@@ -484,31 +490,47 @@ subroutine magnetic_fit_cos2(nside, order, lmin, lmax, map, fit)
 	! cos^2(gamma) map for reconstructed magnetic field
 	call unpack_alms(lmin, lmax, pack(:,best), alms(1,lmin:lmax,0:lmax))
 	call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,best))
-	forall (i=0:n) fit(i) = sum(field(i,2:3,best)**2)/sum(field(i,:,best)**2)
+	forall (i=0:n) fit(i,:) = polarization(field(i,:,best))
 	if (order == NEST) call convert_ring2nest(nside, fit)
 	
 	! clean up allocated storage
-	deallocate(cos2, M1, M2, field, basis, A, B, pack, pivot)
+	deallocate(pqu, M1, M2, field, basis, A, B, pack, pivot)
 end subroutine
 
-subroutine magnetic_fit_residual(nside, B, cos2, map)
+! polarization fraction due to magnetic field
+pure function polarization(B)
+	real(DP) polarization(3), B(3); intent(in) B
+	
+	polarization = [B(2)**2+B(3)**2,B(3)**2-B(2)**2,-2*B(2)*B(3)]/sum(B**2)
+end function
+
+! polarization fraction Jacobian
+pure function jacobian(B)
+	real(DP) jacobian(3,3), B(3); intent(in) B
+	
+	jacobian(1,:) = [-(B(2)**2+B(3)**2), B(1)**2, B(1)**2] * B
+	jacobian(2,:) = [ (B(2)**2-B(3)**2), -(B(1)**2+2*B(3)**2), (B(1)**2+2*B(2)**2)] * B
+	jacobian(3,:) = [ 2*B(1)*B(2)*B(3), -B(3)*(B(1)**2-B(2)**2+B(3)**2), -B(2)*(B(1)**2+B(2)**2-B(3)**2)]
+	
+	jacobian = jacobian * 2.0/sum(B**2)**2
+end function
+
+subroutine magnetic_fit_residual(nside, B, pqu, map)
 	integer nside, i, n
-	real(DP), dimension(0:12*nside**2-1,3) :: B
-	real(DP), dimension(0:12*nside**2-1) :: cos2, map
+	real(DP), dimension(0:12*nside**2-1,3) :: B, pqu, map
 	
 	n = nside2npix(nside) - 1
 	
-	forall (i=0:n) map(i) = cos2(i) - sum(B(i,2:3)**2)/sum(B(i,:)**2)
+	forall (i=0:n) map(i,:) = pqu(i,:) - polarization(B(i,:))
 end subroutine
 
 subroutine magnetic_fit_derivative(nside, B1, B2, map)
 	integer nside, i, n
-	real(DP), dimension(0:12*nside**2-1,3) :: B1, B2
-	real(DP), dimension(0:12*nside**2-1) :: map
+	real(DP), dimension(0:12*nside**2-1,3) :: B1, B2, map
 	
 	n = nside2npix(nside) - 1
 	
-	forall (i=0:n) map(i) = (sum(B1(i,2:3)**2)*B1(i,1)*B2(i,1) - B1(i,1)**2*sum(B1(i,2:3)*B2(i,2:3)))/sum(B1(i,:)**2)**2
+	forall (i=0:n) map(i,:) = matmul(jacobian(B1(i,:)), B2(i,:))
 end subroutine
 
 end

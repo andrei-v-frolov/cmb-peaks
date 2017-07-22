@@ -108,6 +108,12 @@ select case (op)
 	case ('product'); nmaps = 1; Mout(:,1) = product(M1,2)
 	case ('select');  nmaps = 1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
 	
+	! composition operators
+	case ('zip');     if (nmaps /= 1) call abort(trim(op) // " composition works on single channel maps")
+		nmaps=2; deallocate(Mout); allocate(Mout(0:n,nmaps)); Mout(:,1) = M1(:,1); Mout(:,2) = M2(:,1)
+	case ('zipwith'); if (nmaps /= 1) call abort(trim(op) // " composition works on single channel maps")
+		nmaps=3; deallocate(Mout); allocate(Mout(0:n,nmaps)); Mout(:,1) = M1(:,1); Mout(:,2) = M2(:,1); Mout(:,3) = M3(:,1)
+	
 	! randomize operators
 	case ('randomize');
 		allocate(M2, mold=M1); allocate(M3, mold=M1)
@@ -278,7 +284,7 @@ function binary()
 	select case (x)
 		case ('+','-','*','/','//','**')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
-		case ('project on','orthogonal','accumulate','select')
+		case ('project on','orthogonal','accumulate','select','zip')
 		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','QU->pure EB','purify')
 		case default; return
 	end select
@@ -307,6 +313,7 @@ function ternary()
 	
 	! is it really ternary?
 	select case (x)
+		case ('zip'); if (y .eq. 'with') ternary = .true.
 		case ('inpaint'); if (y .eq. 'with' .or. y .eq. 'apodize') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
 		case ('within','apodize'); if (y .eq. ':') ternary = .true.

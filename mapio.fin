@@ -79,6 +79,9 @@ function VARIANT(literal_map)(literal, M, nside, nmaps)
 	! not a literal unless parsed
 	VARIANT(literal_map) = .false.
 	
+	! if path separator present, this is a file
+	if (index(literal, "/") > 0) return
+	
 	! parse literal specification
 	i = index(literal, "@")
 	j = index(literal, ":")

@@ -79,6 +79,10 @@ select case (op)
 	case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
 	case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
 	
+	! projection operators (masked version)
+	case ('project onwith'); Mout = sum(M1*M2*M3,valid)/sum(M2*M2*M3,valid) * M2
+	case ('orthogonalwith'); Mout = M1 - sum(M1*M2*M3,valid)/sum(M2*M2*M3,valid) * M2
+	
 	! masking operators
 	case ('valid'); where (valid) Mout = 1.0
 	case ('invalid'); where (.not. valid) Mout = 1.0
@@ -318,6 +322,7 @@ function ternary()
 	select case (x)
 		case ('zip'); if (y .eq. 'with') ternary = .true.
 		case ('inpaint'); if (y .eq. 'with' .or. y .eq. 'apodize') ternary = .true.
+		case ('project on','orthogonal'); if (y .eq. 'with') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
 		case ('within','apodize'); if (y .eq. ':') ternary = .true.
 	end select

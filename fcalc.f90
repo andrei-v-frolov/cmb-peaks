@@ -21,7 +21,7 @@ implicit none
 !real, parameter :: pi = 3.141592653589793238462643383279502884197169399375Q0
 
 character(len=8000) :: op, fin1, fin2, fin3, fout
-integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, n = 0
+integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, pol = -1, n = 0
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
 logical, dimension(:,:), allocatable :: valid
 integer i, j, seed(2)
@@ -111,9 +111,9 @@ select case (op)
 		end select
 	
 	! reduction operators
-	case ('sum');     nmaps = 1; Mout(:,1) = sum(M1,2)
-	case ('product'); nmaps = 1; Mout(:,1) = product(M1,2)
-	case ('select');  nmaps = 1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
+	case ('sum');     nmaps = 1; pol = -1; Mout(:,1) = sum(M1,2)
+	case ('product'); nmaps = 1; pol = -1; Mout(:,1) = product(M1,2)
+	case ('select');  nmaps = 1; pol = -1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
 	
 	! composition operators
 	case ('zip');     if (nmaps /= 1) call abort(trim(op) // " composition works on single channel maps")
@@ -217,7 +217,7 @@ select case (op)
 end select
 
 ! write output map
-call write_map(fout, Mout(:,1:nmaps), nside, ord, creator='FCALC')
+call write_map(fout, Mout(:,1:nmaps), nside, ord, pol, creator='FCALC')
 
 contains
 
@@ -245,7 +245,7 @@ function prefix()
 	prefix = .true.; op = trim(x)
 	
 	! read input maps
-	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord)
+	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
 	
 	! output map name
 	call getArgument(3, fout); if (fout .eq. '=:') call getArgument(4, fout)
@@ -271,7 +271,7 @@ function postfix()
 	postfix = .true.; op = trim(x)
 	
 	! read input maps
-	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord)
+	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
 	
 	! output map name
 	call getArgument(3, fout); if (fout .eq. '=:') call getArgument(4, fout)
@@ -300,8 +300,8 @@ function binary()
 	binary = .true.; op = trim(x)
 	
 	! read input maps
-	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord)
-	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord)
+	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
+	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
 	
 	! output map name
 	call getArgument(4, fout); if (fout .eq. '=:') call getArgument(5, fout)
@@ -331,9 +331,9 @@ function ternary()
 	if (.not. ternary) return; op = trim(x) // trim(y)
 	
 	! read input maps
-	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord)
-	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord)
-	call getArgument(5, fin3); call read_map(fin3, M3, nside, nmaps, ord)
+	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
+	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
+	call getArgument(5, fin3); call read_map(fin3, M3, nside, nmaps, ord, pol)
 	
 	! output map name
 	call getArgument(6, fout); if (fout .eq. '=:') call getArgument(7, fout)

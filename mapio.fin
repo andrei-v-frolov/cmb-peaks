@@ -1,14 +1,14 @@
 ! write map to FITS file, creating minimal header
-subroutine VARIANT(write_map)(fout, M, nside, ord, creator, version)
-	character(*) fout, creator, version
-	real(XP) M(:,:); integer nside, ord
-	optional creator, version
-
+subroutine VARIANT(write_map)(fout, M, nside, ord, pol, creator, version)
+	character(*) fout, creator, version; real(XP) M(:,:)
+	integer nside, ord, pol; optional pol, creator, version
+	
 	! FITS header
 	character(len=80) :: header(64)
 	
 	! mode of operation
 	integer mode; mode = 0
+	if (present(pol) .and. pol >= 0) mode = mode + 4
 	if (present(creator)) mode = mode + 2
 	if (present(version)) mode = mode + 1
 	
@@ -17,6 +17,10 @@ subroutine VARIANT(write_map)(fout, M, nside, ord, creator, version)
 	
 	! write output header
 	select case(mode)
+		case(7); call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator=creator, version=version, polar=(pol > 0))
+		case(6); call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator=creator, polar=(pol > 0))
+		case(5); call write_minimal_header(header, 'MAP', nside=nside, order=ord, version=version, polar=(pol > 0))
+		case(4); call write_minimal_header(header, 'MAP', nside=nside, order=ord, polar=(pol > 0))
 		case(3); call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator=creator, version=version)
 		case(2); call write_minimal_header(header, 'MAP', nside=nside, order=ord, creator=creator)
 		case(1); call write_minimal_header(header, 'MAP', nside=nside, order=ord, version=version)
@@ -28,21 +32,20 @@ subroutine VARIANT(write_map)(fout, M, nside, ord, creator, version)
 end subroutine VARIANT(write_map)
 
 ! read map from FITS file, allocating storage if necessary
-subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord)
-	character(*) fin
-	real(XP), allocatable :: M(:,:)
-	integer nside, npix, nmaps, ord
+subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord, pol)
+	character(*) fin; real(XP), allocatable :: M(:,:)
+	integer nside, npix, nmaps, ord, pol; optional pol
 	integer i
 	
 	! header info
 	character(len=80) :: header(64)
-	integer hside, htot, hmaps, hord
+	integer hside, htot, hmaps, hord, hpol
 	
 	! if fin is a literal expression, we are done
 	if (VARIANT(literal_map)(fin, M, nside, nmaps)) return
 	
 	! otherwise, read FITS header info
-	htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord)
+	htot = getsize_fits(fin, nside=hside, nmaps=hmaps, ordering=hord, polarisation=hpol)
 	if (htot == -1) call abort(trim(fin) // ": file not found")
 	
 	! check if map format agrees with requested one
@@ -51,6 +54,11 @@ subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord)
 			if (hmaps < nmaps .and. hmaps == 1) call warning(trim(fin) // ": single channel will be replicated")
 			if (hmaps < nmaps .and. hmaps >  1) call   abort(trim(fin) // ": too few channels in an input map")
 	if (  ord == 0)   ord = hord;	if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
+	
+	! check optional metadata
+	if (present(pol)) then
+		if (pol < 0) pol = hpol; if (hmaps > 1 .and. hpol /= pol) call warning(trim(fin) // ": polarization metadata does not match")
+	end if
 	
 	! allocate storage if needed
 	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1,nmaps))

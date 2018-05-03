@@ -33,30 +33,43 @@ subroutine VARIANT(unpack_alms)(lmin, lmax, array, alms)
 	end do
 end subroutine
 
-! full-sky alm phase randomizer
-subroutine VARIANT(randomize)(nside, order, lmin, lmax, map, randomized)
-	integer nside, order, lmin, lmax, n
-	real(XP), dimension(0:12*nside**2-1) :: map, randomized
-	complex(XP), allocatable :: alms(:,:,:)
-	real(XP), allocatable :: phases(:,:)
+! Gaussian alm randomizer that preserves Cl's
+subroutine VARIANT(randomize_alms)(lmin, lmax, alms)
+	integer lmin, lmax, l
+	complex(XP) alms(1, 0:lmax, 0:lmax)
+	real(XP), allocatable :: cls(:,:), u(:,:,:)
 	
 	real, parameter :: twopi = 6.283185307179586476925286766559005768394338798750Q0
 	
-	n = nside2npix(nside) - 1
-	allocate(alms(1, 0:lmax, 0:lmax))
+	allocate(cls(0:lmax, 2), u(2, lmin:lmax, 0:lmax)); call random_number(u)
 	
-	! rotate phases of complex alm's (m=0 ones are always real)
-	allocate(phases(lmin:lmax, 1:lmax)); call random_number(phases)
+	call alm2cl(lmax, lmax, alms, cls(:,1:1))
+	forall (l = lmin:lmax) alms(1,l,0:l) = sqrt(-2.0*log(u(1,l,0:l))) * exp((0,twopi)*u(2,l,0:l))
+	alms(1,lmin:lmax,0) = alms(1,lmin:lmax,0)%re
+	call alm2cl(lmax, lmax, alms, cls(:,2:2))
+	
+	forall (l = lmin:lmax) alms(1,l,0:l) = sqrt(cls(l,1)/cls(l,2)) * alms(1,l,0:l)
+	
+	deallocate(cls, u)
+end subroutine
+
+! full-sky alm phase randomizer
+subroutine VARIANT(randomize)(nside, order, lmin, lmax, map, randomized)
+	integer nside, order, lmin, lmax
+	real(XP), dimension(0:12*nside**2-1) :: map, randomized
+	complex(XP), allocatable :: alms(:,:,:)
+	
+	allocate(alms(1, 0:lmax, 0:lmax))
 	
 	randomized = map; if (order == NEST) call convert_nest2ring(nside, randomized)
 	
 	call map2alm(nside, lmax, lmax, randomized, alms)
-	alms(1,lmin:lmax,1:lmax) = exp((0,twopi)*phases(:,:)) * alms(1,lmin:lmax,1:lmax)
+	call randomize_alms(lmin, lmax, alms)
 	call alm2map(nside, lmax, lmax, alms, randomized)
 	
 	if (order == NEST) call convert_ring2nest(nside, randomized)
 	
-	deallocate(alms, phases)
+	deallocate(alms)
 end subroutine
 
 ! synthesize magnetic field strength maps in RING ordering (using canned HEALPix derivatives)

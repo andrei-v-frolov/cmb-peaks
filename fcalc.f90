@@ -21,11 +21,12 @@ implicit none
 !real, parameter :: pi = 3.141592653589793238462643383279502884197169399375Q0
 
 character(len=8000) :: op, fin1, fin2, fin3, fout
-integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, pol = -1, n = 0
+integer :: nmaps = 0, nside = 0, ord = 0, pol = -1
+integer i, j, n, lmin, lmax, bands, seed(2)
+
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
 logical, dimension(:,:), allocatable :: valid
 real, allocatable :: bandpass(:,:)
-integer i, j, bands, seed(2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -34,7 +35,7 @@ if (.not. (prefix() .or. postfix() .or. binary() .or. ternary())) call abort("ca
 if (.not. allocated(M1)) call abort("no map data supplied, I am done")
 
 ! map parameters
-n = nside2npix(nside)-1; lmax = 3*nside-1
+n = nside2npix(nside)-1; lmax = 3*nside-1; lmin = 1
 
 ! output storage
 allocate(Mout, mold=M1); Mout = 0.0
@@ -138,22 +139,22 @@ select case (op)
 		end do
 	case ('randomize-alm');
 		select case (nmaps)
-			case (1); call randomize(nside, ord, 1, lmax, M1(:,1), Mout(:,1))
-			case (3); call randomize(nside, ord, 1, lmax, M1(:,1), Mout(:,1))
-			          call randomize_qu(nside, ord, 1, lmax, M1(:,2:3), Mout(:,2:3), .true., .true.)
-			case (2); call randomize_qu(nside, ord, 1, lmax, M1(:,1:2), Mout(:,1:2), .true., .true.)
+			case (1); call randomize(nside, ord, lmin, lmax, M1(:,1), Mout(:,1))
+			case (3); call randomize(nside, ord, lmin, lmax, M1(:,1), Mout(:,1))
+			          call randomize_qu(nside, ord, lmin, lmax, M1(:,2:3), Mout(:,2:3), .true., .true.)
+			case (2); call randomize_qu(nside, ord, lmin, lmax, M1(:,1:2), Mout(:,1:2), .true., .true.)
 			case default; call abort(trim(op) // " conversion requires I, QU or IQU map format")
 		end select
 	case ('randomize-blm');
 		select case (nmaps)
-			case (2); call randomize_qu(nside, ord, 1, lmax, M1(:,1:2), Mout(:,1:2), randomizeB=.true.)
-			case (3); call randomize_qu(nside, ord, 1, lmax, M1(:,2:3), Mout(:,2:3), randomizeB=.true.); Mout(:,1) = M1(:,1)
+			case (2); call randomize_qu(nside, ord, lmin, lmax, M1(:,1:2), Mout(:,1:2), randomizeB=.true.)
+			case (3); call randomize_qu(nside, ord, lmin, lmax, M1(:,2:3), Mout(:,2:3), randomizeB=.true.); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
 	case ('randomize-elm');
 		select case (nmaps)
-			case (2); call randomize_qu(nside, ord, 1, lmax, M1(:,1:2), Mout(:,1:2), randomizeE=.true.)
-			case (3); call randomize_qu(nside, ord, 1, lmax, M1(:,2:3), Mout(:,2:3), randomizeE=.true.); Mout(:,1) = M1(:,1)
+			case (2); call randomize_qu(nside, ord, lmin, lmax, M1(:,1:2), Mout(:,1:2), randomizeE=.true.)
+			case (3); call randomize_qu(nside, ord, lmin, lmax, M1(:,2:3), Mout(:,2:3), randomizeE=.true.); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
 	

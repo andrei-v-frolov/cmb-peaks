@@ -122,6 +122,10 @@ select case (op)
 	case ('zipwith'); if (nmaps /= 1) call abort(trim(op) // " composition works on single channel maps")
 		nmaps=3; deallocate(Mout); allocate(Mout(0:n,nmaps)); Mout(:,1) = M1(:,1); Mout(:,2) = M2(:,1); Mout(:,3) = M3(:,1)
 	
+	! injection operators
+	case ('replacewith'); Mout = M1; forall (i=0:n) Mout(i,M2(i,1)) = M3(i,M2(i,1))
+	case ('updatewith');  Mout = M1; forall (i=0:n) Mout(i,M2(i,1)) = M1(i,M2(i,1)) + M3(i,M2(i,1))
+		
 	! randomize operators
 	case ('randomize');
 		allocate(M2, mold=M1); allocate(M3, mold=M1)
@@ -335,7 +339,7 @@ function ternary()
 	
 	! is it really ternary?
 	select case (x)
-		case ('zip'); if (y .eq. 'with') ternary = .true.
+		case ('zip','replace','update'); if (y .eq. 'with') ternary = .true.
 		case ('inpaint'); if (y .eq. 'with' .or. y .eq. 'apodize') ternary = .true.
 		case ('project on','orthogonal'); if (y .eq. 'with') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.

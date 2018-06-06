@@ -24,7 +24,8 @@ character(len=8000) :: op, fin1, fin2, fin3, fout
 integer :: nmaps = 0, nside = 0, lmax = 0, ord = 0, pol = -1, n = 0
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
 logical, dimension(:,:), allocatable :: valid
-integer i, j, seed(2)
+real, allocatable :: bandpass(:,:)
+integer i, j, bands, seed(2)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -205,6 +206,20 @@ select case (op)
 			case default; call abort(trim(op) // " purified inpainting requires QU or IQU map format")
 		end select
 	
+	! spectral operators
+	case ('bbodyfrequency');
+		if (nmaps /=1) call warning("modified blackbody correction works on single channel maps")
+		nmaps = 1; forall (i=0:n) Mout(i,1) = bbody_log_tcmb(real(M3(i,1)), real(M1(i,1)), real(M2(i,1)))
+	
+	case ('bbodybandpass');
+		call read_bandpass(bandpass, bands)
+		if (nmaps /=1) call warning("modified blackbody correction works on single channel maps")
+		if (verbose) write (*,*) "Computing modified blackbody correction, sample output:"
+		nmaps = 1; do i = 0,n
+			Mout(i,1) = bbody_log_cc(real(M3(i,1)), real(M1(i,1)), real(M2(i,1)), bandpass, bands)
+			if (verbose .and. mod(i,1048576) == 0) write (*,*) i, Mout(i,1)
+		end do
+	
 	! reconstruction operators
 	case ('magnetic');
 		select case (nmaps)
@@ -325,6 +340,7 @@ function ternary()
 		case ('project on','orthogonal'); if (y .eq. 'with') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
 		case ('within','apodize'); if (y .eq. ':') ternary = .true.
+		case ('bbody'); if (y .eq. 'frequency' .or. y .eq. 'bandpass') ternary = .true.
 	end select
 	
 	! ternary operation guard
@@ -407,6 +423,136 @@ subroutine percentile(nside, map, valid, cdf)
 	
 	deallocate(M, idx, rank)
 end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! hyperbolic sinc function
+elemental function sinch(x)
+	real sinch, x; intent(in) x
+	
+	sinch = 1.0; if (x /= 0.0) sinch = sinh(x)/x
+end function
+
+! logarithm of hyperbolic sinc function, accurate for all argument values
+elemental function lsinch(x)
+	real lsinch, x, p, q; intent(in) x
+	
+	real, parameter :: c(7) = [ &
+		0.4132452269851979093654156131033060008760029088251892994339693444Q-1, &
+		0.8478301007195085738735669818781708187733967110608704491525621626Q-4, &
+		3.319067386208102157904215623529367549226693561719962519708929754Q-07, &
+		1.535892374193619383767933303677575365217042971636305586372502646Q-09, &
+		7.659483473137847811201375808541567436659033038955381198516298508Q-12, &
+		3.988505147571547603481766897703709232256815977906297345067145370Q-14, &
+		2.137519596232463056459672303515036468045220079963504661934751418Q-16  &
+	]
+	
+	p = 2.0*abs(x); q = exp(-p)
+	
+	if (p < 1.0) then
+		lsinch = sum(c * sin([1:7]*asin(p))**2)
+	else
+		lsinch = p/2.0 - log(p) - 2.0*atanh(q/(2.0-q))
+	end if
+end function
+
+! modified blackbody spectrum, in T[RJ] units
+pure function bbody_log_trj(nu, t, beta, nu0)
+	real bbody_log_trj, nu, mu, t, beta, gamma, nu0
+	intent (in) nu, t, beta, nu0; optional nu0
+	
+	! h/2kT, in units of [1/GHz]
+	gamma = 0.023996223311/t
+	
+	! reference frequency, 353GHz by default
+	mu = 353.0; if (present(nu0)) mu = nu0
+	
+	bbody_log_trj = beta*log(nu/mu) + gamma*(mu-nu) + (lsinch(gamma*mu) - lsinch(gamma*nu))
+end function
+
+! modified blackbody spectrum, in T[CMB] units
+pure function bbody_log_tcmb(nu, t, beta, nu0)
+	real bbody_log_tcmb, nu, mu, t, beta, nu0
+	intent(in) nu, t, beta, nu0; optional nu0
+	
+	! COBE/FIRAS CMB temperature is 2.7255K
+	real, parameter :: gamma = 0.023996223311/2.7255
+	
+	! reference frequency, 353GHz by default
+	mu = 353.0; if (present(nu0)) mu = nu0
+	
+	bbody_log_tcmb = 2.0*(lsinch(gamma*nu) - lsinch(gamma*mu)) + bbody_log_trj(nu, t, beta, mu)
+end function
+
+! read bandpass correction data
+subroutine read_bandpass(b, n)
+	real, allocatable :: b(:,:); integer i, n, status
+	real, parameter :: c = 29.9792458 ! speed of light, cm*GHz
+	
+	! allocate bandpass storage if not already done
+	if (allocated(b)) then; n = size(b,2); else; n = 2001; allocate(b(2,n)); end if
+	
+	! parse bandpass data (wavenumber [1/cm], transmission [n/a])
+	i = 1; do while (i <= n)
+		read (*,*,iostat=status) b(:,i)
+		if (status < 0) exit
+		if (status > 0) cycle
+		i = i + 1
+	end do
+	
+	! sanity checks on bandpass data read
+	if (i > n) call warning("bandpass data truncated to fit allocated storage!")
+	if (i < 2) call abort("no bandpass data supplied!"); n = i - 1
+	
+	! convert frequency units to GHz
+	b(1,:) = b(1,:) * c
+end subroutine
+
+! simple trapezoid rule integrator for tabulated functions
+function integral(v, x, n)
+	real integral, v(n), x(n); integer i, n; real(DP) s
+	
+	s = 0.0; do i = 1,n-1
+		s = s + (v(i+1) + v(i)) * (x(i+1) - x(i))
+	end do
+	
+	integral = s/2.0
+end function
+
+! bandpass integral of dB_nu(T)/dT referred to central frequency mu
+function bandpass_dBdT(mu, t, beta, bandpass, n)
+	real bandpass_dBdT, mu, t, beta, gamma, bandpass(:,:); integer n
+	
+	! h/2kT, in units of [1/GHz]
+	gamma = 0.023996223311/t
+	
+	associate(nu => bandpass(1,1:n), tau => bandpass(2,1:n))
+	bandpass_dBdT = integral(tau * nu**(beta+2.0)/sinch(gamma*nu)**2, nu, n) * sinch(gamma*mu)**2/mu**(beta+2.0)
+	end associate
+end function
+
+! bandpass integral of B_nu(T) referred to central frequency mu
+function bandpass_dBdA(mu, t, beta, bandpass, n)
+	real bandpass_dBdA, mu, t, beta, gamma, bandpass(:,:); integer n
+	
+	! h/2kT, in units of [1/GHz]
+	gamma = 0.023996223311/t
+	
+	associate(nu => bandpass(1,1:n), tau => bandpass(2,1:n))
+	bandpass_dBdA = integral(tau * nu**(beta+2.0)/sinch(gamma*nu)/exp(gamma*nu), nu, n) * sinch(gamma*mu)*exp(gamma*mu)/mu**(beta+2.0)
+	end associate
+end function
+
+! modified blackbody color correction, in T[CMB] units
+function bbody_log_cc(mu, t, beta, bandpass, n)
+	real bbody_log_cc, mu, t, beta, bandpass(:,:); integer n
+	
+	! calculations are often repeated at the same frequency
+	real, save :: dBdT = 0.0, nu0 = -1.0
+	
+	if (mu /= nu0) dBdT = bandpass_dBdT(mu, 2.7255, 0.0, bandpass, n)
+	bbody_log_cc = log(dBdT/bandpass_dBdA(mu, t, beta, bandpass, n)); nu0 = mu
+end function
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

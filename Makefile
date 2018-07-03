@@ -20,7 +20,7 @@ HPXLIB = -L$(HEALPIX)/lib -lhealpix
 # CFITSIO libraries
 CFITSIO_DIR ?= /opt/local
 FITINC = -I$(CFITSIO_DIR)/include
-FITLIB = -L$(HEALPIX)/lib -lcfitsio
+FITLIB = -L$(HEALPIX)/lib -lcfitsio -lcurl
 
 # WIGXJPF libraries
 WIGXJPF ?= /opt/wigxjpf

@@ -34,6 +34,7 @@ LAPLIB = -L$(MKLROOT)/lib -lmkl_rt
 
 # Intel's dynamic libraries location
 #LDFLAGS += -Wl,-rpath,/opt/intel/lib
+LDFLAGS += -Wl,-rpath,/opt/intel/lib
 LDFLAGS += -Wl,-rpath,$(MKLROOT)/lib
 
 INCS += $(HPXINC) $(FITINC) $(LAPINC)

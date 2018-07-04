@@ -143,14 +143,13 @@ stat/%.pdf: stat/%.dat
 ################### Binaries & Dependencies ####################
 
 # binaries
-$(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o imageio.o
+$(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o
 $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
-$(BINDIR)/hough: mapio.o
 
 # OpenMP binaries
 $(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o

@@ -137,19 +137,20 @@ gifs/%.gif: maps/%.fits
 #	map2gif -inp $^ -out !$@ -pro GNO -lat -56.732571412162 -lon 209.958217270195 -res 3.3 -xsz 800 -bar true
 
 stat/%.pdf: stat/%.dat
-	(cd stat; python plotpeaks.py $*.dat $* 12.0)
+	-(cd stat; python plotpeaks.py $*.dat $* 12.0)
 
 
 ################### Binaries & Dependencies ####################
 
 # binaries
-$(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o
+$(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o imageio.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o
 $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
+$(BINDIR)/hough: mapio.o
 
 # OpenMP binaries
 $(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o

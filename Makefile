@@ -70,11 +70,12 @@ KERN = $(shell $(EXPR) '$*' : '$(ALNUMS)-\($(ALNUMS)\)-$(DIGITS)')
 MAPS  = $(foreach b,$(BEAMS),$(foreach k,$(KERNS),$(foreach s,$(STATS),$(s)-$(k)-$(b))))
 
 base: $(BINS) $(BASE)
+beam: base $(foreach b,$(BEAMS),$(foreach k,$(KERNS),beam/$(k)-$(b).dat))
 maps: base $(foreach m,$(MAPS),maps/$(m).fits)
 gifs: base $(foreach m,$(MAPS),gifs/$(m).gif)
 stat: base $(foreach m,$(filter L1-%,$(MAPS)),stat/$(m).dat stat/$(m).pdf)
 
-all: base maps gifs stat
+all: base beam maps gifs stat
 
 clean:
 	rm -f $(foreach m,$(MAPS),maps/$(m).fits)

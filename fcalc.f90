@@ -27,6 +27,7 @@ integer i, j, n, lmin, lmax, bands, seed(2)
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
 logical, dimension(:,:), allocatable :: valid
 real, allocatable :: bandpass(:,:)
+real multipoles(0:3)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -80,6 +81,10 @@ select case (op)
 	! projection operators
 	case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
 	case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
+	case ('remove monopole'); if (pol > 0) call abort(trim(op) // " operator works on scalar maps only")
+		do i = 1,nmaps; call remove_dipole(nside, M1(:,i), ord, 1, multipoles, [-1.0,1.0], mask=M2(:,i)); end do; Mout = M1
+	case ('remove dipole'); if (pol > 0) call abort(trim(op) // " operator works on scalar maps only")
+		do i = 1,nmaps; call remove_dipole(nside, M1(:,i), ord, 2, multipoles, [-1.0,1.0], mask=M2(:,i)); end do; Mout = M1
 	
 	! projection operators (masked version)
 	case ('project onwith'); Mout = sum(M1*M2*M3,valid)/sum(M2*M2*M3,valid) * M2
@@ -311,7 +316,7 @@ function binary()
 	select case (x)
 		case ('+','-','*','/','//','**')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
-		case ('project on','orthogonal','accumulate','select','zip')
+		case ('project on','orthogonal','remove monopole','remove dipole','accumulate','select','zip')
 		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','QU->pure EB','purify')
 		case default; return
 	end select

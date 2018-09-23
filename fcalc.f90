@@ -224,7 +224,7 @@ select case (op)
 	case ('bbodybandpass');
 		call read_bandpass(bandpass, bands)
 		if (nmaps /=1) call warning("modified blackbody correction works on single channel maps")
-		if (verbose) write (*,*) "Computing modified blackbody correction, sample output:"
+		if (verbose) write (*,*) "Computing modified blackbody color correction, sample output:"
 		nmaps = 1; do i = 0,n
 			Mout(i,1) = bbody_log_cc(real(M3(i,1)), real(M1(i,1)), real(M2(i,1)), bandpass, bands)
 			if (verbose .and. mod(i,1048576) == 0) write (*,*) i, Mout(i,1)

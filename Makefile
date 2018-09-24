@@ -160,7 +160,7 @@ $(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
 # modules
 mapio.o: mapio.fin
 imageio.o: imageio.fin
-pdetools.o: multigrid.fin inpaint-qu.fin almtools.o
+pdetools.o: multigrid.fin inpaint-qu.fin almtools.o masktools.fin
 almtools.o: almtools.fin maptools.fin complex-qu.fin mapio.o
 
 # generic rules

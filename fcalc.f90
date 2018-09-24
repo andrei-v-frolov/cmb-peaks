@@ -98,6 +98,10 @@ select case (op)
 	case ('within:'); where (M1 >= M2 .and. M1 <= M3) Mout = 1.0
 	case ('apodize:'); Mout = apodize((M1-M2)/(M3-M2))
 	
+	! mask manipulation
+	case ('grow'); do i = 1,nmaps; call grow_mask(nside, ord, M1(:,i), Mout(:,i)); end do
+	case ('shrink'); do i = 1,nmaps; call shrink_mask(nside, ord, M1(:,i), Mout(:,i)); end do
+	
 	! inpainting and filling
 	case ('inpaint'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i)); end do
 	case ('inpaintwith'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), fill=M3(:,i)); end do
@@ -288,7 +292,7 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('nest','ring','QU->EB','EB->QU','magnetic')
+		case ('nest','ring','grow','shrink','QU->EB','EB->QU','magnetic')
 		case default; return
 	end select
 	

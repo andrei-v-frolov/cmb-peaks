@@ -1,0 +1,23 @@
+! grow mask by a single pixel (must be called out-of-place!)
+subroutine VARIANT(grow_mask)(nside, order, mask, grown)
+	integer nside, order, i, k, nn(9)
+	real(XP), dimension(0:12*nside**2-1) :: mask, grown
+	
+	do i = 0,12*nside**2-1
+		nn(1) = i; grown(i) = 0.0
+		call neighbours(nside, order, i, nn(2:), k)
+		if (any(mask(nn(1:k+1)) > 0.0)) grown(i) = 1.0
+	end do
+end subroutine
+
+! shrink mask by a single pixel (must be called out-of-place!)
+subroutine VARIANT(shrink_mask)(nside, order, mask, shrunk)
+	integer nside, order, i, k, nn(9)
+	real(XP), dimension(0:12*nside**2-1) :: mask, shrunk
+	
+	do i = 0,12*nside**2-1
+		nn(1) = i; shrunk(i) = 0.0
+		call neighbours(nside, order, i, nn(2:), k)
+		if (all(mask(nn(1:k+1)) > 0.0)) shrunk(i) = 1.0
+	end do
+end subroutine

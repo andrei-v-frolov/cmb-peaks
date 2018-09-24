@@ -44,7 +44,10 @@ GENERIC(inpaint)
 GENERIC(inpaint_qu)
 GENERIC(inpaint_purified_qu)
 
-public :: inpaint, inpaint_qu, inpaint_purified_qu, stencil
+GENERIC(grow_mask)
+GENERIC(shrink_mask)
+
+public :: inpaint, inpaint_qu, inpaint_purified_qu, grow_mask, shrink_mask, stencil
 
 contains
 
@@ -58,12 +61,14 @@ contains
 ! single precision
 #define XP SP
 #define VARIANT(name) name ## _sp
+#include 'masktools.fin'
 #include 'multigrid.fin'
 #include 'inpaint-qu.fin'
 
 ! double precision
 #define XP DP
 #define VARIANT(name) name ## _dp
+#include 'masktools.fin'
 #include 'multigrid.fin'
 #include 'inpaint-qu.fin'
 

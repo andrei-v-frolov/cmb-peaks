@@ -20,12 +20,14 @@ implicit none
 GENERIC(pack_alms)
 GENERIC(unpack_alms)
 GENERIC(randomize_alms)
+GENERIC(xrandomize_alms)
 GENERIC(randomize)
 GENERIC(alm2map_magnetic)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
-public :: pack_alms, unpack_alms, randomize_alms, randomize
+public :: pack_alms, unpack_alms
+public :: randomize_alms, xrandomize_alms, randomize
 public :: alm2map_magnetic, alm2map_covariant, mask2spins_ring
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -54,10 +56,11 @@ GENERIC(rotate_qu2eb)
 GENERIC(rotate_eb2qu)
 GENERIC(project_qu)
 GENERIC(randomize_qu)
+GENERIC(xrandomize_qu)
 GENERIC(krylov_qu)
 GENERIC(purify_qu)
 
-public :: map2alm_pure, rotate_qu2eb_pure, rotate_qu2eb, rotate_eb2qu, project_qu, randomize_qu, krylov_qu, purify_qu
+public :: map2alm_pure, rotate_qu2eb_pure, rotate_qu2eb, rotate_eb2qu, project_qu, randomize_qu, xrandomize_qu, krylov_qu, purify_qu
 
 contains
 

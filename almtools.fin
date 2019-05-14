@@ -153,6 +153,33 @@ subroutine VARIANT(randomize_qu)(nside, order, lmin, lmax, QU, randomized, rando
 	deallocate(map, alms)
 end subroutine
 
+! full-sky QU alm phase randomizer preserving cross-correlations
+subroutine VARIANT(xrandomize_qu)(nside, order, lmin, lmax, QU1, QU2, R1, R2, randomizeE, randomizeB)
+	integer nside, order, lmin, lmax, spin, n
+	MAPTYPE(XP, 0:12*nside**2-1) :: QU1, QU2, R1, R2
+	real(DP), dimension(:,:), allocatable :: M1, M2
+	logical, optional :: randomizeE, randomizeB
+	complex(DPC), allocatable :: alms(:,:,:)
+	
+	n = nside2npix(nside) - 1; spin = 2
+	allocate(M1(0:n,1:2), M2(0:n,1:2), alms(1:4, 0:lmax, 0:lmax))
+	
+	LOAD(M1, QU1); if (order == NEST) call convert_nest2ring(nside, M1)
+	LOAD(M2, QU2); if (order == NEST) call convert_nest2ring(nside, M2)
+	
+	call map2alm_spin(nside, lmax, lmax, spin, M1, alms(1:2,:,:))
+	call map2alm_spin(nside, lmax, lmax, spin, M2, alms(3:4,:,:))
+	if (present(randomizeE) .and. randomizeE) call xrandomize_alms(lmin, lmax, alms(1:3:2,:,:))
+	if (present(randomizeB) .and. randomizeB) call xrandomize_alms(lmin, lmax, alms(2:4:2,:,:))
+	call alm2map_spin(nside, lmax, lmax, spin, alms(1:2,:,:), M1)
+	call alm2map_spin(nside, lmax, lmax, spin, alms(3:4,:,:), M2)
+	
+	if (order == NEST) call convert_ring2nest(nside, M1); COPY(M1,R1)
+	if (order == NEST) call convert_ring2nest(nside, M2); COPY(M2,R2)
+	
+	deallocate(M1, M2, alms)
+end subroutine
+
 ! full-sky Krylov subspace generator for pure E and B eigenmodes of QU map
 subroutine VARIANT(krylov_qu)(nside, order, lmax, QU, EQU, BQU)
 	integer nside, order, lmax, spin, l, n

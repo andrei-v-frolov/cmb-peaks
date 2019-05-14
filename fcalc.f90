@@ -4,6 +4,7 @@
 ! postfix operator: fcalc M.fits 'x' [=:] output.fits
 !  binary operator: fcalc M1.fits 'x' M2.fits [=:] output.fits
 ! ternary operator: fcalc M1.fits 'x' M2.fits 'y' M3.fits [=:] output.fits
+!  correlated maps: fcalc 'x' M1.fits x M2.fits [=:] out1.fits x out2.fits
 ! see source code for complete list of operators currently implemented
 
 program fcalc
@@ -20,11 +21,11 @@ implicit none
 
 !real, parameter :: pi = 3.141592653589793238462643383279502884197169399375Q0
 
-character(len=8000) :: op, fin1, fin2, fin3, fout
+character(len=8000) :: op, fin1, fin2, fin3, fout, fout2
 integer :: nmaps = 0, nside = 0, ord = 0, pol = -1
 integer i, j, n, lmin, lmax, bands, seed(2)
 
-real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout
+real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout, Mout2
 logical, dimension(:,:), allocatable :: valid
 real, allocatable :: bandpass(:,:)
 real multipoles(0:3)
@@ -32,7 +33,7 @@ real multipoles(0:3)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! parse arguments
-if (.not. (prefix() .or. postfix() .or. binary() .or. ternary())) call abort("cannot parse command line expression supplied")
+if (.not. (prefix() .or. postfix() .or. binary() .or. ternary() .or. split())) call abort("cannot parse command line expression supplied")
 if (.not. allocated(M1)) call abort("no map data supplied, I am done")
 
 ! map parameters
@@ -167,6 +168,22 @@ select case (op)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
 	
+	! cross-correlated randomize
+	case ('xrandomize-blm');
+		select case (nmaps)
+			case (2); call xrandomize_qu(nside, ord, lmin, lmax, M1(:,1:2), M2(:,1:2), Mout(:,1:2), Mout2(:,1:2), randomizeB=.true.)
+			case (3); call xrandomize_qu(nside, ord, lmin, lmax, M1(:,2:3), M2(:,2:3), Mout(:,2:3), Mout2(:,2:3), randomizeB=.true.)
+				  Mout(:,1) = M1(:,1); Mout2(:,1) = M2(:,1)
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
+	case ('xrandomize-elm');
+		select case (nmaps)
+			case (2); call xrandomize_qu(nside, ord, lmin, lmax, M1(:,1:2), M2(:,1:2), Mout(:,1:2), Mout2(:,1:2), randomizeE=.true.)
+			case (3); call xrandomize_qu(nside, ord, lmin, lmax, M1(:,2:3), M2(:,2:3), Mout(:,2:3), Mout2(:,2:3), randomizeE=.true.)
+				  Mout(:,1) = M1(:,1); Mout2(:,1) = M2(:,1)
+			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
+		end select
+	
 	! one-point operators
 	case ('frac');
 		select case (nmaps)
@@ -245,8 +262,9 @@ select case (op)
 	case default; call abort(trim(op) // ": operation not supported")
 end select
 
-! write output map
+! write output map(s)
 call write_map(fout, Mout(:,1:nmaps), nside, ord, pol, creator='FCALC')
+if (allocated(Mout2)) call write_map(fout2, Mout2(:,1:nmaps), nside, ord, pol, creator='FCALC')
 
 contains
 
@@ -367,6 +385,45 @@ function ternary()
 	
 	! output map name
 	call getArgument(6, fout); if (fout .eq. '=:') call getArgument(7, fout)
+end function
+
+! parse 2x2 split operator command line
+function split()
+	character(len=80) :: x, y, z; logical split; split = .false.
+	
+	! argument count guard
+	if (nArguments() < 7 .or. nArguments() > 8) return
+	
+	! operator placements
+	call getArgument(1, x)
+	call getArgument(3, y)
+	call getArgument(nArguments()-1, z)
+	if (y /= 'x' .or. z /= 'x') return
+	
+	! is it really split?
+	select case (x)
+		case ('randomize-alm','randomize-blm','randomize-elm')
+		case default; return
+	end select
+	
+	! operator name
+	split = .true.; op = 'x' // trim(x)
+	
+	! read input maps
+	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
+	call getArgument(4, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
+	
+	! output map names
+	call getArgument(5, fout)
+	if (fout .eq. '=:') then
+		call getArgument(6, fout)
+		call getArgument(8, fout2)
+	else
+		call getArgument(7, fout2)
+	end if
+	
+	! allocate second output map
+	allocate(Mout2, mold=M1); Mout2 = 0.0
 end function
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

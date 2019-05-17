@@ -4,7 +4,7 @@
 
 # Multiple architecture support (sort of)
 BINDIR := bins/$(shell uname -m)-$(shell uname -s)
-BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc leakage-3j leakage-mc pxl2map digest ksmap remap)
+BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc xhist leakage-3j leakage-mc pxl2map digest ksmap remap)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
@@ -145,6 +145,7 @@ stat/%.pdf: stat/%.dat
 
 # binaries
 $(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o
+$(BINDIR)/xhist: mapio.o imageio.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o

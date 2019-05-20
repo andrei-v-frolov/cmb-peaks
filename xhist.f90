@@ -69,6 +69,8 @@ subroutine parse_range(arg, channel, bins, bounds, default, data)
 	
 	integer a, b, c, status
 	character(len=80) :: expr
+	integer, allocatable :: idx(:)
+	real(DP), allocatable :: sub(:)
 	
 	call getArgument(arg, expr)
 	
@@ -97,16 +99,71 @@ subroutine parse_range(arg, channel, bins, bounds, default, data)
 	
 	! parse histogram range
 	a = index(expr(:b),':')
-	bounds(1) = minval(data(:,channel))
-	bounds(2) = maxval(data(:,channel))
 	
 	if (a > 0) then
-		read (expr(:a-1),*,iostat=status) bounds(1)
-		if (status /= 0 .and. expr(:a-1) /= '*') call abort("cannot parse range in " // trim(expr))
+		! lower bound
+		if (expr(:a-1) == '*') then
+			bounds(1) = minval(data(:,channel))
+		else if (expr(a-1:a-1) == '%') then
+			read (expr(:a-2),*,iostat=status) bounds(1)
+			if (status /= 0) call abort("cannot parse range in " // trim(expr))
+			bounds(1) = percentile(data(:,channel), sub, idx, bounds(1))
+		else
+			read (expr(:a-1),*,iostat=status) bounds(1)
+			if (status /= 0) call abort("cannot parse range in " // trim(expr))
+		end if
 		
-		read (expr(a+1:b),*,iostat=status) bounds(2)
-		if (status /= 0 .and. expr(a+1:b) /= '*') call abort("cannot parse range in " // trim(expr))
+		! upper bound
+		if (expr(a+1:b) == '*') then
+			bounds(2) = maxval(data(:,channel))
+		else if (expr(b:b) == '%') then
+			read (expr(a+1:b-1),*,iostat=status) bounds(2)
+			if (status /= 0) call abort("cannot parse range in " // trim(expr))
+			bounds(2) = percentile(data(:,channel), sub, idx, bounds(2))
+		else
+			read (expr(a+1:b),*,iostat=status) bounds(2)
+			if (status /= 0) call abort("cannot parse range in " // trim(expr))
+		end if
+	else
+		bounds(1) = minval(data(:,channel))
+		bounds(2) = maxval(data(:,channel))
 	end if
+	
+	if (allocated(idx)) deallocate(sub, idx)
 end subroutine
+
+! approximate percentile brackets
+function percentile(data, sub, idx, x)
+	real(DP) x, percentile
+	real(IO) data(:)
+	real(DP), allocatable :: sub(:)
+	integer, allocatable :: idx(:)
+	integer n, m, i
+	
+	integer, parameter :: samples = 10000
+	
+	n = size(data); m = min(n,samples)
+	
+	! create index if not already done
+	if (.not. allocated(idx)) then
+		allocate(sub(m), idx(m))
+		
+		! subsample data for faster indexing
+		if (n > m) then
+			call random_number(sub)
+			sub = data((n-1)*sub+1)
+		else; sub = data; end if
+		
+		call indexx(m, sub, idx)
+	end if
+	
+	! percentile index
+	i = (m-1)*(x/100) + 1
+	if (i < 1) i = 1
+	if (i > m) i = m
+	
+	! percentile value
+	percentile = sub(idx(i))
+end function
 
 end

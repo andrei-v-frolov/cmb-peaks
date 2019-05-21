@@ -145,7 +145,7 @@ stat/%.pdf: stat/%.dat
 
 # binaries
 $(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o
-$(BINDIR)/xhist: mapio.o imageio.o
+$(BINDIR)/xhist: mapio.o imageio.o rank.o
 $(BINDIR)/fsynth: mapio.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o

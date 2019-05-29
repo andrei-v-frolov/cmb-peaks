@@ -49,11 +49,11 @@ if (allocated(M1) .and. allocated(M2) .and. .not. allocated(M3)) valid = .not. (
 if (allocated(M1) .and. allocated(M2) .and. allocated(M3)) valid = .not. (isnan(M1) .or. isnan(M2) .or. isnan(M3))
 
 ! initialize random number generator (use urandom on clusters!)
-select case (op)
-	case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
+if (index(op,'randomize') > 0 .or. index(op,'shuffle') > 0) then
 	open (333, file="/dev/random", action='read', form='binary')
 	read (333) seed; call random_seed(PUT=seed); close (333)
-end select
+	!seed = [123456789,987654321]; call random_seed(PUT=seed)
+end if
 
 ! apply operator
 select case (op)

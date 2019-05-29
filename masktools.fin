@@ -21,3 +21,26 @@ subroutine VARIANT(shrink_mask)(nside, order, mask, shrunk)
 		if (all(mask(nn(1:k+1)) > 0.0)) shrunk(i) = 1.0
 	end do
 end subroutine
+
+! index basins of attraction of all peaks in the map
+subroutine VARIANT(watershed)(nside, order, map, idx)
+	integer nside, order, i, j, k, m, nn(9)
+	real(XP), dimension(0:12*nside**2-1) :: map
+	integer,  dimension(0:12*nside**2-1) :: idx
+	
+	! initialize index table
+	idx = -1
+	
+	! iterate over all pixels
+	do i = 0,12*nside**2-1; j = i
+		! crawl to the known basin of attraction
+		do while (idx(j) < 0)
+			nn(1) = j; call neighbours(nside, order, j, nn(2:), k)
+			m = maxloc(sign(1.0,map(j))*map(nn(1:k+1)), 1)
+			if (m > 1) then; j = nn(m); else; idx(j) = j; exit; end if
+		end do
+		
+		! assign pixel to a basin of attraction
+		idx(i) = idx(j)
+	end do
+end subroutine

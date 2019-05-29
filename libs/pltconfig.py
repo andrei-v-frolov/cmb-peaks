@@ -1,6 +1,7 @@
 # matplotlib configuration for Planck papers
 # adopted from https://github.com/zonca/paperplots
 
+import os
 import numpy as np
 from matplotlib import rcParams, rc
 
@@ -15,10 +16,9 @@ def usetex(flag=True):
     rcParams.update({'text.usetex': flag})
 
 # common setup for matplotlib
-params = {'backend': 'pdf',
+params = {'backend': os.environ.get('matplotlib.backend', 'pdf'),
           'savefig.dpi': 300, # save figures to 300 dpi
           'axes.labelsize': 10,
-          'text.fontsize': 10,
           'legend.fontsize': 10,
           'xtick.labelsize': 10,
           'ytick.major.pad': 6,
@@ -26,6 +26,7 @@ params = {'backend': 'pdf',
           'ytick.labelsize': 10,
           'text.usetex': True,
           'font.family':'sans-serif',
+          'font.size': 10,
           # free font similar to Helvetica
           'font.sans-serif':'FreeSans'}
 

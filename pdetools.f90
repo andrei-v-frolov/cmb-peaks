@@ -46,10 +46,12 @@ GENERIC(inpaint_purified_qu)
 
 GENERIC(grow_mask)
 GENERIC(shrink_mask)
+GENERIC(sources_mask)
 GENERIC(watershed)
 
 public :: inpaint, inpaint_qu, inpaint_purified_qu
-public :: grow_mask, shrink_mask, watershed, stencil
+public :: grow_mask, shrink_mask, sources_mask, watershed
+public :: stencil
 
 contains
 

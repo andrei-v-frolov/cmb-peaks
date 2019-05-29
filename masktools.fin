@@ -44,3 +44,63 @@ subroutine VARIANT(watershed)(nside, order, map, idx)
 		idx(i) = idx(j)
 	end do
 end subroutine
+
+! generate compact sources mask (selected above level and below size thresholds)
+subroutine VARIANT(sources_mask)(nside, order, sigma, diameter, map, mask)
+	use mask_tools
+	
+	integer nside, order, n, m, k
+	real sigma, diameter, mean, variance
+	real(XP), dimension(0:12*nside**2-1) :: map, mask
+	
+	integer, allocatable :: idx(:), pk(:)
+	real(DP), allocatable :: sub(:), nu(:), w(:)
+	
+	real, parameter :: arcmin = 0.2908882086657216e-3
+	
+	integer, parameter :: samples = 10000
+	n = 12*nside**2-1; m = min(n,samples)
+	
+	! initialize arrays
+	allocate(sub(0:m), w(0:m))
+	allocate(nu(0:n), idx(0:n), pk(0:n))
+	
+	! smooth CDF weight that rejects 20% tails
+	forall (k = 0:m) w(k) = (real(k)*(m-k))**8
+	
+	! sub-sample data for fast variance estimate
+	if (n > m) then
+		call random_number(sub)
+		sub = map(n*sub)
+	else
+		sub(0:m) = map(0:m)
+	end if
+	
+	! sort sub-samples using gnome sort
+	k = 0; do while (k <= m)
+		if (k == 0 .or. sub(k) >= sub(k-1)) then
+			k = k+1
+		else
+			sub([k,k-1]) = sub([k-1,k])
+			k = k-1
+		end if
+	end do
+	
+	! robust variance estimator, calibrated on Gaussian
+	mean = sum(w*sub)/sum(w)
+	variance = sum(w*(sub-mean)**2)/sum(w)
+	nu = (map-mean)/(sqrt(variance)/0.3000776257)
+	if (order == RING) call convert_ring2nest(nside, nu)
+	
+	! peak excursion cut
+	call watershed(nside, NEST, nu, idx)
+	where (nu(idx) > sigma); pk = 0; elsewhere; pk = 1; end where
+	
+	! peak area cut
+	k = 0.75*(nside*diameter*arcmin)**2
+	call fill_holes_nest(nside, k, pk, idx); mask = xor(idx,pk)
+	
+	if (order == RING) call convert_nest2ring(nside, mask)
+	
+	deallocate(sub, w, nu, idx, pk)
+end subroutine

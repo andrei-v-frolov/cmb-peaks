@@ -102,7 +102,7 @@ select case (op)
 	! mask manipulation
 	case ('grow'); do i = 1,nmaps; call grow_mask(nside, ord, M1(:,i), Mout(:,i)); end do
 	case ('shrink'); do i = 1,nmaps; call shrink_mask(nside, ord, M1(:,i), Mout(:,i)); end do
-	case ('sources'); do i = 1,nmaps; call sources_mask(nside, ord, 5.0, 20.0, M1(:,i), Mout(:,i)); end do
+	case ('sources'); do i = 1,nmaps; call sources_mask(nside, ord, 3.0, 60.0, M1(:,i), Mout(:,i)); end do
 	
 	! inpainting and filling
 	case ('inpaint'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i)); end do

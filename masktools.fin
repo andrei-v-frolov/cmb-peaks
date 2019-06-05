@@ -94,7 +94,7 @@ subroutine VARIANT(sources_mask)(nside, order, sigma, diameter, map, mask)
 	
 	! peak excursion cut
 	call watershed(nside, NEST, nu, idx)
-	where (nu(idx) > sigma); pk = 0; elsewhere; pk = 1; end where
+	pk = merge(0, 1, nu(idx) > sigma)
 	
 	! peak area cut
 	k = 0.75*(nside*diameter*arcmin)**2

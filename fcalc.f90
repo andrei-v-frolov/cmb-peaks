@@ -106,6 +106,7 @@ select case (op)
 	
 	! inpainting and filling
 	case ('inpaint'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i)); end do
+	case ('inpaintmass'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), m2=M3(:,i)); end do
 	case ('inpaintwith'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), fill=M3(:,i)); end do
 	case ('inpaintapodize'); do i = 1,nmaps; call inpaint(nside, ord, M1(:,i), M2(:,i), Mout(:,i), apo=M3(:,i)); end do
 	
@@ -376,7 +377,7 @@ function ternary()
 	select case (x)
 		case ('zip','replace'); if (y .eq. 'with') ternary = .true.
 		case ('update');  select case (y); case ('with','+','-','*','/'); ternary = .true.; end select
-		case ('inpaint'); select case (y); case ('with','apodize'); ternary = .true.; end select
+		case ('inpaint'); select case (y); case ('mass','with','apodize'); ternary = .true.; end select
 		case ('project on','orthogonal'); if (y .eq. 'with') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
 		case ('within','apodize'); if (y .eq. ':') ternary = .true.

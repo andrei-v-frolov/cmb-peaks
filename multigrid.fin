@@ -1,9 +1,9 @@
 ! inpaint map using multigrid diffusion where mask is not unity
-subroutine VARIANT(inpaint)(nside, order, map, mask, mout, fill, apo)
+subroutine VARIANT(inpaint)(nside, order, map, mask, mout, fill, apo, m2)
 	integer nside, order, i, mode
 	DATA(XP), dimension(0:12*nside**2-1) :: map, fill, mout
-	real(XP), dimension(0:12*nside**2-1) :: mask, apo
-	GRID, allocatable :: mg(:); optional fill, apo
+	real(XP), dimension(0:12*nside**2-1) :: mask, apo, m2
+	GRID, allocatable :: mg(:); optional fill, apo, m2
 	
 	if (verbose) write (*,*) "Initalizing multigrid, masked pixel counts:"
 	
@@ -11,11 +11,16 @@ subroutine VARIANT(inpaint)(nside, order, map, mask, mout, fill, apo)
 	mode = 0
 	if (present(fill)) mode = mode + 1
 	if (present(apo))  mode = mode + 2
+	if (present(m2))   mode = mode + 4
 	
 	select case (mode)
-		case (3); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill, apo)
-		case (2); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, map,  apo)
-		case (1); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill)
+		case (7); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill=fill, apo=apo, m2=m2)
+		case (6); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill=map,  apo=apo, m2=m2)
+		case (5); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill=fill, m2=m2)
+		case (4); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, m2=m2)
+		case (3); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill=fill, apo=apo)
+		case (2); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill=map,  apo=apo)
+		case (1); call VARIANT(mg_init)(mg, nside, order, map*mask, mask, fill=fill)
 		case (0); call VARIANT(mg_init)(mg, nside, order, map*mask, mask)
 	end select
 	
@@ -46,13 +51,13 @@ subroutine VARIANT(inpaint)(nside, order, map, mask, mout, fill, apo)
 end subroutine
 
 ! init multigrid structure
-subroutine VARIANT(mg_init)(mg, fside, order, imap, imask, fill, apo)
+subroutine VARIANT(mg_init)(mg, fside, order, imap, imask, fill, apo, m2)
 	GRID, allocatable :: mg(:)
 	integer i, k, l, fside, order, levels
 	DATA(XP), dimension(0:12*fside**2-1) :: imap, fill
-	real(XP), dimension(0:12*fside**2-1) :: imask, apo
+	real(XP), dimension(0:12*fside**2-1) :: imask, apo, m2
 	DATA(DP), parameter :: zero = 0.0
-	optional fill, apo
+	optional fill, apo, m2
 	
 	! total multigrid levels
 	levels = log(fside/4.0)/log(2.0)
@@ -73,20 +78,26 @@ subroutine VARIANT(mg_init)(mg, fside, order, imap, imask, fill, apo)
 	l = 1; associate($MGVARS$)
 		map = imap;  if (order == RING) call convert_ring2nest(nside, map)
 		tmp = imask; if (order == RING) call convert_ring2nest(nside, tmp)
-	end associate
+	if (present(m2)) then
+		rhs = m2;    if (order == RING) call convert_ring2nest(nside, rhs)
+	end if; end associate
 	
 	! initialize coarse grids
 	do l = 2,levels; associate($MGVARS$)
 		call udgrade_nest(mg(l-1)%tmp, mg(l-1)%nside, tmp, nside)
+		if (present(m2)) call udgrade_nest(mg(l-1)%rhs, mg(l-1)%nside, rhs, nside)
 	end associate; end do
 	
 	! initialize stencils
 	do l = 1,levels; associate($MGVARS$, mask => mg(l)%tmp)
 		k = 0; do i = 0,n; if (mask(i) /= 0.0) cycle
-			call stencil(nside, NEST, i, nn(:,k), STENCIL=laplacian(:,k)); k = k+1
+			call stencil(nside, NEST, i, nn(:,k), STENCIL=laplacian(:,k))
+			if (present(m2)) laplacian(1,k) = laplacian(1,k) - rhs(i)*h2
+			k = k+1
 		end do; m = k-1
 		
 		if (verbose) write (*,*) l, nside, m
+		if (present(m2)) rhs = zero
 	end associate; end do
 	
 	! initialize RHS with laplacian of a source map

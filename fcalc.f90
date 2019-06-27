@@ -260,6 +260,11 @@ select case (op)
 		end do
 	
 	! reconstruction operators
+	case ('magnetic->pqu');
+		select case (nmaps)
+			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, i, M1(i,:)); end do
+			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
+		end select
 	case ('magnetic');
 		select case (nmaps)
 			case (3); call magnetic_fit(nside, ord, 1, 10, M1, Mout)
@@ -319,6 +324,7 @@ function postfix()
 	! postfix operation guard
 	select case (x)
 		case ('nest','ring','grow','shrink','sources','QU->EB','EB->QU','magnetic')
+		case ('magnetic->pqu')
 		case default; return
 	end select
 	
@@ -479,6 +485,35 @@ pure function exp_iqu(iqu)
 		exp_iqu(1) = exp(I) * cosh(P)
 		exp_iqu(2:3) = [Q,U]/P * exp(I) * sinh(P)
 	end associate
+end function
+
+! compute dust polarization sourced by magnetic field alignment
+function magnetic2pqu(nside, order, p, B)
+	intent(in) nside, order, p, B
+	real(IO) magnetic2pqu(3), B(3)
+	integer nside, order, p
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3), V(3), PQU(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	V = [sum(B*X), sum(B*Y), sum(B*Z)]
+	
+	! polarization created by magnetic field alignment
+	PQU = [V(1)*V(1) + V(2)*V(2), V(2)*V(2) - V(1)*V(1), -2.0*V(1)*V(2)]/sum(V*V)
+	
+	! return QU in I/O precision
+	magnetic2pqu = PQU
 end function
 
 ! rank-order map, outputing CDF value for valid pixels

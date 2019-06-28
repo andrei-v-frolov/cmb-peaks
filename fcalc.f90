@@ -463,7 +463,7 @@ end function
 pure function fraction(iqu)
 	real(IO) fraction(3), iqu(3); intent(in) iqu
 	
-	associate (I => iqu(1), Q => iqu(2), U => iqu(3))
+	associate (I => real(iqu(1),DP), Q => real(iqu(2),DP), U => real(iqu(3),DP))
 		fraction = iqu/(I + sqrt(Q*Q+U*U))
 	end associate
 end function
@@ -473,7 +473,7 @@ pure function log_iqu(iqu)
 	real(IO) log_iqu(3), iqu(3); intent(in) iqu
 	real(DP) P, PxP
 	
-	associate (I => iqu(1), Q => iqu(2), U => iqu(3))
+	associate (I => real(iqu(1),DP), Q => real(iqu(2),DP), U => real(iqu(3),DP))
 		PxP = Q*Q + U*U; P = sqrt(PxP)
 		log_iqu(1) = log(I*I - PxP)/2.0
 		log_iqu(2:3) = [Q,U]/P * log((I+P)/(I-P))/2.0
@@ -485,7 +485,7 @@ pure function exp_iqu(iqu)
 	real(IO) exp_iqu(3), iqu(3); intent(in) iqu
 	real(DP) P, PxP
 	
-	associate (I => iqu(1), Q => iqu(2), U => iqu(3))
+	associate (I => real(iqu(1),DP), Q => real(iqu(2),DP), U => real(iqu(3),DP))
 		PxP = Q*Q + U*U; P = sqrt(PxP)
 		exp_iqu(1) = exp(I) * cosh(P)
 		exp_iqu(2:3) = [Q,U]/P * exp(I) * sinh(P)

@@ -55,7 +55,7 @@ do i = 0,nside2npix(nside) - 1
 	hist(3,j,k) = hist(3,j,k) + M2(i,y)
 end do
 
-! write output historgram
+! write output histogram
 call image2fits(fout, hist, xx, yy)
 
 contains

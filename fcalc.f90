@@ -265,6 +265,11 @@ select case (op)
 			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, i, M1(i,:)); end do
 			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
 		end select
+	case ('pqu->magnetic');
+		select case (nmaps)
+			case (3); do i = 0,n; Mout(i,:) = pqu2magnetic(nside, ord, i, M1(i,:), .false.); end do
+			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
+		end select
 	case ('magnetic');
 		select case (nmaps)
 			case (3); call magnetic_fit(nside, ord, 1, 10, M1, Mout)
@@ -324,7 +329,7 @@ function postfix()
 	! postfix operation guard
 	select case (x)
 		case ('nest','ring','grow','shrink','sources','QU->EB','EB->QU','magnetic')
-		case ('magnetic->pqu')
+		case ('magnetic->pqu','pqu->magnetic')
 		case default; return
 	end select
 	
@@ -515,6 +520,39 @@ function magnetic2pqu(nside, order, p, B)
 	! return QU in I/O precision
 	magnetic2pqu = PQU
 end function
+
+! compute magnetic field directions that source dust polarization
+function pqu2magnetic(nside, order, p, pqu, flip)
+	intent(in) nside, order, p, pqu, flip
+	real(IO) pqu2magnetic(3), pqu(3)
+	integer nside, order, p
+	logical flip
+	
+	real(DP) theta, phi, chi, X(3), Y(3), Z(3), B(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! magnetic field directions that source dust polarization
+	associate (P => real(pqu(1),DP), Q => real(pqu(2),DP), U => real(pqu(3),DP))
+		chi = atan2(-U,-Q)/2.0; if (flip) chi = chi + pi
+		B = sqrt(P)*(cos(chi)*X + sin(chi)*Y) + sqrt(1.0-P)*Z
+	end associate
+	
+	! return B in I/O precision
+	pqu2magnetic = B
+end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! rank-order map, outputing CDF value for valid pixels
 subroutine percentile(nside, map, valid, cdf)

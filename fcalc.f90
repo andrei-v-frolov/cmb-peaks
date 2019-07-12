@@ -261,6 +261,16 @@ select case (op)
 		end do
 	
 	! reconstruction operators
+	case ('cartesian->healpix');
+		select case (nmaps)
+			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), +1); end do
+			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
+		end select
+	case ('healpix->cartesian');
+		select case (nmaps)
+			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), -1); end do
+			case default; call abort(trim(op) // " reconstruction requires B[XYZ] map as input")
+		end select
 	case ('magnetic->pqu');
 		select case (nmaps)
 			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, i, M1(i,:)); end do
@@ -330,7 +340,7 @@ function postfix()
 	! postfix operation guard
 	select case (x)
 		case ('nest','ring','grow','shrink','sources','QU->EB','EB->QU','magnetic')
-		case ('magnetic->pqu','pqu->magnetic')
+		case ('cartesian->healpix','healpix->cartesian','magnetic->pqu','pqu->magnetic')
 		case default; return
 	end select
 	
@@ -491,6 +501,36 @@ pure function exp_iqu(iqu)
 		exp_iqu(1) = exp(I) * cosh(P)
 		exp_iqu(2:3) = [Q,U]/P * exp(I) * sinh(P)
 	end associate
+end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! convert 3-vector between cartesian coordinates and HEALPix frame
+function cart2hlpx(nside, order, p, B, direction)
+	intent(in) nside, order, p, B, direction
+	integer nside, order, p, direction
+	real(IO) cart2hlpx(3), B(3)
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! return vector components in selected frame
+	select case (direction)
+		case(+1); cart2hlpx = [sum(B*X), sum(B*Y), sum(B*Z)]
+		case(-1); cart2hlpx = B(1)*X + B(2)*Y + B(3)*Z
+		case default; call abort(": direction not supported")
+	end select
 end function
 
 ! compute dust polarization sourced by magnetic field alignment

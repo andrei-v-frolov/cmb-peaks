@@ -128,6 +128,7 @@ select case (op)
 	case ('any');     nmaps = 1; pol = -1; where (any(M1 /= 0.0,2)) Mout(:,1) = 1.0
 	case ('all');     nmaps = 1; pol = -1; where (all(M1 /= 0.0,2)) Mout(:,1) = 1.0
 	case ('sum');     nmaps = 1; pol = -1; Mout(:,1) = sum(M1,2)
+	case ('norm');    nmaps = 1; pol = -1; Mout(:,1) = sqrt(sum(M1**2,2))
 	case ('product'); nmaps = 1; pol = -1; Mout(:,1) = product(M1,2)
 	case ('select');  nmaps = 1; pol = -1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
 	
@@ -300,7 +301,7 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('frac','log','exp','rank','sqrt','valid','invalid','any','all','sum','product')
+		case ('frac','log','exp','rank','sqrt','valid','invalid','any','all','sum','norm','product')
 		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
 		case ('QU->EB','EB->QU')
 		case default; return

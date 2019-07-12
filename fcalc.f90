@@ -267,7 +267,7 @@ select case (op)
 		end select
 	case ('pqu->magnetic');
 		select case (nmaps)
-			case (3); do i = 0,n; Mout(i,:) = pqu2magnetic(nside, ord, i, M1(i,:), .false.); end do
+			case (3); call anneal_magnetic(nside, ord, M1, Mout)
 			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
 		end select
 	case ('magnetic');
@@ -522,13 +522,12 @@ function magnetic2pqu(nside, order, p, B)
 end function
 
 ! compute magnetic field directions that source dust polarization
-function pqu2magnetic(nside, order, p, pqu, flip)
-	intent(in) nside, order, p, pqu, flip
-	real(IO) pqu2magnetic(3), pqu(3)
+function pqu2magnetic(nside, order, p, pqu)
+	intent(in) nside, order, p, pqu
+	real(DP) pqu2magnetic(3,4), pqu(3)
 	integer nside, order, p
-	logical flip
 	
-	real(DP) theta, phi, chi, X(3), Y(3), Z(3), B(3)
+	real(DP) theta, phi, chi, X(3), Y(3), Z(3), A(3), B(3)
 	
 	! convert pixel to angular coordinates
 	select case(order)
@@ -543,13 +542,16 @@ function pqu2magnetic(nside, order, p, pqu, flip)
 	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
 	
 	! magnetic field directions that source dust polarization
-	associate (P => real(pqu(1),DP), Q => real(pqu(2),DP), U => real(pqu(3),DP))
-		chi = atan2(-U,-Q)/2.0; if (flip) chi = chi + pi
-		B = sqrt(P)*(cos(chi)*X + sin(chi)*Y) + sqrt(1.0-P)*Z
+	associate (P => pqu(1), Q => pqu(2), U => pqu(3))
+		A = sqrt(1.0-P)*Z; chi = atan2(-U,-Q)/2.0
+		B = sqrt(P)*(cos(chi)*X + sin(chi)*Y)
 	end associate
 	
 	! return B in I/O precision
-	pqu2magnetic = B
+	pqu2magnetic(:,1) = A+B
+	pqu2magnetic(:,2) = A-B
+	pqu2magnetic(:,3) = -(A+B)
+	pqu2magnetic(:,4) = -(A-B)
 end function
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -705,6 +707,124 @@ function bbody_log_cc(mu, t, beta, bandpass, n)
 	
 	if (mu /= nu0) dBdT = bandpass_dBdT(mu, 2.7255, 0.0, bandpass, n)
 	bbody_log_cc = log(dBdT/bandpass_dBdA(mu, t, beta, bandpass, n)); nu0 = mu
+end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! magnetic field reconstruction from dust polarization pattern by annealing
+subroutine anneal_magnetic(nside, order, map, out, prior)
+	real(IO), dimension(0:12*nside**2-1,3) :: map, out
+	real(IO), dimension(0:12*nside**2-1), optional :: prior
+	integer nside, hside, order, lmax
+	
+	! allocatable storage for (large) temporary maps
+	real(DP), allocatable :: A(:,:,:), B(:,:), L(:,:) ! in NEST ordering !
+	real(DP), allocatable :: H(:), W(:), PDF(:)       ! in RING ordering !
+	integer, allocatable  :: nn(:,:), idx(:,:)        ! in NEST ordering !
+	real(DP), allocatable :: U(:)                     ! temporary vector !
+	complex(DPC), allocatable :: alms(:,:,:)
+	
+	! temporary variables
+	real(DP) g(4), v(3), c, f, energy
+	integer i, j, k, n, m, ii, step, stride
+	
+	! magnetic field direction prior [IAU = (70 deg,24 deg), PIP XLIV]
+	real(DP), parameter :: B0(3) = [0.31245095, 0.85845193, 0.40673664]
+	
+	! Allen-Cahn diffusion solver parameters
+	real(DP), parameter :: lambda = 2.0/8**2
+	real(DP), parameter :: alpha = 0.10, beta = lambda*alpha
+	
+	! intermediate map filename
+	character(len=80) frame
+	
+	! allocate temporary storage
+	hside = max(nside/8, min(nside,8)); lmax = 3*hside-1
+	n = nside2npix(nside) - 1; m = nside2npix(hside) - 1
+	allocate(A(3,4,0:n), B(0:n,3), U(0:n), H(0:m), W(0:m), PDF(0:m))
+	allocate(alms(1,0:lmax,0:lmax), L(9,0:n), nn(9,0:n), idx(4,0:n))
+	
+	! load pqu map and convert it to NEST oredering
+	B = map; if (order == RING) call convert_ring2nest(nside, B)
+	
+	! initialize possible directions and Laplacian stencil
+	do i = 0,n
+		A(:,:,i) = pqu2magnetic(nside, NEST, i, B(i,:))
+		call stencil(nside, NEST, i, nn(:,i), Lw=L(:,i))
+		do k = 1,4; call vec2pix_ring(hside, A(:,k,i), idx(k,i)); end do
+	end do
+	
+	! load prior on magnetic field direction (if any, otherwise use B0)
+	if (present(prior)) then
+		U = prior; if (order == RING) call convert_ring2nest(nside, U)
+		call udgrade_nest(U, nside, W, hside); call convert_nest2ring(nside, W)
+	else
+		do i = 0,m; call pix2vec_ring(hside, i, v); W(i) = exp(-log(2.0)*(1.0-sum(B0*v))**4); end do
+		!call write_map('prior-window.fits', reshape(W,[m+1,1]), hside, RING, creator='FCALC-DEBUG')
+	end if
+	
+	! bootstrap global distribution of magnetic field directions
+	PDF = 1.0; do step = 1,4
+		H = 0.0; call random_number(U)
+		do i = 0,n; k = idx(draw(4, PDF(idx(:,i)), U(i)), i); H(k) = H(k)+1; end do
+		
+		call map2alm(hside, lmax, lmax, H*W, alms)
+		!call alter_alm(hside, lmax, lmax, (20.0*2048)/hside, alms)
+		call alm2map(hside, lmax, lmax, alms, PDF)
+	end do
+	
+	! draw a random realization of unit-valued magnetic field
+	call random_number(U)
+	forall (i=0:n) B(i,:) = A(:,draw(4, PDF(idx(:,i)), U(i)), i)
+	
+	! minimize energy functional by annealing and diffusion
+	do step = 1,640
+		! find a coprime stride to traverse the map of (n+1) pixels
+		stride = 0; do while (mod(stride,2) == 0 .or. mod(stride,3) == 0)
+			call random_number(v); stride = (n+1)/2 * (1.0+v(1)); i = (n+1)*v(2)
+		end do
+		
+		! annealing-diffusion step
+		do ii = 0,n; i = i + stride; if (i > n) i = i-(n+1)
+			c = sqrt(sum(B(i,:)**2))
+			
+			! flip magnetic field direction to the smoothest one of four possibles
+			k = minloc([(sum([(L(j,i)*sum((B(nn(j,i),:)-c*A(:,k,i))**2), j=2,9)]), k=1,4)], 1)
+			
+			! Allen-Cahn diffusion step on the field projected onto the best direction
+			f = alpha*sum(L(2:9,i)*matmul(B(nn(2:9,i),:), A(:,k,i))) + (1.0 + alpha*L(1,i) - beta)*c
+			c = f; do j = 1,4; c = (f + (2.0*beta)*c**3)/(1.0 + (3.0*beta)*c**2); end do
+			
+			! update the field
+			B(i,:) = c*A(:,k,i)
+		end do
+		
+		! enforce field average
+		B = B/sqrt(sum(B**2)/(n+1))
+		
+		! energy functional and intermediate maps are output for debugging
+		energy = 0.0; do i = 0,n
+			energy = energy + sum([(L(j,i)*sum((B(nn(j,i),:)-B(i,:))**2), j=2,9)])/2.0 + (lambda/4.0)*(sum(B(i,:)**2)-1.0)**2
+		end do
+		
+		write (*,*) step, sqrt(sum(B**2)/(n+1)), energy * (pi/3.0)/nside**2
+		
+		!write (frame,'(g,i0.5,g)') "anneal-", step, ".fits"
+		!call write_map(frame, B, nside, NEST, creator='FCALC-DEBUG')
+	end do
+	
+	! copy reconstructed result to output precison/ordering
+	out = B; if (order == RING) call convert_nest2ring(nside, out)
+	
+	deallocate(A, B, U, H, W, PDF, alms, L, nn, idx)
+end subroutine
+
+! draw 1 of n values with probabilities p(n)/sum(p)
+pure function draw(n, p, v)
+	integer i, n, draw; real p(n), c(n), v; intent(in) n, p, v
+	
+	c(1) = p(1); do i = 2,n; c(i) = c(i-1) + p(i); end do
+	do i = 1,n; if (v < c(i)/c(n)) exit; end do; draw = i
 end function
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

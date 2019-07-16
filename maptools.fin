@@ -1,3 +1,97 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! convert 3-vector between cartesian coordinates and HEALPix frame
+function VARIANT(cart2hlpx)(nside, order, p, B, direction)
+	intent(in) nside, order, p, B, direction
+	integer nside, order, p, direction
+	real(XP) VARIANT(cart2hlpx)(3), B(3)
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! return vector components in selected frame
+	select case (direction)
+		case(+1); VARIANT(cart2hlpx) = [sum(B*X), sum(B*Y), sum(B*Z)]
+		case(-1); VARIANT(cart2hlpx) = B(1)*X + B(2)*Y + B(3)*Z
+		case default; call abort(": direction not supported")
+	end select
+end function
+
+! compute dust polarization sourced by magnetic field alignment
+function VARIANT(magnetic2pqu)(nside, order, p, B)
+	intent(in) nside, order, p, B
+	real(XP) VARIANT(magnetic2pqu)(3), B(3)
+	integer nside, order, p
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3), V(3), PQU(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	V = [sum(B*X), sum(B*Y), sum(B*Z)]
+	
+	! polarization created by magnetic field alignment
+	PQU = [V(1)*V(1) + V(2)*V(2), V(2)*V(2) - V(1)*V(1), -2.0*V(1)*V(2)]/sum(V*V)
+	
+	! return QU in I/O precision
+	VARIANT(magnetic2pqu) = PQU
+end function
+
+! compute magnetic field directions that source dust polarization
+function VARIANT(pqu2magnetic)(nside, order, p, pqu)
+	intent(in) nside, order, p, pqu
+	real(XP) VARIANT(pqu2magnetic)(3,4), pqu(3)
+	integer nside, order, p
+	
+	real(DP) theta, phi, chi, X(3), Y(3), Z(3), A(3), B(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! magnetic field directions that source dust polarization
+	associate (P => real(pqu(1),DP), Q => real(pqu(2),DP), U => real(pqu(3),DP))
+		A = sqrt(1.0-P)*Z; chi = atan2(-U,-Q)/2.0
+		B = sqrt(P)*(cos(chi)*X + sin(chi)*Y)
+	end associate
+	
+	! return B in I/O precision
+	VARIANT(pqu2magnetic)(:,1) = A+B
+	VARIANT(pqu2magnetic)(:,2) = A-B
+	VARIANT(pqu2magnetic)(:,3) = -(A+B)
+	VARIANT(pqu2magnetic)(:,4) = -(A-B)
+end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ! pack alm components into contigious real array
 subroutine VARIANT(pack_alms)(lmin, lmax, alms, array)
 	integer lmin, lmax, k, l, m
@@ -32,6 +126,8 @@ subroutine VARIANT(unpack_alms)(lmin, lmax, array, alms)
 		end do
 	end do
 end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! Gaussian alm randomizer that preserves Cl's
 subroutine VARIANT(randomize_alms)(lmin, lmax, alms)
@@ -114,6 +210,8 @@ subroutine VARIANT(randomize)(nside, order, lmin, lmax, map, randomized)
 	
 	deallocate(alms)
 end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! synthesize magnetic field strength maps in RING ordering (using canned HEALPix derivatives)
 subroutine VARIANT(alm2map_magnetic)(nside, lmax, mmax, alms, field)

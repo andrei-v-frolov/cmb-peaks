@@ -814,7 +814,7 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	
 	do i = 1,k; associate(pack => pack(:,1))
 		alms = 0.0; pack = 0.0; pack(i) = 1.0
-		call unpack_alms(lmin, lmax, pack, alms(1,lmin:lmax,0:lmax))
+		call unpack_alms(1, lmin, lmax, pack, alms(:,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, basis(:,:,i))
 	end associate; end do
 	
@@ -823,13 +823,13 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	
 	pack(:,best) = 0.0; chi2(best) = HUGE(chi2); lambda = 0.1; slow = 0
 	call map2alm(nside, lmax, lmax, pqu(:,1), alms, [-1.0,1.0])
-	call pack_alms(lmin, lmax, alms(1,lmin:lmax,0:lmax), pack(:,next))
+	call pack_alms(1, lmin, lmax, alms(:,lmin:lmax,0:lmax), pack(:,next))
 	
 	if (verbose) write (*,*) "Reconstructing magnetic field potential, RMS(residual):"
 	
 	do iteration = 1,1000
 		! reconstruction residual
-		call unpack_alms(lmin, lmax, pack(:,next), alms(1,lmin:lmax,0:lmax))
+		call unpack_alms(1, lmin, lmax, pack(:,next), alms(:,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,next))
 		call magnetic_fit_residual(nside, field(:,:,next), pqu, M1(:,:,next))
 		chi2(next) = sum(M1(:,:,next)**2)/(n+1)
@@ -871,7 +871,7 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	end do
 	
 	! cos^2(gamma) map for reconstructed magnetic field
-	call unpack_alms(lmin, lmax, pack(:,best), alms(1,lmin:lmax,0:lmax))
+	call unpack_alms(1, lmin, lmax, pack(:,best), alms(:,lmin:lmax,0:lmax))
 	call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,best))
 	forall (i=0:n) fit(i,:) = polarization(field(i,:,best))
 	if (order == NEST) call convert_ring2nest(nside, fit)

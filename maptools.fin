@@ -93,36 +93,36 @@ end function
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! pack alm components into contigious real array
-subroutine VARIANT(pack_alms)(lmin, lmax, alms, array)
-	integer lmin, lmax, k, l, m
-	complex(XP) alms(lmin:lmax, 0:lmax)
-	real(XP) array((lmax+1)**2 - lmin**2)
+subroutine VARIANT(pack_alms)(n, lmin, lmax, alms, array)
+	integer n, lmin, lmax, k, l, m
+	complex(XP) alms(n, lmin:lmax, 0:lmax)
+	real(XP) array(n*(lmax+1)**2 - n*lmin**2)
 	
-	k = 1; do l = lmin,lmax
+	k = 0; do l = lmin,lmax
 		! m = 0 mode is always real
-		array(k) = alms(l,0)%re; k = k+1
+		array(k+1:k+n) = alms(:,l,0)%re; k = k+n
 		
 		! the rest contain two coefficients
 		do m = 1,l
-			array(k) = alms(l,m)%re; k = k+1
-			array(k) = alms(l,m)%im; k = k+1
+			array(k+1:k+n) = alms(:,l,m)%re; k = k+n
+			array(k+1:k+n) = alms(:,l,m)%im; k = k+n
 		end do
 	end do
 end subroutine
 
 ! unpack alm components from contigious real array
-subroutine VARIANT(unpack_alms)(lmin, lmax, array, alms)
-	integer lmin, lmax, k, l, m
-	complex(XP) alms(lmin:lmax, 0:lmax)
-	real(XP) array((lmax+1)**2 - lmin**2)
+subroutine VARIANT(unpack_alms)(n, lmin, lmax, array, alms)
+	integer n, lmin, lmax, k, l, m
+	complex(XP) alms(n, lmin:lmax, 0:lmax)
+	real(XP) array(n*(lmax+1)**2 - n*lmin**2)
 	
-	k = 1; do l = lmin,lmax
+	k = 0; do l = lmin,lmax
 		! m = 0 mode is always real
-		alms(l,0) = array(k); k = k+1
+		alms(:,l,0) = array(k+1:k+n); k = k+n
 		
 		! the rest are assembled from two coefficients
 		do m = 1,l
-			alms(l,m) = cmplx(array(k), array(k+1), XP); k = k+2
+			alms(:,l,m) = cmplx(array(k+1:k+n), array(k+n+1:k+n+n), XP); k = k+n+n
 		end do
 	end do
 end subroutine

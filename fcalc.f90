@@ -778,7 +778,7 @@ end function
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! fit magnetic field potential to polarization fraction map
+! fit magnetic field configuration to polarization fraction map
 subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	integer nside, order, lmin, lmax
 	real(IO), dimension(0:12*nside**2-1,3) :: map, fit
@@ -790,31 +790,27 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	integer, allocatable :: pivot(:)
 	
 	! temporary alms are much smaller, allocate on stack
-	real(DP) u, v, chi2(2), lambda
-	complex(DP) alms(1,0:lmax,0:lmax)
+	real(DP) chi2(2), lambda
+	complex(DPC) alms(3,0:lmax,0:lmax)
 	integer i, j, k, n, iteration, status
 	
 	! proposed iterations are tracked in circular buffer
 	integer best, next, slow
 	
 	! allocate temporary storage
-	n = nside2npix(nside) - 1; k = (lmax+1)**2 - lmin**2; best = 1; next = 2
+	n = nside2npix(nside) - 1; k = 3*(lmax+1)**2 - 3*lmin**2; best = 1; next = 2
 	allocate(pqu(0:n,3), M1(0:n,3,2), M2(0:n,3,k), field(0:n,3,2), basis(0:n,3,k))
 	allocate(A(k,k), B(k,1), pack(k,2), pivot(k))
 	
 	! initialize polarization fraction map
-	u = minval(map(:,1))
-	v = maxval(map(:,1))
-	pqu(:,1) = (v-map(:,1))/(v-u)
-	pqu(:,2:3) = map(:,2:3)/(v-u)
-	if (order == NEST) call convert_nest2ring(nside, pqu)
+	pqu = map; if (order == NEST) call convert_nest2ring(nside, pqu)
 	
 	! initialize magnetic field basis maps
 	if (verbose) write (*,*) "Preparing reconstruction basis..."
 	
 	do i = 1,k; associate(pack => pack(:,1))
 		alms = 0.0; pack = 0.0; pack(i) = 1.0
-		call unpack_alms(1, lmin, lmax, pack, alms(:,lmin:lmax,0:lmax))
+		call unpack_alms(3, lmin, lmax, pack, alms(:,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, basis(:,:,i))
 	end associate; end do
 	
@@ -822,14 +818,15 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	if (verbose) write (*,*) "Initializing magnetic field guess..."
 	
 	pack(:,best) = 0.0; chi2(best) = HUGE(chi2); lambda = 0.1; slow = 0
-	call map2alm(nside, lmax, lmax, pqu(:,1), alms, [-1.0,1.0])
-	call pack_alms(1, lmin, lmax, alms(:,lmin:lmax,0:lmax), pack(:,next))
+	!!!call map2alm(nside, lmax, lmax, pqu(:,1), alms, [-1.0,1.0])
+	!!!call pack_alms(1, lmin, lmax, alms(:,lmin:lmax,0:lmax), pack(:,next))
+	pack(:,next) = 0.0; pack(1:3,next) = [0.31245095, 0.85845193, 0.40673664]
 	
-	if (verbose) write (*,*) "Reconstructing magnetic field potential, RMS(residual):"
+	if (verbose) write (*,*) "Fitting magnetic field configuration, RMS(residual):"
 	
 	do iteration = 1,1000
 		! reconstruction residual
-		call unpack_alms(1, lmin, lmax, pack(:,next), alms(:,lmin:lmax,0:lmax))
+		call unpack_alms(3, lmin, lmax, pack(:,next), alms(:,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,next))
 		call magnetic_fit_residual(nside, field(:,:,next), pqu, M1(:,:,next))
 		chi2(next) = sum(M1(:,:,next)**2)/(n+1)
@@ -871,7 +868,7 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	end do
 	
 	! cos^2(gamma) map for reconstructed magnetic field
-	call unpack_alms(1, lmin, lmax, pack(:,best), alms(:,lmin:lmax,0:lmax))
+	call unpack_alms(3, lmin, lmax, pack(:,best), alms(:,lmin:lmax,0:lmax))
 	call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,best))
 	forall (i=0:n) fit(i,:) = polarization(field(i,:,best))
 	if (order == NEST) call convert_ring2nest(nside, fit)
@@ -880,22 +877,22 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	deallocate(pqu, M1, M2, field, basis, A, B, pack, pivot)
 end subroutine
 
-! polarization fraction due to magnetic field
+! polarization fraction due to magnetic field (in HEALPix frame)
 pure function polarization(B)
 	real(DP) polarization(3), B(3); intent(in) B
 	
-	polarization = [B(2)**2+B(3)**2,B(3)**2-B(2)**2,-2*B(2)*B(3)]/sum(B**2)
+	polarization = [B(1)*B(1)+B(2)*B(2), B(2)*B(2)-B(1)*B(1), -2*B(1)*B(2)]/sum(B*B)
 end function
 
-! polarization fraction Jacobian
+! polarization fraction Jacobian (in HEALPix frame)
 pure function jacobian(B)
 	real(DP) jacobian(3,3), B(3); intent(in) B
 	
-	jacobian(1,:) = [-(B(2)**2+B(3)**2), B(1)**2, B(1)**2] * B
-	jacobian(2,:) = [ (B(2)**2-B(3)**2), -(B(1)**2+2*B(3)**2), (B(1)**2+2*B(2)**2)] * B
-	jacobian(3,:) = [ 2*B(1)*B(2)*B(3), -B(3)*(B(1)**2-B(2)**2+B(3)**2), -B(2)*(B(1)**2+B(2)**2-B(3)**2)]
+	jacobian(1,:) = [B(3)**2, B(3)**2, -(B(1)**2+B(2)**2)] * B
+	jacobian(2,:) = [-(B(3)**2+2*B(2)**2), B(3)**2+2*B(1)**2, B(1)**2-B(2)**2] * B
+	jacobian(3,:) = [-B(2)*(B(2)**2+B(3)**2-B(1)**2), -B(1)*(B(1)**2+B(3)**2-B(2)**2), 2*B(1)*B(2)*B(3)]
 	
-	jacobian = jacobian * 2.0/sum(B**2)**2
+	jacobian = jacobian * 2.0/sum(B*B)**2
 end function
 
 subroutine magnetic_fit_residual(nside, B, pqu, map)

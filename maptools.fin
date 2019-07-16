@@ -213,20 +213,19 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! synthesize magnetic field strength maps in RING ordering (using canned HEALPix derivatives)
+! synthesize magnetic field map in RING ordering (using canned HEALPix derivatives)
 subroutine VARIANT(alm2map_magnetic)(nside, lmax, mmax, alms, field)
-	integer nside, lmax, mmax, l, m
-	complex(XP) alms(1,0:lmax,0:mmax), rlms(1,0:lmax,0:mmax)
+	integer nside, lmax, mmax, i, n
 	real(XP) field(0:12*nside**2-1,3)
+	complex(XP) alms(3,0:lmax,0:mmax)
 	
-	! radial derivative of a harmonic potential
-	do l = 0,lmax; m = min(l,mmax)
-		rlms(:,l,0:m) = l*alms(:,l,0:m)
-	end do
+	n = nside2npix(nside) - 1
 	
-	! synthesize magnetic field strength
-	call alm2map_der(nside, lmax, mmax, alms, field(:,1), field(:,2:3))
-	call alm2map(nside, lmax, mmax, rlms, field(:,1))
+	! synthesize magnetic field components (in Cartesian frame)
+	do i = 1,3; call alm2map(nside, lmax, mmax, alms(i:i,:,:), field(:,i)); end do
+	
+	! convert magnetic field components to HEALPix frame
+	do i = 0,n; field(i,:) = cart2hlpx(nside, RING, i, field(i,:), 1); end do
 end subroutine
 
 ! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)

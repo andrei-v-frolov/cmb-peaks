@@ -781,7 +781,8 @@ end function
 ! fit magnetic field configuration to polarization fraction map
 subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	integer nside, order, lmin, lmax
-	real(IO), dimension(0:12*nside**2-1,2) :: map, fit
+	real(IO), dimension(0:12*nside**2-1,2) :: map
+	real(IO), dimension(0:12*nside**2-1,3) :: fit
 	
 	! allocatable storage for (large) temporary maps
 	real(DP), allocatable :: qu(:,:), M1(:,:,:), M2(:,:,:)
@@ -873,11 +874,10 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 		pack(:,next) = pack(:,next)/sqrt(sum(pack(:,next)**2))
 	end do
 	
-	! polarization fraction map for reconstructed magnetic field
+	! reconstructed magnetic field map (in Cartesian frame)
 	call unpack_alms(3, lmin, lmax, pack(:,best), alms(:,lmin:lmax,0:lmax))
-	call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,best))
-	forall (i=0:n) fit(i,:) = polarization(field(i,:,best))
-	if (order == NEST) call convert_ring2nest(nside, fit)
+	do i = 1,3; call alm2map(nside, lmax, lmax, alms(i:i,:,:), field(:,i,best)); end do
+	fit = field(:,:,best); if (order == NEST) call convert_ring2nest(nside, fit)
 	
 	! clean up allocated storage
 	deallocate(qu, M1, M2, field, basis, A, B, pack, pivot)

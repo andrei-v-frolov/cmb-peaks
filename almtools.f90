@@ -22,6 +22,7 @@ GENERIC(magnetic2pqu)
 GENERIC(pqu2magnetic)
 GENERIC(pack_alms)
 GENERIC(unpack_alms)
+GENERIC(magnetic_fit)
 GENERIC(randomize_alms)
 GENERIC(xrandomize_alms)
 GENERIC(randomize)
@@ -30,7 +31,7 @@ GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
 public :: cart2hlpx, magnetic2pqu, pqu2magnetic
-public :: pack_alms, unpack_alms
+public :: pack_alms, unpack_alms, magnetic_fit
 public :: randomize_alms, xrandomize_alms, randomize
 public :: alm2map_magnetic, alm2map_covariant, mask2spins_ring
 

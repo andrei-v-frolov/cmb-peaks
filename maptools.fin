@@ -155,8 +155,8 @@ subroutine VARIANT(magnetic_fit)(nside, order, lmin, lmax, map, fit, guess)
 	integer, parameter :: maxsteps = 1000, minsteps = 100
 	
 	! sanity checks on parameters
-	if (lmin < 0) abort("lmin < 0 requested, bailing out...")
-	if (lmax < lmin) abort("lmax < lmin requested, nothing to fit...")
+	if (lmin < 0) call abort("lmin < 0 requested, bailing out...")
+	if (lmax < lmin) call abort("lmax < lmin requested, nothing to fit...")
 	
 	! allocate temporary storage
 	n = nside2npix(nside) - 1; k = 3*(lmax+1)**2 - 3*lmin**2; best = 1; next = 2

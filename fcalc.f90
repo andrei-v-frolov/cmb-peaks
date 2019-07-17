@@ -278,13 +278,13 @@ select case (op)
 		end select
 	case ('pqu->magnetic');
 		select case (nmaps)
-			case (3); call anneal_magnetic(nside, ord, M1, Mout)
+			case (3); call magnetic_fit(nside, ord, 0, 0, M1(:,2:3), Mout)
 			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
 		end select
-	case ('magnetic');
+	case ('pqu->magneticlmax');
 		select case (nmaps)
-			case (3); call magnetic_fit(nside, ord, 1, 10, M1, Mout)
-			case default; call abort(trim(op) // " reconstruction requires IQU/(I+P) map as input")
+			case (3); call magnetic_fit(nside, ord, 0, nint(M3(0,1)), M1(:,2:3), Mout, M2)
+			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
 		end select
 	
 	! unknown operator
@@ -339,7 +339,7 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('nest','ring','grow','shrink','sources','QU->EB','EB->QU','magnetic')
+		case ('nest','ring','grow','shrink','sources','QU->EB','EB->QU')
 		case ('cartesian->healpix','healpix->cartesian','magnetic->pqu','pqu->magnetic')
 		case default; return
 	end select
@@ -403,6 +403,7 @@ function ternary()
 		case ('project on','orthogonal'); if (y .eq. 'with') ternary = .true.
 		case ('accumulate'); if (y .eq. '-') ternary = .true.
 		case ('within','apodize'); if (y .eq. ':') ternary = .true.
+		case ('pqu->magnetic'); if (y .eq. 'lmax') ternary = .true.
 		case ('bbody'); if (y .eq. 'frequency' .or. y .eq. 'bandpass') ternary = .true.
 	end select
 	

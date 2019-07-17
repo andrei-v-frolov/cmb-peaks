@@ -790,12 +790,16 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	integer, allocatable :: pivot(:)
 	
 	! temporary alms are much smaller, allocate on stack
-	real(DP) chi2(2), lambda
+	real(DP) chi2(2), delta, lambda
 	complex(DPC) alms(3,0:lmax,0:lmax)
 	integer i, j, k, n, iteration, status
 	
 	! proposed iterations are tracked in circular buffer
 	integer best, next, slow
+	
+	! optimizer tolerance and maximal number of steps
+	real, parameter :: epsilon = 1.0e-14, upsilon = 1.0e-4
+	integer, parameter :: maxsteps = 1000, minsteps = 100
 	
 	! allocate temporary storage
 	n = nside2npix(nside) - 1; k = 3*(lmax+1)**2 - 3*lmin**2; best = 1; next = 2
@@ -824,7 +828,7 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	
 	if (verbose) write (*,*) "Fitting magnetic field configuration, RMS(residual):"
 	
-	do iteration = 1,1000
+	do iteration = 1,maxsteps
 		! reconstruction residual
 		call unpack_alms(3, lmin, lmax, pack(:,next), alms(:,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,next))
@@ -835,8 +839,9 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 		
 		! damping schedule
 		if (chi2(next) < chi2(best)) then
-			if (chi2(best)/chi2(next) - 1.0 < 1.0e-4) slow = slow + 1
-			best = next; if (slow > k) exit
+			delta = chi2(best)/chi2(next) - 1.0; best = next
+			if (delta < epsilon .or. slow > max(minsteps,k)) exit
+			if (delta < upsilon) slow = slow + 1
 			lambda = lambda/2.0
 		else
 			lambda = 10.0*lambda + 1.0e-3
@@ -865,6 +870,7 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 		! proposed update
 		next = mod(best,2) + 1
 		pack(:,next) = pack(:,best) + B(:,1)
+		pack(:,next) = pack(:,next)/sqrt(sum(pack(:,next)**2))
 	end do
 	
 	! polarization fraction map for reconstructed magnetic field

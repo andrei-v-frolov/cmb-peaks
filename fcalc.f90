@@ -781,10 +781,10 @@ end function
 ! fit magnetic field configuration to polarization fraction map
 subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	integer nside, order, lmin, lmax
-	real(IO), dimension(0:12*nside**2-1,3) :: map, fit
+	real(IO), dimension(0:12*nside**2-1,2) :: map, fit
 	
 	! allocatable storage for (large) temporary maps
-	real(DP), allocatable :: pqu(:,:), M1(:,:,:), M2(:,:,:)
+	real(DP), allocatable :: qu(:,:), M1(:,:,:), M2(:,:,:)
 	real(DP), allocatable :: field(:,:,:), basis(:,:,:)
 	real(DP), allocatable :: A(:,:), B(:,:), pack(:,:)
 	integer, allocatable :: pivot(:)
@@ -799,11 +799,11 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 	
 	! allocate temporary storage
 	n = nside2npix(nside) - 1; k = 3*(lmax+1)**2 - 3*lmin**2; best = 1; next = 2
-	allocate(pqu(0:n,3), M1(0:n,3,2), M2(0:n,3,k), field(0:n,3,2), basis(0:n,3,k))
+	allocate(qu(0:n,2), M1(0:n,2,2), M2(0:n,2,k), field(0:n,3,2), basis(0:n,3,k))
 	allocate(A(k,k), B(k,1), pack(k,2), pivot(k))
 	
 	! initialize polarization fraction map
-	pqu = map; if (order == NEST) call convert_nest2ring(nside, pqu)
+	qu = map; if (order == NEST) call convert_nest2ring(nside, qu)
 	
 	! initialize magnetic field basis maps
 	if (verbose) write (*,*) "Preparing reconstruction basis..."
@@ -828,7 +828,7 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 		! reconstruction residual
 		call unpack_alms(3, lmin, lmax, pack(:,next), alms(:,lmin:lmax,0:lmax))
 		call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,next))
-		call magnetic_fit_residual(nside, field(:,:,next), pqu, M1(:,:,next))
+		call magnetic_fit_residual(nside, field(:,:,next), qu, M1(:,:,next))
 		chi2(next) = sum(M1(:,:,next)**2)/(n+1)
 		
 		if (verbose) write (*,*) sqrt(chi2(next)), sqrt(sum((pack(:,next)-pack(:,best))**2)), lambda
@@ -867,46 +867,47 @@ subroutine magnetic_fit(nside, order, lmin, lmax, map, fit)
 		pack(:,next) = pack(:,best) + B(:,1)
 	end do
 	
-	! cos^2(gamma) map for reconstructed magnetic field
+	! polarization fraction map for reconstructed magnetic field
 	call unpack_alms(3, lmin, lmax, pack(:,best), alms(:,lmin:lmax,0:lmax))
 	call alm2map_magnetic(nside, lmax, lmax, alms, field(:,:,best))
 	forall (i=0:n) fit(i,:) = polarization(field(i,:,best))
 	if (order == NEST) call convert_ring2nest(nside, fit)
 	
 	! clean up allocated storage
-	deallocate(pqu, M1, M2, field, basis, A, B, pack, pivot)
+	deallocate(qu, M1, M2, field, basis, A, B, pack, pivot)
 end subroutine
 
 ! polarization fraction due to magnetic field (in HEALPix frame)
 pure function polarization(B)
-	real(DP) polarization(3), B(3); intent(in) B
+	real(DP) polarization(2), B(3); intent(in) B
 	
-	polarization = [B(1)*B(1)+B(2)*B(2), B(2)*B(2)-B(1)*B(1), -2*B(1)*B(2)]/sum(B*B)
+	polarization = [B(2)*B(2)-B(1)*B(1), -2*B(1)*B(2)]/sum(B*B)
 end function
 
 ! polarization fraction Jacobian (in HEALPix frame)
 pure function jacobian(B)
-	real(DP) jacobian(3,3), B(3); intent(in) B
+	real(DP) jacobian(2,3), B(3); intent(in) B
 	
-	jacobian(1,:) = [B(3)**2, B(3)**2, -(B(1)**2+B(2)**2)] * B
-	jacobian(2,:) = [-(B(3)**2+2*B(2)**2), B(3)**2+2*B(1)**2, B(1)**2-B(2)**2] * B
-	jacobian(3,:) = [-B(2)*(B(2)**2+B(3)**2-B(1)**2), -B(1)*(B(1)**2+B(3)**2-B(2)**2), 2*B(1)*B(2)*B(3)]
+	jacobian(1,:) = [-(B(3)**2+2*B(2)**2), B(3)**2+2*B(1)**2, B(1)**2-B(2)**2] * B
+	jacobian(2,:) = [-B(2)*(B(2)**2+B(3)**2-B(1)**2), -B(1)*(B(1)**2+B(3)**2-B(2)**2), 2*B(1)*B(2)*B(3)]
 	
 	jacobian = jacobian * 2.0/sum(B*B)**2
 end function
 
-subroutine magnetic_fit_residual(nside, B, pqu, map)
+subroutine magnetic_fit_residual(nside, B, qu, map)
 	integer nside, i, n
-	real(DP), dimension(0:12*nside**2-1,3) :: B, pqu, map
+	real(DP), dimension(0:12*nside**2-1,3) :: B
+	real(DP), dimension(0:12*nside**2-1,2) :: qu, map
 	
 	n = nside2npix(nside) - 1
 	
-	forall (i=0:n) map(i,:) = pqu(i,:) - polarization(B(i,:))
+	forall (i=0:n) map(i,:) = qu(i,:) - polarization(B(i,:))
 end subroutine
 
 subroutine magnetic_fit_derivative(nside, B1, B2, map)
 	integer nside, i, n
-	real(DP), dimension(0:12*nside**2-1,3) :: B1, B2, map
+	real(DP), dimension(0:12*nside**2-1,3) :: B1, B2
+	real(DP), dimension(0:12*nside**2-1,2) :: map
 	
 	n = nside2npix(nside) - 1
 	

@@ -736,7 +736,7 @@ subroutine anneal_magnetic(nside, order, map, out, prior)
 		
 		! annealing-diffusion step
 		do ii = 0,n; i = i + stride; if (i > n) i = i-(n+1)
-			c = sqrt(sum(B(i,:)**2))
+			c = norm2(B(i,:))
 			
 			! flip magnetic field direction to the smoothest one of four possibles
 			k = minloc([(sum([(L(j,i)*sum((B(nn(j,i),:)-c*A(:,k,i))**2), j=2,9)]), k=1,4)], 1)

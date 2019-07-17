@@ -37,7 +37,7 @@ allocate(hist(0:12*hside**2-1,4)); hist = 0.0
 
 ! accumulate histogram
 do i = 1,12*nside**2-1
-	v = M(i,:)/sqrt(sum(M(i,:)**2))
+	v = M(i,:)/norm2(M(i,:))
 	call vec2pix_nest(hside, v, p)
 	
 	hist(p,1) = hist(p,1) + 1.0

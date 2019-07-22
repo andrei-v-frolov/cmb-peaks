@@ -53,13 +53,21 @@ file = argv[3] if len(argv) > 3 else None
 def read_map(file, path='.', format='IEB'):
 	data = pyfits.open(os.path.join(path, file))[1]
 	
+	# parse metadata
+	nside = data.header['NSIDE']
+	order = data.header['ORDERING']
+	
+	nested = None
+	if (order == 'RING'): nested = False
+	if (order == 'NESTED'): nested = True
+	
 	# override column names
 	for (i,c) in enumerate(format):
 		data.columns[i].name = c
 	
-	return {c: np.ma.masked_invalid(data.data[c].flatten()) for c in format}
+	return {c: np.ma.masked_invalid(data.data[c].flatten()) for c in format}, nside, nested
 
-M = read_map(data, format=maps)
+M,nside,nested = read_map(data, format=maps)
 
 
 ###############################################################################
@@ -85,8 +93,8 @@ c = matplotlib.colors.LinearSegmentedColormap.from_list("difference", [grey, tra
 c.set_bad('red'); c.set_over('black'); c.set_under(transparent)
 
 for (i,p) in enumerate(plot):
-	hp.mollview(M[p].filled(hp.UNSEEN), sub=(1,n,i+1), title="$"+p+"$", cbar=False, min=a, max=b, cmap=planck_cmap, xsize=2400); hp.graticule(dmer=360,dpar=360,alpha=0)
-	bbox = plt.gca().get_position(); bbox.x0 -= 0.01; bbox.x1 -= 0.01; plt.gca().set_position(bbox)
+	hp.mollview(M[p].filled(hp.UNSEEN), nest=nested, sub=(1,n,i+1), title="$"+p+"$", cbar=False, min=a, max=b, cmap=planck_cmap, xsize=2400)
+	hp.graticule(dmer=360,dpar=360,alpha=0); bbox = plt.gca().get_position(); bbox.x0 -= 0.01; bbox.x1 -= 0.01; plt.gca().set_position(bbox)
 
 ###############################################################################
 # color bars

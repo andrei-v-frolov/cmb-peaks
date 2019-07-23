@@ -25,8 +25,8 @@ import numpy as np
 # you wish it would work like this...
 #smica = hp.read_map(base + 'dx12_v3_smica_cmb_ieb_040a_0256.fits')
 
-def read_map(file, path='.', format='IEB'):
-	data = pyfits.open(os.path.join(path, file))[1]
+def read_map(file, path='.', hdu=1, format='IEB'):
+	data = pyfits.open(os.path.join(path, file))[hdu]
 	
 	# parse metadata
 	nside = data.header['NSIDE']

@@ -12,17 +12,8 @@ here = os.path.split(os.path.realpath(__file__))[0]
 sys.path.append(os.path.join(here, '../libs'))
 
 # import libraries
-from math import *
-import numpy as np
-import healpy as hp
+from mapio import *
 from sys import argv, stdin
-
-# FITS I/O libraries
-try:
-	import astropy.io.fits as pyfits
-except ImportError:
-	import pyfits
-import numpy as np
 
 
 ###############################################################################
@@ -39,36 +30,9 @@ legend = True	# do we want to include the legend?
 ###############################################################################
 assert len(argv) > 2, 'usage: plot-map <plot format, e.g. QU/IQU/uK> <data.fits> [output.pdf]'
 
-plot,maps,units = (argv[1]+'/').split('/')[:3]; data = argv[2]
+plot,maps,units = (argv[1]+'/').split('/')[:3]
+M,nside,nested = read_map(argv[2], format=maps)
 file = argv[3] if len(argv) > 3 else None
-
-
-###############################################################################
-# read map data
-###############################################################################
-
-# you wish it would work like this...
-#smica = hp.read_map(base + 'dx12_v3_smica_cmb_ieb_040a_0256.fits')
-
-def read_map(file, path='.', format='IEB'):
-	data = pyfits.open(os.path.join(path, file))[1]
-	
-	# parse metadata
-	nside = data.header['NSIDE']
-	order = data.header['ORDERING']
-	
-	nested = None
-	if (order == 'RING'): nested = False
-	if (order == 'NESTED'): nested = True
-	
-	# override column names
-	for (i,c) in enumerate(format):
-		data.columns[i].name = c
-	
-	return {c: np.ma.masked_invalid(data.data[c].flatten()) for c in format}, nside, nested
-
-M,nside,nested = read_map(data, format=maps)
-
 
 ###############################################################################
 # create the plots

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Plot HEALPix maps in Mollweide projection
-# usage: plot-map <plot format, e.g. QU/IQU> <data.fits> [output.pdf]
+# usage: plot-map <plot format, e.g. QU/IQU/uK> <data.fits> [output.pdf]
 
 ###############################################################################
 # import libraries
@@ -37,9 +37,9 @@ legend = True	# do we want to include the legend?
 ###############################################################################
 # parse arguments
 ###############################################################################
-assert len(argv) > 2, 'usage: plot-map <plot format, e.g. QU/IQU> <data.fits> [output.pdf]'
+assert len(argv) > 2, 'usage: plot-map <plot format, e.g. QU/IQU/uK> <data.fits> [output.pdf]'
 
-plot,maps = argv[1].split('/'); data = argv[2]
+plot,maps,units = (argv[1]+'/').split('/')[:3]; data = argv[2]
 file = argv[3] if len(argv) > 3 else None
 
 
@@ -102,7 +102,7 @@ for (i,p) in enumerate(plot):
 
 ax = plt.axes([0.1,1.7/height,0.8,0.25/height])
 bar = matplotlib.colors.Normalize(vmin=a, vmax=b)
-matplotlib.colorbar.ColorbarBase(ax, cmap=planck_cmap, norm=bar, orientation='horizontal', ticks=t).set_label(r'$\mu$K')
+matplotlib.colorbar.ColorbarBase(ax, cmap=planck_cmap, norm=bar, orientation='horizontal', ticks=t).set_label(units)
 
 ###############################################################################
 

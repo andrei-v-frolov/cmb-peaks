@@ -34,6 +34,8 @@ plot,maps,units = (argv[1]+'/').split('/')[:3]
 M,nside,nested = read_map(argv[2], format=maps)
 file = argv[3] if len(argv) > 3 else None
 
+autoconvert_polarization(M, want=plot)
+
 ###############################################################################
 # create the plots
 ###############################################################################

@@ -212,6 +212,30 @@ select case (op)
 			case default; call abort(trim(op) // " conversion requires I or IQU map format")
 		end select
 	
+	! vector field operators
+	case ('cartesian->healpix','xyz->XYZ');
+		select case (nmaps)
+			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), +1); end do
+			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
+		end select
+	case ('healpix->cartesian','XYZ->xyz');
+		select case (nmaps)
+			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), -1); end do
+			case default; call abort(trim(op) // " reconstruction requires B[XYZ] map as input")
+		end select
+	case ('XY->EB');
+		select case (nmaps)
+			case (2); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1)
+			case (3); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1); Mout(:,3) = M1(:,3)
+			case default; call abort(trim(op) // " conversion requires XY or XYZ map format")
+		end select
+	case ('EB->XY');
+		select case (nmaps)
+			case (2); call rotate_eb2qu(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1)
+			case (3); call rotate_eb2qu(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1); Mout(:,3) = M1(:,3)
+			case default; call abort(trim(op) // " conversion requires EB or EBZ map format")
+		end select
+	
 	! polarization operators
 	case ('QU->EB');
 		select case (nmaps)
@@ -261,16 +285,6 @@ select case (op)
 		end do
 	
 	! reconstruction operators
-	case ('cartesian->healpix');
-		select case (nmaps)
-			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), +1); end do
-			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
-		end select
-	case ('healpix->cartesian');
-		select case (nmaps)
-			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), -1); end do
-			case default; call abort(trim(op) // " reconstruction requires B[XYZ] map as input")
-		end select
 	case ('magnetic->pqu');
 		select case (nmaps)
 			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, i, M1(i,:)); end do
@@ -313,7 +327,7 @@ function prefix()
 	select case (x)
 		case ('frac','log','exp','rank','sqrt','valid','invalid','any','all','sum','norm','product')
 		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
-		case ('QU->EB','EB->QU')
+		case ('xyz->XYZ','XYZ->xyz','XY->EB','EB->XY','QU->EB','EB->QU')
 		case default; return
 	end select
 	
@@ -339,7 +353,7 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('nest','ring','grow','shrink','sources','QU->EB','EB->QU')
+		case ('nest','ring','grow','shrink','sources','XY->EB','EB->XY','QU->EB','EB->QU')
 		case ('cartesian->healpix','healpix->cartesian','magnetic->pqu','pqu->magnetic')
 		case default; return
 	end select

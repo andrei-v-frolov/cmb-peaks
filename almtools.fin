@@ -64,19 +64,21 @@ subroutine VARIANT(rotate_qu2eb_pure)(nside, order, lmax, QU, mask, EB)
 end subroutine
 
 ! full-sky QU to EB rotation wrapper
-subroutine VARIANT(rotate_qu2eb)(nside, order, lmax, QU, EB)
-	integer nside, order, lmax, spin, n
+subroutine VARIANT(rotate_qu2eb)(nside, order, lmax, QU, EB, spin)
+	integer nside, order, lmax, spin, s, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU
 	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
+	optional spin
 	
-	n = nside2npix(nside) - 1; spin = 2
+	n = nside2npix(nside) - 1
+	s = 2; if (present(spin)) s = spin
 	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	LOAD(map,QU); if (order == NEST) call convert_nest2ring(nside, map)
 	
-	call map2alm_spin(nside, lmax, lmax, spin, map, alms)
+	call map2alm_spin(nside, lmax, lmax, s, map, alms)
 	call alm2map(nside, lmax, lmax, alms(1:1,:,:), map(:,1))
 	call alm2map(nside, lmax, lmax, alms(2:2,:,:), map(:,2))
 	
@@ -86,21 +88,23 @@ subroutine VARIANT(rotate_qu2eb)(nside, order, lmax, QU, EB)
 end subroutine
 
 ! full-sky EB to QU rotation wrapper
-subroutine VARIANT(rotate_eb2qu)(nside, order, lmax, EB, QU)
-	integer nside, order, lmax, spin, n
+subroutine VARIANT(rotate_eb2qu)(nside, order, lmax, EB, QU, spin)
+	integer nside, order, lmax, spin, s, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU
 	real(XP), dimension(0:12*nside**2-1,1:2) :: EB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
+	optional spin
 	
-	n = nside2npix(nside) - 1; spin = 2
+	n = nside2npix(nside) - 1
+	s = 2; if (present(spin)) s = spin
 	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	map = EB; if (order == NEST) call convert_nest2ring(nside, map)
 	
 	call map2alm(nside, lmax, lmax, map(:,1), alms(1:1,:,:))
 	call map2alm(nside, lmax, lmax, map(:,2), alms(2:2,:,:))
-	call alm2map_spin(nside, lmax, lmax, spin, alms, map)
+	call alm2map_spin(nside, lmax, lmax, s, alms, map)
 	
 	if (order == NEST) call convert_ring2nest(nside, map); COPY(map,QU)
 	
@@ -108,22 +112,24 @@ subroutine VARIANT(rotate_eb2qu)(nside, order, lmax, EB, QU)
 end subroutine
 
 ! full-sky QU mode projector
-subroutine VARIANT(project_qu)(nside, order, lmax, QU, projected, scaleE, scaleB)
-	integer nside, order, lmax, spin, n
+subroutine VARIANT(project_qu)(nside, order, lmax, QU, projected, scaleE, scaleB, spin)
+	integer nside, order, lmax, spin, s, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU, projected
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
 	real(DP), optional :: scaleE, scaleB
+	optional spin
 	
-	n = nside2npix(nside) - 1; spin = 2
+	n = nside2npix(nside) - 1
+	s = 2; if (present(spin)) s = spin
 	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	LOAD(map, QU); if (order == NEST) call convert_nest2ring(nside, map)
 	
-	call map2alm_spin(nside, lmax, lmax, spin, map, alms)
+	call map2alm_spin(nside, lmax, lmax, s, map, alms)
 	if (present(scaleE)) alms(1,:,:) = scaleE * alms(1,:,:)
 	if (present(scaleB)) alms(2,:,:) = scaleB * alms(2,:,:)
-	call alm2map_spin(nside, lmax, lmax, spin, alms, map)
+	call alm2map_spin(nside, lmax, lmax, s, alms, map)
 	
 	if (order == NEST) call convert_ring2nest(nside, map); COPY(map,projected)
 	
@@ -131,22 +137,24 @@ subroutine VARIANT(project_qu)(nside, order, lmax, QU, projected, scaleE, scaleB
 end subroutine
 
 ! full-sky QU alm phase randomizer
-subroutine VARIANT(randomize_qu)(nside, order, lmin, lmax, QU, randomized, randomizeE, randomizeB)
-	integer nside, order, lmin, lmax, spin, n
+subroutine VARIANT(randomize_qu)(nside, order, lmin, lmax, QU, randomized, randomizeE, randomizeB, spin)
+	integer nside, order, lmin, lmax, spin, s, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU, randomized
 	logical, optional :: randomizeE, randomizeB
 	real(DP), dimension(:,:), allocatable :: map
 	complex(DPC), allocatable :: alms(:,:,:)
+	optional spin
 	
-	n = nside2npix(nside) - 1; spin = 2
+	n = nside2npix(nside) - 1
+	s = 2; if (present(spin)) s = spin
 	allocate(map(0:n,1:2), alms(1:2, 0:lmax, 0:lmax))
 	
 	LOAD(map, QU); if (order == NEST) call convert_nest2ring(nside, map)
 	
-	call map2alm_spin(nside, lmax, lmax, spin, map, alms)
+	call map2alm_spin(nside, lmax, lmax, s, map, alms)
 	if (present(randomizeE) .and. randomizeE) call randomize_alms(lmin, lmax, alms(1:1,:,:))
 	if (present(randomizeB) .and. randomizeB) call randomize_alms(lmin, lmax, alms(2:2,:,:))
-	call alm2map_spin(nside, lmax, lmax, spin, alms, map)
+	call alm2map_spin(nside, lmax, lmax, s, alms, map)
 	
 	if (order == NEST) call convert_ring2nest(nside, map); COPY(map,randomized)
 	
@@ -154,25 +162,27 @@ subroutine VARIANT(randomize_qu)(nside, order, lmin, lmax, QU, randomized, rando
 end subroutine
 
 ! full-sky QU alm phase randomizer preserving cross-correlations
-subroutine VARIANT(xrandomize_qu)(nside, order, lmin, lmax, QU1, QU2, R1, R2, randomizeE, randomizeB)
-	integer nside, order, lmin, lmax, spin, n
+subroutine VARIANT(xrandomize_qu)(nside, order, lmin, lmax, QU1, QU2, R1, R2, randomizeE, randomizeB, spin)
+	integer nside, order, lmin, lmax, spin, s, n
 	MAPTYPE(XP, 0:12*nside**2-1) :: QU1, QU2, R1, R2
 	real(DP), dimension(:,:), allocatable :: M1, M2
 	logical, optional :: randomizeE, randomizeB
 	complex(DPC), allocatable :: alms(:,:,:)
+	optional spin
 	
-	n = nside2npix(nside) - 1; spin = 2
+	n = nside2npix(nside) - 1
+	s = 2; if (present(spin)) s = spin
 	allocate(M1(0:n,1:2), M2(0:n,1:2), alms(1:4, 0:lmax, 0:lmax))
 	
 	LOAD(M1, QU1); if (order == NEST) call convert_nest2ring(nside, M1)
 	LOAD(M2, QU2); if (order == NEST) call convert_nest2ring(nside, M2)
 	
-	call map2alm_spin(nside, lmax, lmax, spin, M1, alms(1:2,:,:))
-	call map2alm_spin(nside, lmax, lmax, spin, M2, alms(3:4,:,:))
+	call map2alm_spin(nside, lmax, lmax, s, M1, alms(1:2,:,:))
+	call map2alm_spin(nside, lmax, lmax, s, M2, alms(3:4,:,:))
 	if (present(randomizeE) .and. randomizeE) call xrandomize_alms(lmin, lmax, alms(1:3:2,:,:))
 	if (present(randomizeB) .and. randomizeB) call xrandomize_alms(lmin, lmax, alms(2:4:2,:,:))
-	call alm2map_spin(nside, lmax, lmax, spin, alms(1:2,:,:), M1)
-	call alm2map_spin(nside, lmax, lmax, spin, alms(3:4,:,:), M2)
+	call alm2map_spin(nside, lmax, lmax, s, alms(1:2,:,:), M1)
+	call alm2map_spin(nside, lmax, lmax, s, alms(3:4,:,:), M2)
 	
 	if (order == NEST) call convert_ring2nest(nside, M1); COPY(M1,R1)
 	if (order == NEST) call convert_ring2nest(nside, M2); COPY(M2,R2)

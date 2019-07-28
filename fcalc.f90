@@ -77,8 +77,11 @@ select case (op)
 	case ('!=','/=','<>'); where (M1 /= M2) Mout = 1.0
 	
 	! rank-order map, outputing CDF value for valid pixels (on per channel basis)
-	case ('rank'); do i = 1,nmaps; call percentile(nside, M1(:,i), valid(:,i), Mout(:,i)); end do
-	
+	case ('rank'); do i = 1,nmaps; call rankorder(nside, M1(:,i), valid(:,i), Mout(:,i)); end do
+	case ('normalize-L3'); do i = 1,nmaps; call normalize_l34(nside, M1(:,i), valid(:,i), Mout(:,i), 3); end do
+	case ('normalize-L4'); do i = 1,nmaps; call normalize_l34(nside, M1(:,i), valid(:,i), Mout(:,i), 4); end do
+	case ('normalize-L34'); do i = 1,nmaps; call normalize_l34(nside, M1(:,i), valid(:,i), Mout(:,i), 34); end do
+		
 	! projection operators
 	case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
 	case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
@@ -325,7 +328,8 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('frac','log','exp','rank','sqrt','valid','invalid','any','all','sum','norm','product')
+		case ('frac','log','exp','sqrt','valid','invalid','any','all','sum','norm','product')
+		case ('rank','normalize-L3','normalize-L4','normalize-L34')
 		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
 		case ('xyz->XYZ','XYZ->xyz','XY->EB','EB->XY','QU->EB','EB->QU')
 		case default; return
@@ -520,27 +524,83 @@ end function
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-! rank-order map, outputing CDF value for valid pixels
-subroutine percentile(nside, map, valid, cdf)
-	integer nside, npix, used
+! rank-order map, computing CDF and L-moments for valid pixels
+subroutine rankorder(nside, map, valid, cdf, L1, L2, L3, L4)
+	integer nside, npix, n; real(DP) E, O; optional cdf
 	real(IO), dimension(0:12*nside**2-1) :: map, cdf
 	logical, dimension(0:12*nside**2-1) :: valid
-	real(DP), allocatable :: M(:)
+	real(DP), optional :: L1, L2, L3, L4
+	real(DP), allocatable :: M(:), U(:)
 	integer, allocatable :: idx(:), rank(:)
 	
 	npix = nside2npix(nside)
-	allocate(M(npix), idx(npix), rank(npix))
+	allocate(M(npix), U(npix), idx(npix), rank(npix))
 	
-	where (.not. valid) map = HUGE(map)
-	M = map; used = count(valid)
+	M = map; n = count(valid)
+	where (.not. valid) M = HUGE(M)
 	
 	call indexx(npix, M, idx)
 	call rankx(npix, idx, rank)
 	
-	cdf = (rank-1)/(used-1.0)
-	where (.not. valid) cdf = 1.0/0.0
+	if (present(cdf)) cdf = (rank-1)/(n-1.0)
+	if (present(cdf)) where (.not. valid) cdf = 1.0/0.0
+	if (present(L2) .or. present(L3) .or. present(L4)) U = (2*rank-n-1)/(n-1.0)
 	
-	deallocate(M, idx, rank)
+	! end correction for trapezoid rule
+	E = 0.5*(M(idx(n))+M(idx(1)))/(n-1.0)
+	O = 0.5*(M(idx(n))-M(idx(1)))/(n-1.0)
+	
+	if (present(L1)) L1 = sum(M, valid)/(n-1.0) - E
+	if (present(L2)) L2 = sum(M*U, valid)/(n-1.0) - O
+	if (present(L3)) L3 = sum(M*(1.5*U**2-0.5), valid)/(n-1.0) - E
+	if (present(L4)) L4 = sum(M*(2.5*U**2-1.5)*U, valid)/(n-1.0) - O
+	
+	deallocate(M, U, idx, rank)
+end subroutine
+
+! normalize weak local non-Gaussianity by matching L-moments
+subroutine normalize_l34(nside, map, valid, out, mode)
+	integer nside, mode, n, i; logical fix3, fix4
+	real(IO), dimension(0:12*nside**2-1) :: map, out
+	logical, dimension(0:12*nside**2-1) :: valid
+	real(DP) L1, L2, L3, L4, tau3, tau4
+	real(DP) x, y, sigma, mu, alpha, beta
+	
+	n = nside2npix(nside) - 1; alpha = 0.0; beta = 0.0
+	
+	! L-moments we want to normalize
+	select case (mode)
+		case(3); fix3 = .true.; fix4 = .false.
+		case(4); fix3 = .false.; fix4 = .true.
+		case(34); fix3 = .true.; fix4 = .true.
+		case default; call abort("mode not implemented in normalize_l34()")
+	end select
+	
+	! compute first 4 L-moments of the data
+	call rankorder(nside, map, valid, L1=L1, L2=L2, L3=L3, L4=L4); tau3 = L3/L2; tau4 = L4/L2
+	
+	! compute coefficients of the cubic transform
+	if (fix4) beta = (tau4 - 0.12260171954089094743716661166353)/(1.4318996940486099555369155179172 - 2.5*tau4)
+	if (fix3) alpha = 0.51166335397324424423977581244465*(2.0+5.0*beta) * tau3
+	sigma = 3.5449077018110320545963349666822/(2.0+5.0*beta) * L2; mu = L1/sigma - alpha
+	
+	! dump it for further reference
+	write (*,*) "Matching L-moments for data = sigma*(mu + x + alpha*x^2 + beta*x^3) to Gaussian x:"
+	write (*,*) "   sigma =", sigma
+	write (*,*) "      mu =", mu
+	write (*,*) "   alpha =", alpha
+	write (*,*) "    beta =", beta
+	
+	! invert the transformation using Newton's method
+	do i = 0,n
+		y = map(i)/sigma - mu
+		
+		x = y; do j = 1,8
+			x = x - (x*(1.0 + x*(alpha + beta*x)) - y)/(1.0 + x*(2.0*alpha + 3.0*beta*x))
+		end do
+		
+		out(i) = sigma*(x + mu)
+	end do
 end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

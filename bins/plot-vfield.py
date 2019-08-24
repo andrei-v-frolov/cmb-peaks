@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Plot 3D vector field on a shaded sphere
-# usage: plot-vector <basemap.fits> <vectors.fits> [output.pdf]
+# usage: plot-vfield <basemap.fits> <vectors.fits> [output.pdf]
 
 ###############################################################################
 # import libraries
@@ -28,7 +28,7 @@ legend = True	# do we want to include the legend?
 ###############################################################################
 # parse arguments
 ###############################################################################
-assert len(argv) > 2, 'usage: plot-vector <basemap.fits> <vectors.fits> [output.pdf]'
+assert len(argv) > 2, 'usage: plot-vfield <basemap.fits> <vectors.fits> [output.pdf]'
 
 file = argv[3] if len(argv) > 3 else None
 

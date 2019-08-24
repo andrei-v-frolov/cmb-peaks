@@ -49,7 +49,7 @@ if (allocated(M1) .and. allocated(M2) .and. .not. allocated(M3)) valid = .not. (
 if (allocated(M1) .and. allocated(M2) .and. allocated(M3)) valid = .not. (isnan(M1) .or. isnan(M2) .or. isnan(M3))
 
 ! initialize random number generator (use urandom on clusters!)
-if (index(op,'randomize') > 0 .or. index(op,'shuffle') > 0) then
+if (index(op,'randomize') > 0 .or. index(op,'shuffle') > 0 .or. index(op,'smear') > 0) then
 	open (333, file="/dev/random", action='read', form='binary')
 	read (333) seed; call random_seed(PUT=seed); close (333)
 	!seed = [123456789,987654321]; call random_seed(PUT=seed)
@@ -304,6 +304,15 @@ select case (op)
 			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
 		end select
 	
+	! visualization operators
+	case ('smear');
+		if (.not. allocated(M2)) then; allocate(M2, mold=M1); call random_number(M2); end if
+		select case (nmaps)
+			case (2); call lconvolution(nside, ord, 2, M1(:,1:2), M2, Mout, 600.0)
+			case (3); call lconvolution(nside, ord, 3, M1(:,1:2), M2, Mout, 600.0)
+			case default; call abort(trim(op) // " line convolution requires B[XY] or B[XYZ] map as input")
+		end select
+	
 	! unknown operator
 	case default; call abort(trim(op) // ": operation not supported")
 end select
@@ -357,7 +366,7 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('nest','ring','grow','shrink','sources','XY->EB','EB->XY','QU->EB','EB->QU')
+		case ('nest','ring','grow','shrink','sources','smear','XY->EB','EB->XY','QU->EB','EB->QU')
 		case ('cartesian->healpix','healpix->cartesian','magnetic->pqu','pqu->magnetic')
 		case default; return
 	end select
@@ -387,7 +396,7 @@ function binary()
 		case ('+','-','*','/','//','**')
 		case ('<','>','<=','>=','=','==','!=','/=','<>')
 		case ('project on','orthogonal','remove monopole','remove dipole','accumulate','select','zip')
-		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','QU->pure EB','purify')
+		case ('valid','invalid','mask','unmask','inpaint','inpaint QU','QU->pure EB','purify','smear')
 		case default; return
 	end select
 	

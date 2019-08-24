@@ -286,6 +286,93 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! line integral convolution of map by a 2D vector field XY (in HEALPix frame)
+subroutine VARIANT(lconvolution)(nside, order, m, XY, map, out, fwhm)
+	integer nside, order, m; real fwhm
+	real(XP), dimension(0:12*nside**2-1,2) :: XY
+	real(XP), dimension(0:12*nside**2-1,m) :: map, out
+	real(DP), allocatable :: src(:,:), dx(:,:)
+	
+	integer steps, n, i, j
+	real(DP) ds, dk, V(3), S(m)
+	
+	! initialize parameters and allocate storage
+	n = nside2npix(nside) - 1; ds = sqrt(3.0/pi)/nside * 0.3
+	steps = pi/(180*60) * fwhm/ds; dk = (pi/2)/(steps+1)
+	
+	allocate(dx(0:n,3), src(0:n,m))
+	
+	! load map to be convolved
+	src = map
+	
+	! compute displacement vector
+	do i = 0,n
+		V(1:2) = XY(i,:); V(3) = 0.0
+		V = cart2hlpx(nside, order, i, V, -1)
+		dx(i,:) = V * ds/norm2(V)
+	end do
+	
+	! reorder maps to nested format for nearest neighbour lookup
+	if (order == RING) call convert_ring2nest(nside, dx)
+	if (order == RING) call convert_ring2nest(nside, src)
+	
+	! main convolution loop
+	do i = 0,n
+		S = map(i,:)
+		
+		call pix2vec_nest(nside, i, V)
+		
+		do j = 1,steps
+			V = V + weightedavg(nside, 3, dx, V); V = V/norm2(V)
+			S = S + cos(j*dk)**2 * weightedavg(nside, m, src, V)
+		end do
+		
+		call pix2vec_nest(nside, i, V)
+		
+		do j = 1,steps
+			V = V - weightedavg(nside, 3, dx, V); V = V/norm2(V)
+			S = S + cos(j*dk)**2 * weightedavg(nside, m, src, V)
+		end do
+		
+		out(i,:) = S
+	end do
+	
+	! reorder output if necessary
+	if (order == RING) call convert_nest2ring(nside, out)
+	
+	deallocate(src, dx)
+contains
+
+! high quality of interpolation is not needed, just make it simple and fast
+function weightedavg(nside, m, map, V)
+	real(DP), dimension(0:12*nside**2-1,m) :: map
+	real(DP) V(3), W(0:8), weightedavg(m), sigma
+	integer nside, m, p, i
+	
+	! cache nearest neighbours between calls
+	integer, save :: n, nn(0:8) = -1
+	real(DP), save :: U(3,0:8) = 0.0
+	
+	! tuned for reasonable visual smoothness
+	sigma = 0.5 * (3.0/pi)/nside**2
+	
+	! lookup nearest neighbour positions
+	call vec2pix_nest(nside, V, p)
+	
+	if (p /= nn(0)) then
+		nn(0) = p; call neighbours_nest(nside, p, nn(1:), n)
+		do i = 0,n; call pix2vec_nest(nside, nn(i), U(:,i)); end do
+	end if
+	
+	! compute weighted average of the neighbouring pixel values
+	forall (i=0:n) W(i) = exp(-sum((V-U(:,i))**2)/sigma)
+	weightedavg = matmul(W(0:n),map(nn(0:n),:))/sum(W(0:n))
+end function
+
+end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ! Gaussian alm randomizer that preserves Cl's
 subroutine VARIANT(randomize_alms)(lmin, lmax, alms)
 	integer lmin, lmax, l

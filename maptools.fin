@@ -47,31 +47,19 @@ function VARIANT(hlpx2cart)(nside, order, p, B)
 end function
 
 ! compute dust polarization sourced by magnetic field alignment
-function VARIANT(magnetic2pqu)(nside, order, p, B)
-	integer, intent(in) :: nside, order, p
-	real(XP) VARIANT(magnetic2pqu)(3), B(3)
+function VARIANT(magnetic2pqu)(nside, order, frame, p, B)
+	integer, intent(in) :: nside, order, frame, p
+	real(XP) VARIANT(magnetic2pqu)(3), B(3); real(DP) V(3)
 	
-	real(DP) theta, phi, X(3), Y(3), Z(3), V(3), PQU(3)
-	
-	! convert pixel to angular coordinates
-	select case(order)
-		case(RING); call pix2ang_ring(nside, p, theta, phi)
-		case(NEST); call pix2ang_nest(nside, p, theta, phi)
-		case default; call abort(": ordering not supported")
+	! convert vector to HEALPix frame
+	select case(frame)
+		case(HLPX); V = B
+		case(CART); V = cart2hlpx(nside, order, p, real(B,DP))
+		case default; call abort(": frame not supported")
 	end select
 	
-	! local HEALPix reference frame
-	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
-	Y = [-sin(phi), cos(phi), 0.0]
-	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
-	
-	V = [sum(B*X), sum(B*Y), sum(B*Z)]
-	
 	! polarization created by magnetic field alignment
-	PQU = [V(1)*V(1) + V(2)*V(2), V(2)*V(2) - V(1)*V(1), -2.0*V(1)*V(2)]/sum(V*V)
-	
-	! return QU in I/O precision
-	VARIANT(magnetic2pqu) = PQU
+	VARIANT(magnetic2pqu) = [V(1)*V(1) + V(2)*V(2), V(2)*V(2) - V(1)*V(1), -2.0*V(1)*V(2)]/sum(V*V)
 end function
 
 ! compute magnetic field directions that source dust polarization

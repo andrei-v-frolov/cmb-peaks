@@ -290,7 +290,7 @@ select case (op)
 	! reconstruction operators
 	case ('magnetic->pqu');
 		select case (nmaps)
-			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, i, M1(i,:)); end do
+			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, max(vec,CART), i, M1(i,:)); end do
 			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
 		end select
 	case ('pqu->magnetic');

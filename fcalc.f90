@@ -22,7 +22,7 @@ implicit none
 !real, parameter :: pi = 3.141592653589793238462643383279502884197169399375Q0
 
 character(len=8000) :: op, fin1, fin2, fin3, fout, fout2
-integer :: nmaps = 0, nside = 0, ord = 0, pol = -1
+integer :: nmaps = 0, nside = 0, ord = 0, pol = -1, vec = -1
 integer i, j, n, lmin, lmax, bands, seed(2)
 
 real(IO), dimension(:,:), allocatable :: M1, M2, M3, Mout, Mout2
@@ -318,8 +318,8 @@ select case (op)
 end select
 
 ! write output map(s)
-call write_map(fout, Mout(:,1:nmaps), nside, ord, pol, creator='FCALC')
-if (allocated(Mout2)) call write_map(fout2, Mout2(:,1:nmaps), nside, ord, pol, creator='FCALC')
+call write_map(fout, Mout(:,1:nmaps), nside, ord, pol, vec, creator='FCALC')
+if (allocated(Mout2)) call write_map(fout2, Mout2(:,1:nmaps), nside, ord, pol, vec, creator='FCALC')
 
 contains
 
@@ -348,7 +348,7 @@ function prefix()
 	prefix = .true.; op = trim(x)
 	
 	! read input maps
-	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
+	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
 	
 	! output map name
 	call getArgument(3, fout); if (fout .eq. '=:') call getArgument(4, fout)
@@ -375,7 +375,7 @@ function postfix()
 	postfix = .true.; op = trim(x)
 	
 	! read input maps
-	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
+	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
 	
 	! output map name
 	call getArgument(3, fout); if (fout .eq. '=:') call getArgument(4, fout)
@@ -404,8 +404,8 @@ function binary()
 	binary = .true.; op = trim(x)
 	
 	! read input maps
-	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
-	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
+	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
+	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol, vec)
 	
 	! output map name
 	call getArgument(4, fout); if (fout .eq. '=:') call getArgument(5, fout)
@@ -438,9 +438,9 @@ function ternary()
 	if (.not. ternary) return; op = trim(x) // trim(y)
 	
 	! read input maps
-	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
-	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
-	call getArgument(5, fin3); call read_map(fin3, M3, nside, nmaps, ord, pol)
+	call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
+	call getArgument(3, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol, vec)
+	call getArgument(5, fin3); call read_map(fin3, M3, nside, nmaps, ord, pol, vec)
 	
 	! output map name
 	call getArgument(6, fout); if (fout .eq. '=:') call getArgument(7, fout)
@@ -469,8 +469,8 @@ function split()
 	split = .true.; op = 'x' // trim(x)
 	
 	! read input maps
-	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
-	call getArgument(4, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
+	call getArgument(2, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
+	call getArgument(4, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol, vec)
 	
 	! output map names
 	call getArgument(5, fout)
@@ -843,7 +843,7 @@ subroutine anneal_magnetic(nside, order, map, out, prior)
 		write (*,*) step, sqrt(sum(B**2)/(n+1)), energy * (pi/3.0)/nside**2
 		
 		!write (frame,'(g,i0.5,g)') "anneal-", step, ".fits"
-		!call write_map(frame, B, nside, NEST, creator='FCALC-DEBUG')
+		!call write_map(frame, B, nside, NEST, vec=CART, creator='FCALC-DEBUG')
 	end do
 	
 	! copy reconstructed result to output precison/ordering

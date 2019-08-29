@@ -15,7 +15,7 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 character(len=8000) :: fin, bins, fout
-integer :: nmaps = 0, nside = 0, ord = 0, pol = -1
+integer :: nmaps = 0, nside = 0, ord = 0, vec = CART
 real(IO), allocatable :: M(:,:), hist(:,:)
 
 integer i, p, hside, status
@@ -24,8 +24,8 @@ real(DP) v(3)
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! parse arguments
-call getArgument(1, fin); call read_map(fin, M, nside, nmaps, ord, pol)
-if (nmaps /= 3) call abort("3D vector map (in cartesian coordinates) is required as input")
+call getArgument(1, fin); call read_map(fin, M, nside, nmaps, ord, vec=vec)
+if (nmaps /= 3) call abort("3D vector map is required as input")
 
 call getArgument(2, bins); read (bins,*,iostat=status) hside
 if (status /= 0) call abort("cannot parse nside in " // trim(bins))

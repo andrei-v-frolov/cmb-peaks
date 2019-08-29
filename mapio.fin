@@ -1,7 +1,7 @@
 ! write map to FITS file, creating minimal header
-subroutine VARIANT(write_map)(fout, M, nside, ord, pol, creator, version)
+subroutine VARIANT(write_map)(fout, M, nside, ord, pol, vec, creator, version)
 	character(*) fout, creator, version; real(XP) M(:,:)
-	integer nside, ord, pol; optional pol, creator, version
+	integer nside, ord, pol, vec; optional pol, vec, creator, version
 	
 	! FITS header
 	character(len=80) :: header(64)
@@ -27,19 +27,22 @@ subroutine VARIANT(write_map)(fout, M, nside, ord, pol, creator, version)
 		case default; call write_minimal_header(header, 'MAP', nside=nside, order=ord)
 	end select
 	
+	! vector field metadata
+	if (present(vec)) call add_vector_card(header, vec)
+	
 	! write output map
 	call output_map(M, header, '!'//fout)
 end subroutine VARIANT(write_map)
 
 ! read map from FITS file, allocating storage if necessary
-subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord, pol)
+subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord, pol, vec)
 	character(*) fin; real(XP), allocatable :: M(:,:)
-	integer nside, npix, nmaps, ord, pol; optional pol
-	integer i
+	integer nside, npix, nmaps, ord, pol, vec, i
+	optional pol, vec
 	
 	! header info
 	character(len=80) :: header(64)
-	integer hside, htot, hmaps, hord, hpol
+	integer hside, htot, hmaps, hord, hpol, hvec
 	
 	! if fin is a literal expression, we are done
 	if (VARIANT(literal_map)(fin, M, nside, nmaps)) return
@@ -55,21 +58,37 @@ subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord, pol)
 			if (hmaps < nmaps .and. hmaps >  1) call   abort(trim(fin) // ": too few channels in an input map")
 	if (  ord == 0)   ord = hord;	if ( hord /= ord)   call warning(trim(fin) // ": map ordering is being converted")
 	
-	! check optional metadata
-	if (present(pol)) then
-		if (pol < 0) pol = hpol; if (hmaps > 1 .and. hpol /= pol) call warning(trim(fin) // ": polarization metadata does not match")
-	end if
-	
 	! allocate storage if needed
 	npix = nside2npix(nside); if (.not. allocated(M)) allocate(M(0:npix-1,nmaps))
 	if (size(M,1) /= npix .or. size(M,2) < nmaps) call abort(trim(fin) // ": unexpected storage array shape")
 	
 	! read map data, replicating single channel map if needed
 	if (hmaps > 1) then
-		call input_map(fin, M, npix, nmaps)
+		call input_map(fin, M, npix, nmaps, header=header)
 	else
-		call input_map(fin, M(:,1:1), npix, hmaps)
+		call input_map(fin, M(:,1:1), npix, 1, header=header)
 		do i = 2,nmaps; M(:,i) = M(:,1); end do
+	end if
+	
+	! read custom cards
+	hvec = get_vector_card(header)
+	
+	! check (optional) polarization metadata
+	if (present(pol)) then; if (pol < 0) pol = hpol
+		if (hmaps > 1 .and. hpol /= pol) call warning(trim(fin) // ": polarization metadata does not match")
+	end if
+	
+	! check (optional) vector field metadata
+	if (present(vec)) then; if (vec < 0) vec = hvec
+		if (nmaps == 3 .and. min(vec,hvec) == CART .and. max(vec,hvec) == HLPX) then
+			call warning(trim(fin) // ": vector frame is being converted")
+		else if (hmaps > 1 .and. hvec /= vec) then
+			call warning(trim(fin) // ": vector metadata does not match")
+		end if
+		
+		! convert vector frame if needed
+		!if (nmaps == 3 .and. hvec == CART .and. vec == HLPX) call convert_cart2hlpx(nside, hord, M)
+		!if (nmaps == 3 .and. hvec == HLPX .and. vec == CART) call convert_hlpx2cart(nside, hord, M)
 	end if
 	
 	! convert map order if needed

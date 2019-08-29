@@ -16,7 +16,7 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 character(len=8000) :: fin1, fin2, fout
-integer :: nmaps = 0, nside = 0, ord = 0, pol = -1
+integer :: nmaps = 0, nside = 0, ord = 0, pol = -1, vec = -1
 real(IO), allocatable :: M1(:,:), M2(:,:), hist(:,:,:)
 
 integer x, y, nx, ny
@@ -29,14 +29,14 @@ integer i, j, k
 ! parse arguments
 select case (nArguments())
 	case (4);
-		call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
+		call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
 		allocate(M2, source=M1)
 		call parse_range(2, x, nx, xx, 1, M1)
 		call parse_range(3, y, ny, yy, 2, M1)
 		call getArgument(4, fout)
 	case (5);
-		call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol)
-		call getArgument(2, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol)
+		call getArgument(1, fin1); call read_map(fin1, M1, nside, nmaps, ord, pol, vec)
+		call getArgument(2, fin2); call read_map(fin2, M2, nside, nmaps, ord, pol, vec)
 		call parse_range(3, x, nx, xx, 1, M1)
 		call parse_range(4, y, ny, yy, 1, M2)
 		call getArgument(5, fout)

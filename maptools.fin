@@ -1,9 +1,8 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! convert 3-vector between cartesian coordinates and HEALPix frame
-function VARIANT(cart2hlpx)(nside, order, p, B, direction)
-	intent(in) nside, order, p, B, direction
-	integer nside, order, p, direction
+function VARIANT(cart2hlpx)(nside, order, p, B)
+	integer, intent(in) :: nside, order, p
 	real(XP) VARIANT(cart2hlpx)(3), B(3)
 	
 	real(DP) theta, phi, X(3), Y(3), Z(3)
@@ -20,19 +19,37 @@ function VARIANT(cart2hlpx)(nside, order, p, B, direction)
 	Y = [-sin(phi), cos(phi), 0.0]
 	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
 	
-	! return vector components in selected frame
-	select case (direction)
-		case(+1); VARIANT(cart2hlpx) = [sum(B*X), sum(B*Y), sum(B*Z)]
-		case(-1); VARIANT(cart2hlpx) = B(1)*X + B(2)*Y + B(3)*Z
-		case default; call abort(": direction not supported")
+	! return vector components in HEALPix frame
+	VARIANT(cart2hlpx) = [sum(B*X), sum(B*Y), sum(B*Z)]
+end function
+
+! convert 3-vector between HEALPix frame and cartesian coordinates
+function VARIANT(hlpx2cart)(nside, order, p, B)
+	integer, intent(in) :: nside, order, p
+	real(XP) VARIANT(hlpx2cart)(3), B(3)
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
 	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! return vector components in cartesian frame
+	VARIANT(hlpx2cart) = B(1)*X + B(2)*Y + B(3)*Z
 end function
 
 ! compute dust polarization sourced by magnetic field alignment
 function VARIANT(magnetic2pqu)(nside, order, p, B)
-	intent(in) nside, order, p, B
+	integer, intent(in) :: nside, order, p
 	real(XP) VARIANT(magnetic2pqu)(3), B(3)
-	integer nside, order, p
 	
 	real(DP) theta, phi, X(3), Y(3), Z(3), V(3), PQU(3)
 	
@@ -59,9 +76,8 @@ end function
 
 ! compute magnetic field directions that source dust polarization
 function VARIANT(pqu2magnetic)(nside, order, p, pqu)
-	intent(in) nside, order, p, pqu
+	integer, intent(in) :: nside, order, p
 	real(XP) VARIANT(pqu2magnetic)(3,4), pqu(3)
-	integer nside, order, p
 	
 	real(DP) theta, phi, chi, X(3), Y(3), Z(3), A(3), B(3)
 	
@@ -308,7 +324,7 @@ subroutine VARIANT(lconvolution)(nside, order, m, XY, map, out, fwhm)
 	! compute displacement vector
 	do i = 0,n
 		V(1:2) = XY(i,:); V(3) = 0.0
-		V = cart2hlpx(nside, order, i, V, -1)
+		V = hlpx2cart(nside, order, i, V)
 		dx(i,:) = V * ds/norm2(V)
 	end do
 	
@@ -469,7 +485,7 @@ subroutine VARIANT(alm2map_magnetic)(nside, lmax, mmax, alms, field)
 	do i = 1,3; call alm2map(nside, lmax, mmax, alms(i:i,:,:), field(:,i)); end do
 	
 	! convert magnetic field components to HEALPix frame
-	do i = 0,n; field(i,:) = cart2hlpx(nside, RING, i, field(i,:), 1); end do
+	do i = 0,n; field(i,:) = cart2hlpx(nside, RING, i, field(i,:)); end do
 end subroutine
 
 ! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)

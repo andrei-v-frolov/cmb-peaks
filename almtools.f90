@@ -18,6 +18,7 @@ implicit none
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp; end interface
 
 GENERIC(cart2hlpx)
+GENERIC(hlpx2cart)
 GENERIC(magnetic2pqu)
 GENERIC(pqu2magnetic)
 GENERIC(pack_alms)
@@ -31,8 +32,8 @@ GENERIC(alm2map_magnetic)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
-public :: cart2hlpx, magnetic2pqu, pqu2magnetic
-public :: pack_alms, unpack_alms, magnetic_fit
+public :: cart2hlpx, hlpx2cart, magnetic2pqu, pqu2magnetic
+public :: pack_alms, unpack_alms, magnetic_fit, lconvolution
 public :: randomize_alms, xrandomize_alms, randomize
 public :: alm2map_magnetic, alm2map_covariant, mask2spins_ring
 

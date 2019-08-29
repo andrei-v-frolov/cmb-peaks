@@ -218,12 +218,12 @@ select case (op)
 	! vector field operators
 	case ('cartesian->healpix','xyz->XYZ');
 		select case (nmaps)
-			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), +1); end do
+			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:)); end do
 			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
 		end select
 	case ('healpix->cartesian','XYZ->xyz');
 		select case (nmaps)
-			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:), -1); end do
+			case (3); do i = 0,n; Mout(i,:) = hlpx2cart(nside, ord, i, M1(i,:)); end do
 			case default; call abort(trim(op) // " reconstruction requires B[XYZ] map as input")
 		end select
 	case ('XY->EB');

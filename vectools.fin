@@ -1,0 +1,63 @@
+! convert 3-vector between cartesian coordinates and HEALPix frame
+function VARIANT(cart2hlpx)(nside, order, p, B)
+	integer, intent(in) :: nside, order, p
+	real(XP) VARIANT(cart2hlpx)(3), B(3)
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! return vector components in HEALPix frame
+	VARIANT(cart2hlpx) = [sum(B*X), sum(B*Y), sum(B*Z)]
+end function
+
+! convert 3-vector between HEALPix frame and cartesian coordinates
+function VARIANT(hlpx2cart)(nside, order, p, B)
+	integer, intent(in) :: nside, order, p
+	real(XP) VARIANT(hlpx2cart)(3), B(3)
+	
+	real(DP) theta, phi, X(3), Y(3), Z(3)
+	
+	! convert pixel to angular coordinates
+	select case(order)
+		case(RING); call pix2ang_ring(nside, p, theta, phi)
+		case(NEST); call pix2ang_nest(nside, p, theta, phi)
+		case default; call abort(": ordering not supported")
+	end select
+	
+	! local HEALPix reference frame
+	X = [cos(theta)*cos(phi), cos(theta)*sin(phi), -sin(theta)]
+	Y = [-sin(phi), cos(phi), 0.0]
+	Z = [sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta)]
+	
+	! return vector components in cartesian frame
+	VARIANT(hlpx2cart) = B(1)*X + B(2)*Y + B(3)*Z
+end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! convert 3-vector between cartesian coordinates and HEALPix frame
+subroutine VARIANT(convert_cart2hlpx)(nside, order, V, W)
+	real(XP), dimension(0:12*nside**2-1,3) :: V, W
+	integer nside, order, n, i; n = nside2npix(nside) - 1
+	
+	do i = 0,n; W(i,:) = VARIANT(cart2hlpx)(nside, order, i, V(i,:)); end do
+end subroutine
+
+! convert 3-vector between HEALPix frame and cartesian coordinates
+subroutine VARIANT(convert_hlpx2cart)(nside, order, V, W)
+	real(XP), dimension(0:12*nside**2-1,3) :: V, W
+	integer nside, order, n, i; n = nside2npix(nside) - 1
+	
+	do i = 0,n; W(i,:) = VARIANT(hlpx2cart)(nside, order, i, V(i,:)); end do
+end subroutine

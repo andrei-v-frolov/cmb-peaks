@@ -160,8 +160,8 @@ $(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
 	$(FC) $(FFLAGS_OMP) $(WIGINC) $(INCS) $^ -o $@ $(LDFLAGS) $(WIGLIB) $(LIBS)
 
 # modules
-mapio.o: mapio.fin
 imageio.o: imageio.fin
+mapio.o: mapio.fin vectools.fin
 pdetools.o: multigrid.fin inpaint-qu.fin almtools.o masktools.fin
 almtools.o: almtools.fin maptools.fin complex-qu.fin mapio.o
 

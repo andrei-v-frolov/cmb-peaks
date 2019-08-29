@@ -87,8 +87,8 @@ subroutine VARIANT(read_map)(fin, M, nside, nmaps, ord, pol, vec)
 		end if
 		
 		! convert vector frame if needed
-		!if (nmaps == 3 .and. hvec == CART .and. vec == HLPX) call convert_cart2hlpx(nside, hord, M)
-		!if (nmaps == 3 .and. hvec == HLPX .and. vec == CART) call convert_hlpx2cart(nside, hord, M)
+		if (nmaps == 3 .and. hvec == CART .and. vec == HLPX) call convert_cart2hlpx(nside, hord, M, M)
+		if (nmaps == 3 .and. hvec == HLPX .and. vec == CART) call convert_hlpx2cart(nside, hord, M, M)
 	end if
 	
 	! convert map order if needed

@@ -16,8 +16,17 @@ logical, parameter, public :: verbose = .true.		! diagnostic output
 
 public :: read_map, write_map
 
+public :: cart2hlpx, convert_cart2hlpx
+public :: hlpx2cart, convert_hlpx2cart
+public :: add_vector_card, get_vector_card
+
 ! generic iterfaces are implemented using Fortran preprocessor
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp; end interface
+
+GENERIC(cart2hlpx)
+GENERIC(hlpx2cart)
+GENERIC(convert_cart2hlpx)
+GENERIC(convert_hlpx2cart)
 
 GENERIC(read_map)
 GENERIC(write_map)
@@ -29,11 +38,13 @@ contains
 ! single precision
 #define XP SP
 #define VARIANT(name) name ## _sp
+#include 'vectools.fin'
 #include 'mapio.fin'
 
 ! double precision
 #define XP DP
 #define VARIANT(name) name ## _dp
+#include 'vectools.fin'
 #include 'mapio.fin'
 
 ! output warning message to stderr

@@ -56,6 +56,21 @@ end subroutine warning
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! scan header to see if card is present
+function has_card(header, kwd)
+	character(len=80), intent(in) :: header(:)
+	character(len=*),  intent(in) :: kwd
+	logical has_card, match, exact
+	integer i
+	
+	has_card = .false.
+	
+	do i = 1,size(header)
+		call ftcmps(kwd, header(i)(1:8), .false., match, exact)
+		if (match) has_card = .true.
+	end do
+end function
+
 ! add vector field metadata
 subroutine add_vector_card(header, vec)
 	character(len=80) :: header(:); integer vec
@@ -71,7 +86,7 @@ function get_vector_card(header)
 	integer get_vector_card, n; logical vector
 	
 	! no vector metadata
-	get_vector_card = -1
+	get_vector_card = -1; if (.not. has_card(header,'VECTOR')) return
 	
 	! is vector metadata present?
 	call get_card(header, 'VECTOR', vector, count=n); if (n == 0) return

@@ -21,6 +21,9 @@ implicit none
 
 !real, parameter :: pi = 3.141592653589793238462643383279502884197169399375Q0
 
+integer, parameter :: SCALAR = 1, VECTOR = 2, TENSOR = 4
+integer, parameter :: BAIL = 2**11, WARN = 2**12, CONV(3) = 2**[13,14,15], CONVERT = sum(CONV)
+
 character(len=8000) :: op, fin1, fin2, fin3, fout, fout2
 integer :: nmaps = 0, nside = 0, ord = 0, pol = -1, vec = -1
 integer i, j, n, lmin, lmax, bands, seed(2)
@@ -85,9 +88,9 @@ select case (op)
 	! projection operators
 	case ('project on'); Mout = sum(M1*M2,valid)/sum(M2*M2,valid) * M2
 	case ('orthogonal'); Mout = M1 - sum(M1*M2,valid)/sum(M2*M2,valid) * M2
-	case ('remove monopole'); if (pol > 0) call abort(trim(op) // " operator works on scalar maps only")
+	case ('remove monopole'); call expects(SCALAR)
 		do i = 1,nmaps; call remove_dipole(nside, M1(:,i), ord, 1, multipoles, [-1.0,1.0], mask=M2(:,i)); end do; Mout = M1
-	case ('remove dipole'); if (pol > 0) call abort(trim(op) // " operator works on scalar maps only")
+	case ('remove dipole');   call expects(SCALAR)
 		do i = 1,nmaps; call remove_dipole(nside, M1(:,i), ord, 2, multipoles, [-1.0,1.0], mask=M2(:,i)); end do; Mout = M1
 	
 	! projection operators (masked version)
@@ -128,12 +131,12 @@ select case (op)
 		end select
 	
 	! reduction operators
-	case ('any');     nmaps = 1; pol = -1; where (any(M1 /= 0.0,2)) Mout(:,1) = 1.0
-	case ('all');     nmaps = 1; pol = -1; where (all(M1 /= 0.0,2)) Mout(:,1) = 1.0
-	case ('sum');     nmaps = 1; pol = -1; Mout(:,1) = sum(M1,2)
-	case ('norm');    nmaps = 1; pol = -1; Mout(:,1) = sqrt(sum(M1**2,2))
-	case ('product'); nmaps = 1; pol = -1; Mout(:,1) = product(M1,2)
-	case ('select');  nmaps = 1; pol = -1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
+	case ('any');     nmaps = 1; pol = -1; vec = -1; where (any(M1 /= 0.0,2)) Mout(:,1) = 1.0
+	case ('all');     nmaps = 1; pol = -1; vec = -1; where (all(M1 /= 0.0,2)) Mout(:,1) = 1.0
+	case ('sum');     nmaps = 1; pol = -1; vec = -1; Mout(:,1) = sum(M1,2)
+	case ('norm');    nmaps = 1; pol = -1; vec = -1; Mout(:,1) = sqrt(sum(M1**2,2))
+	case ('product'); nmaps = 1; pol = -1; vec = -1; Mout(:,1) = product(M1,2)
+	case ('select');  nmaps = 1; pol = -1; vec = -1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
 	
 	! composition operators
 	case ('zip');     if (nmaps /= 1) call abort(trim(op) // " composition works on single channel maps")
@@ -217,22 +220,26 @@ select case (op)
 	
 	! vector field operators
 	case ('cartesian->healpix','xyz->XYZ');
+		call expects(VECTOR, BAIL, frame=CART); call yields(VECTOR, frame=HLPX)
 		select case (nmaps)
 			case (3); do i = 0,n; Mout(i,:) = cart2hlpx(nside, ord, i, M1(i,:)); end do
-			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
+			case default; call abort(trim(op) // " conversion requires B[xyz] map as input")
 		end select
 	case ('healpix->cartesian','XYZ->xyz');
+		call expects(VECTOR, BAIL, frame=HLPX); call yields(VECTOR, frame=CART)
 		select case (nmaps)
 			case (3); do i = 0,n; Mout(i,:) = hlpx2cart(nside, ord, i, M1(i,:)); end do
-			case default; call abort(trim(op) // " reconstruction requires B[XYZ] map as input")
+			case default; call abort(trim(op) // " conversion requires B[XYZ] map as input")
 		end select
 	case ('XY->EB');
+		call expects(VECTOR, frame=HLPX); call yields(SCALAR)
 		select case (nmaps)
 			case (2); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1)
 			case (3); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1); Mout(:,3) = M1(:,3)
 			case default; call abort(trim(op) // " conversion requires XY or XYZ map format")
 		end select
 	case ('EB->XY');
+		call expects(SCALAR); call yields(VECTOR, frame=HLPX)
 		select case (nmaps)
 			case (2); call rotate_eb2qu(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1)
 			case (3); call rotate_eb2qu(nside, ord, lmax, M1(:,1:2), Mout(:,1:2), spin=1); Mout(:,3) = M1(:,3)
@@ -240,32 +247,32 @@ select case (op)
 		end select
 	
 	! polarization operators
-	case ('QU->EB');
+	case ('QU->EB'); call expects(TENSOR); call yields(SCALAR)
 		select case (nmaps)
 			case (2); call rotate_qu2eb(nside, ord, lmax, M1(:,1:2), Mout(:,1:2))
 			case (3); call rotate_qu2eb(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
-	case ('EB->QU');
+	case ('EB->QU'); call expects(SCALAR); call yields(TENSOR)
 		select case (nmaps)
 			case (2); call rotate_eb2qu(nside, ord, lmax, M1(:,1:2), Mout(:,1:2))
 			case (3); call rotate_eb2qu(nside, ord, lmax, M1(:,2:3), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires EB or IEB map format")
 		end select
-	case ('QU->pure EB');
+	case ('QU->pure EB'); call expects(TENSOR); call yields(SCALAR)
 		select case (nmaps)
 			case (2); call rotate_qu2eb_pure(nside, ord, lmax, M1(:,1:2), M2(:,1), Mout(:,1:2))
 			case (3); call rotate_qu2eb_pure(nside, ord, lmax, M1(:,2:3), M2(:,2), Mout(:,2:3)); Mout(:,1) = M1(:,1)
 			case default; call abort(trim(op) // " conversion requires QU or IQU map format")
 		end select
-	case ('inpaint QU');
+	case ('inpaint QU'); call expects(TENSOR)
 		select case (nmaps)
 			case (2); call inpaint_qu(nside, ord, M1(:,1:2), M2(:,1), Mout(:,1:2))
 			case (3); call inpaint_qu(nside, ord, M1(:,2:3), M2(:,2), Mout(:,2:3))
 			          call inpaint(nside, ord, M1(:,1), M2(:,1), Mout(:,1))
 			case default; call abort(trim(op) // " tensor inpainting requires QU or IQU map format")
 		end select
-	case ('purify');
+	case ('purify'); call expects(TENSOR)
 		select case (nmaps)
 			case (2); call inpaint_purified_qu(nside, ord, lmax, M1(:,1:2), M2(:,1), Mout(:,1:2))
 			case (3); call inpaint_purified_qu(nside, ord, lmax, M1(:,2:3), M2(:,2), Mout(:,2:3))
@@ -288,24 +295,25 @@ select case (op)
 		end do
 	
 	! reconstruction operators
-	case ('magnetic->pqu');
+	case ('magnetic->pqu'); call expects(VECTOR)
 		select case (nmaps)
 			case (3); do i = 0,n; Mout(i,:) = magnetic2pqu(nside, ord, max(vec,CART), i, M1(i,:)); end do
 			case default; call abort(trim(op) // " reconstruction requires B[xyz] map as input")
 		end select
-	case ('pqu->magnetic');
+		call yields(TENSOR)
+	case ('pqu->magnetic'); call expects(TENSOR); call yields(VECTOR, frame=CART)
 		select case (nmaps)
 			case (3); call magnetic_fit(nside, ord, 0, 0, M1(:,2:3), Mout)
 			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
 		end select
-	case ('pqu->magneticlmax');
+	case ('pqu->magneticlmax'); call expects(TENSOR+VECTOR, CONV(2), frame=CART); call yields(VECTOR, frame=CART)
 		select case (nmaps)
 			case (3); call magnetic_fit(nside, ord, 0, nint(M3(0,1)), M1(:,2:3), Mout, M2)
 			case default; call abort(trim(op) // " reconstruction requires pqu map as input")
 		end select
 	
 	! visualization operators
-	case ('smear');
+	case ('smear'); call expects(VECTOR, CONV(1), frame=HLPX); call yields(SCALAR)
 		if (.not. allocated(M2)) then; allocate(M2, mold=M1); call random_number(M2); end if
 		select case (nmaps)
 			case (2); call lconvolution(nside, ord, 2, M1(:,1:2), M2, Mout, 600.0)
@@ -484,6 +492,80 @@ function split()
 	! allocate second output map
 	allocate(Mout2, mold=M1); Mout2 = 0.0
 end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! check expected data format against read metadata specification
+subroutine expects(data, allow, frame)
+	integer data, allow, allowed, frame; optional allow, frame
+	
+	! text strings for vector frames
+	character(len=*), parameter :: desc(2) = ['cartesian', 'HEALPix']
+	
+	! test for forbidden metadata states
+	allowed = data+WARN+CONVERT; if (present(allow)) allowed = ior(data,allow)
+	if (vec > 0 .and. iand(allowed, VECTOR) == 0) call abort(trim(op) // " operator cannot be applied to vector maps")
+	if (pol > 0 .and. iand(allowed, TENSOR) == 0) call abort(trim(op) // " operator cannot be applied to tensor maps")
+	
+	! scalar data expected?
+	if (iand(data, SCALAR) /= 0) then
+	end if
+	
+	! vector data expected?
+	if (iand(data, VECTOR) /= 0) then
+		if (vec < 1) call warning(trim(op) // " operator expects vector map as input")
+		
+		! resolve vector frame discrepancies
+		if (present(frame) .and. vec > 0) then
+			if (vec /= frame .and. iand(allowed, BAIL) /= 0) call abort(trim(op) // " operator requires vector in " // trim(desc(frame)) // " frame")
+			if (vec /= frame .and. iand(allowed, WARN) /= 0) call warning(trim(op) // " operator expects vector in " // trim(desc(frame)) // " frame")
+			
+			if (vec == CART .and. frame == HLPX .and. iand(allowed, CONVERT) /= 0 .and. nmaps == 3) then
+				call warning("converting vectors from cartesian to HEALPix frame")
+				if (allocated(M1) .and. iand(allowed, CONV(1)) /= 0) call convert_cart2hlpx(nside, ord, M1, M1)
+				if (allocated(M2) .and. iand(allowed, CONV(2)) /= 0) call convert_cart2hlpx(nside, ord, M2, M2)
+				if (allocated(M3) .and. iand(allowed, CONV(3)) /= 0) call convert_cart2hlpx(nside, ord, M3, M3)
+				vec = HLPX
+			end if
+			
+			if (vec == HLPX .and. frame == CART .and. iand(allowed, CONVERT) /= 0 .and. nmaps == 3) then
+				call warning("converting vectors from HEALPix to cartesian frame")
+				if (allocated(M1) .and. iand(allowed, CONV(1)) /= 0) call convert_hlpx2cart(nside, ord, M1, M1)
+				if (allocated(M2) .and. iand(allowed, CONV(2)) /= 0) call convert_hlpx2cart(nside, ord, M2, M2)
+				if (allocated(M3) .and. iand(allowed, CONV(3)) /= 0) call convert_hlpx2cart(nside, ord, M3, M3)
+				vec = CART
+			end if
+		end if
+	else
+		if (vec > 0) call warning(trim(op) // " operator does not expect vector maps")
+	end if
+	
+	! tensor data expected?
+	if (iand(data, TENSOR) /= 0) then
+		if (pol < 1) call warning(trim(op) // " operator expects tensor map as input")
+	else
+		if (pol > 0) call warning(trim(op) // " operator does not expect tensor maps")
+	end if
+end subroutine
+
+! set output data format
+subroutine yields(data, write, frame)
+	integer data, write, written, frame; optional write, frame
+	
+	! metadata to write
+	written = data; if (present(write)) written = ior(data,write)
+	
+	! vector metadata
+	if (iand(data, VECTOR) == 0) vec = -1
+	if (iand(written, VECTOR) /= 0) vec = 0
+	if (iand(written, VECTOR) /= 0 .and. present(frame)) vec = frame
+	if (iand(data, VECTOR) /= 0 .and. .not. present(frame)) call abort("vector frame must be specified for output")
+	
+	! tensor metadata
+	if (iand(data, TENSOR) == 0) pol = -1
+	if (iand(written, TENSOR) /= 0) pol = 0
+	if (iand(data, TENSOR) /= 0) pol = 1
+end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

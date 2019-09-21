@@ -130,6 +130,10 @@ select case (op)
 			case default; call abort(trim(op) // " conversion encountered unkown ordering")
 		end select
 	
+	! metadata operators
+	case ('vector'); call expects(SCALAR,VECTOR+TENSOR); call yields(VECTOR, frame=CART); Mout = M1
+	case ('tensor'); call expects(SCALAR,VECTOR+TENSOR); call yields(TENSOR); Mout = M1
+	
 	! reduction operators
 	case ('any');     nmaps = 1; pol = -1; vec = -1; where (any(M1 /= 0.0,2)) Mout(:,1) = 1.0
 	case ('all');     nmaps = 1; pol = -1; vec = -1; where (all(M1 /= 0.0,2)) Mout(:,1) = 1.0
@@ -374,7 +378,8 @@ function postfix()
 	
 	! postfix operation guard
 	select case (x)
-		case ('nest','ring','grow','shrink','sources','smear','XY->EB','EB->XY','QU->EB','EB->QU')
+		case ('nest','ring','vector','tensor')
+		case ('grow','shrink','sources','smear','XY->EB','EB->XY','QU->EB','EB->QU')
 		case ('cartesian->healpix','healpix->cartesian','magnetic->pqu','pqu->magnetic')
 		case default; return
 	end select

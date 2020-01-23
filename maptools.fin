@@ -124,6 +124,28 @@ end subroutine
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! compute gradient of a scalar (using canned HEALPix derivatives)
+subroutine VARIANT(map2grad)(nside, order, lmax, scalar, grad)
+	integer nside, order, lmax, n
+	real(XP), dimension(0:12*nside**2-1) :: scalar
+	real(XP), dimension(0:12*nside**2-1,2) :: grad
+	
+	complex(DPC), allocatable :: alms(:,:,:)
+	real(DP), allocatable :: tmp(:), map(:,:)
+	
+	n = nside2npix(nside) - 1; allocate(tmp(0:n), map(0:n,2), alms(1, 0:lmax, 0:lmax))
+	LOAD(tmp,scalar); if (order == NEST) call convert_nest2ring(nside, tmp)
+	
+	call map2alm(nside, lmax, lmax, tmp, alms)
+	call alm2map_der(nside, lmax, lmax, alms, tmp, map)
+	
+	COPY(map,grad); if (order == NEST) call convert_ring2nest(nside, grad)
+	
+	deallocate(tmp, map, alms)
+end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 ! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)
 subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, mask)
 	integer nside, lmax, mmax, p, n

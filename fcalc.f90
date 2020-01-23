@@ -224,6 +224,12 @@ select case (op)
 			case default; call abort(trim(op) // " conversion requires I or IQU map format")
 		end select
 	
+	! differential operators
+	case ('grad');
+		call expects(SCALAR); if (nmaps /= 1) call abort(trim(op) // " gradient works on single channel maps")
+		nmaps = 2; deallocate(Mout); allocate(Mout(0:n,nmaps)); call yields(VECTOR, frame=HLPX)
+		call map2grad(nside, ord, lmax, M1(:,1), Mout(:,1:2))
+	
 	! vector field operators
 	case ('cartesian->healpix','xyz->XYZ');
 		call expects(VECTOR, BAIL, frame=CART); call yields(VECTOR, frame=HLPX)
@@ -356,6 +362,7 @@ function prefix()
 		case ('rank','normalize-L3','normalize-L4','normalize-L34')
 		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
 		case ('xyz->XYZ','XYZ->xyz','XY->EB','EB->XY','QU->EB','EB->QU')
+		case ('grad')
 		case default; return
 	end select
 	

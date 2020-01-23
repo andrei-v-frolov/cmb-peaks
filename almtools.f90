@@ -21,6 +21,7 @@ implicit none
 GENERIC(pack_alms)
 GENERIC(unpack_alms)
 GENERIC(lconvolution)
+GENERIC(map2grad)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
@@ -36,7 +37,7 @@ GENERIC(randomize_alms)
 GENERIC(xrandomize_alms)
 GENERIC(randomize)
 
-public :: pack_alms, unpack_alms, lconvolution, alm2map_covariant, mask2spins_ring
+public :: pack_alms, unpack_alms, lconvolution, map2grad, alm2map_covariant, mask2spins_ring
 public :: magnetic2pqu, pqu2magnetic, magnetic_fit, magnetic_mcmc, alm2map_magnetic
 public :: randomize_alms, xrandomize_alms, randomize
 

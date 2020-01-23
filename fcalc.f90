@@ -137,8 +137,10 @@ select case (op)
 	! reduction operators
 	case ('any');     nmaps = 1; pol = -1; vec = -1; where (any(M1 /= 0.0,2)) Mout(:,1) = 1.0
 	case ('all');     nmaps = 1; pol = -1; vec = -1; where (all(M1 /= 0.0,2)) Mout(:,1) = 1.0
+	case ('min');     nmaps = 1; pol = -1; vec = -1; Mout(:,1) = minval(M1,2)
+	case ('max');     nmaps = 1; pol = -1; vec = -1; Mout(:,1) = maxval(M1,2)
 	case ('sum');     nmaps = 1; pol = -1; vec = -1; Mout(:,1) = sum(M1,2)
-	case ('norm');    nmaps = 1; pol = -1; vec = -1; Mout(:,1) = sqrt(sum(M1**2,2))
+	case ('norm');    nmaps = 1; pol = -1; vec = -1; Mout(:,1) = norm2(M1,2)
 	case ('product'); nmaps = 1; pol = -1; vec = -1; Mout(:,1) = product(M1,2)
 	case ('select');  nmaps = 1; pol = -1; vec = -1; forall (i=0:n) Mout(i,1) = M1(i,M2(i,1))
 	
@@ -349,7 +351,8 @@ function prefix()
 	
 	! prefix operation guard
 	select case (x)
-		case ('frac','log','exp','sqrt','valid','invalid','any','all','sum','norm','product')
+		case ('frac','log','exp','sqrt','valid','invalid')
+		case ('any','all','min','max','sum','norm','product')
 		case ('rank','normalize-L3','normalize-L4','normalize-L34')
 		case ('randomize','shuffle','randomize-alm','randomize-blm','randomize-elm')
 		case ('xyz->XYZ','XYZ->xyz','XY->EB','EB->XY','QU->EB','EB->QU')

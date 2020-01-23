@@ -1,0 +1,83 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! Gaussian alm randomizer that preserves Cl's
+subroutine VARIANT(randomize_alms)(lmin, lmax, alms)
+	integer lmin, lmax, l
+	complex(XP) alms(1, 0:lmax, 0:lmax)
+	real(XP), allocatable :: cls(:,:), u(:,:,:)
+	
+	complex, parameter :: itwopi = (0,6.283185307179586476925286766559005768394338798750Q0)
+	
+	allocate(cls(0:lmax, 2), u(2, lmin:lmax, 0:lmax)); call random_number(u)
+	
+	call alm2cl(lmax, lmax, alms, cls(:,1:1))
+	forall (l = lmin:lmax) alms(1,l,0:l) = sqrt(-2.0*log(u(1,l,0:l))) * exp(itwopi*u(2,l,0:l))
+	alms(1,lmin:lmax,0) = alms(1,lmin:lmax,0)%re
+	call alm2cl(lmax, lmax, alms, cls(:,2:2))
+	
+	forall (l = lmin:lmax) alms(1,l,0:l) = sqrt(cls(l,1)/cls(l,2)) * alms(1,l,0:l)
+	
+	deallocate(cls, u)
+end subroutine
+
+! Gaussian alm randomizer that preserves Cl's cross-correlations
+subroutine VARIANT(xrandomize_alms)(lmin, lmax, alms)
+	integer lmin, lmax, l, m
+	complex(XP) alms(2, 0:lmax, 0:lmax)
+	real(XP), allocatable :: cls(:,:,:), u(:,:,:,:)
+	
+	complex, parameter :: itwopi = (0,6.283185307179586476925286766559005768394338798750Q0)
+	
+	allocate(cls(3, 0:lmax, 2), u(2, 2, lmin:lmax, 0:lmax)); call random_number(u)
+	
+	! original correlation matrix
+	call alm2cl(lmax, lmax, alms(1:1,:,:), cls(1,:,1:1))
+	call alm2cl(lmax, lmax, alms(2:2,:,:), cls(2,:,1:1))
+	call alm2cl(lmax, lmax, alms(1:1,:,:), alms(2:2,:,:), cls(3,:,1:1))
+	
+	! replace selected alms with Gaussian random numbers (of unit variance)
+	forall (l = lmin:lmax) alms(:,l,0:l) = sqrt(-2.0*log(u(1,:,l,0:l))) * exp(itwopi*u(2,:,l,0:l))
+	alms(:,lmin:lmax,0) = alms(:,lmin:lmax,0)%re
+	
+	! accidental correlation matrix
+	call alm2cl(lmax, lmax, alms(1:1,:,:), cls(1,:,2:2))
+	call alm2cl(lmax, lmax, alms(2:2,:,:), cls(2,:,2:2))
+	call alm2cl(lmax, lmax, alms(1:1,:,:), alms(2:2,:,:), cls(3,:,2:2))
+	
+	! Cholesky transform enforcing original correlations
+	forall (l = lmin:lmax) alms(:,l,0:l) = matmul(cholesky2x2(cls(:,l,:)), alms(:,l,0:l))
+	
+	deallocate(cls, u)
+contains
+
+pure function cholesky2x2(C); intent(in) C
+	real(XP) C(3,2), cholesky2x2(2,2), phi(2)
+	
+	phi = asin(C(3,:)/sqrt(C(1,:)*C(2,:)))
+	
+	cholesky2x2(1,2) = 0.0
+	cholesky2x2(1,1) = sqrt(C(1,1)/C(1,2))
+	cholesky2x2(2,2) = sqrt(C(2,1)/C(2,2)) * cos(phi(1))/cos(phi(2))
+	cholesky2x2(2,1) = sqrt(C(2,1)/C(1,2)) * sin(phi(1)-phi(2))/cos(phi(2))
+end function
+
+end subroutine
+
+! full-sky alm phase randomizer
+subroutine VARIANT(randomize)(nside, order, lmin, lmax, map, randomized)
+	integer nside, order, lmin, lmax
+	real(XP), dimension(0:12*nside**2-1) :: map, randomized
+	complex(XP), allocatable :: alms(:,:,:)
+	
+	allocate(alms(1, 0:lmax, 0:lmax))
+	
+	randomized = map; if (order == NEST) call convert_nest2ring(nside, randomized)
+	
+	call map2alm(nside, lmax, lmax, randomized, alms)
+	call randomize_alms(lmin, lmax, alms)
+	call alm2map(nside, lmax, lmax, alms, randomized)
+	
+	if (order == NEST) call convert_ring2nest(nside, randomized)
+	
+	deallocate(alms)
+end subroutine

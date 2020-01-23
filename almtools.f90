@@ -23,17 +23,18 @@ GENERIC(pack_alms)
 GENERIC(unpack_alms)
 GENERIC(magnetic_fit)
 GENERIC(lconvolution)
-GENERIC(randomize_alms)
-GENERIC(xrandomize_alms)
-GENERIC(randomize)
 GENERIC(alm2map_magnetic)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
+GENERIC(randomize_alms)
+GENERIC(xrandomize_alms)
+GENERIC(randomize)
+
 public :: magnetic2pqu, pqu2magnetic
 public :: pack_alms, unpack_alms, magnetic_fit, lconvolution
-public :: randomize_alms, xrandomize_alms, randomize
 public :: alm2map_magnetic, alm2map_covariant, mask2spins_ring
+public :: randomize_alms, xrandomize_alms, randomize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! HEALPix routine wrappers, complex QU, in single and double precision
@@ -81,12 +82,14 @@ contains
 #define VARIANT(name) name ## _sp
 #include 'almtools.fin'
 #include 'maptools.fin'
+#include 'randomize.fin'
 
 ! double precision
 #define XP DP
 #define VARIANT(name) name ## _dp
 #include 'almtools.fin'
 #include 'maptools.fin'
+#include 'randomize.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

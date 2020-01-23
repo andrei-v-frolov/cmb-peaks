@@ -17,23 +17,27 @@ implicit none
 ! generic iterfaces are implemented using Fortran preprocessor
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp; end interface
 
-GENERIC(magnetic2pqu)
-GENERIC(pqu2magnetic)
+! maptools.fin
 GENERIC(pack_alms)
 GENERIC(unpack_alms)
-GENERIC(magnetic_fit)
 GENERIC(lconvolution)
-GENERIC(alm2map_magnetic)
 GENERIC(alm2map_covariant)
 GENERIC(mask2spins_ring)
 
+! magnetic.fin
+GENERIC(magnetic2pqu)
+GENERIC(pqu2magnetic)
+GENERIC(magnetic_fit)
+GENERIC(magnetic_mcmc)
+GENERIC(alm2map_magnetic)
+
+! randomize.fin
 GENERIC(randomize_alms)
 GENERIC(xrandomize_alms)
 GENERIC(randomize)
 
-public :: magnetic2pqu, pqu2magnetic
-public :: pack_alms, unpack_alms, magnetic_fit, lconvolution
-public :: alm2map_magnetic, alm2map_covariant, mask2spins_ring
+public :: pack_alms, unpack_alms, lconvolution, alm2map_covariant, mask2spins_ring
+public :: magnetic2pqu, pqu2magnetic, magnetic_fit, magnetic_mcmc, alm2map_magnetic
 public :: randomize_alms, xrandomize_alms, randomize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -43,6 +47,7 @@ public :: randomize_alms, xrandomize_alms, randomize
 ! generic iterfaces are implemented using Fortran preprocessor
 #define GENERIC(name) interface name; module procedure name ## _zs, name ## _zd; end interface
 
+! complex-qu.fin
 GENERIC(convert_ring2nest)
 GENERIC(convert_nest2ring)
 GENERIC(udgrade_nest)
@@ -56,6 +61,7 @@ public :: convert_ring2nest, convert_nest2ring, udgrade_nest
 ! generic iterfaces are implemented using Fortran preprocessor
 #define GENERIC(name) interface name; module procedure name ## _sp, name ## _dp, name ## _zs, name ## _zd; end interface
 
+! almtools.fin
 GENERIC(map2alm_pure)
 GENERIC(rotate_qu2eb_pure)
 GENERIC(rotate_qu2eb)
@@ -82,6 +88,7 @@ contains
 #define VARIANT(name) name ## _sp
 #include 'almtools.fin'
 #include 'maptools.fin'
+#include 'magnetic.fin'
 #include 'randomize.fin'
 
 ! double precision
@@ -89,6 +96,7 @@ contains
 #define VARIANT(name) name ## _dp
 #include 'almtools.fin'
 #include 'maptools.fin'
+#include 'magnetic.fin'
 #include 'randomize.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

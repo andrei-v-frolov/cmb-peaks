@@ -15,7 +15,7 @@ FFLAGS_OMP = $(subst parallel,qopenmp,$(FFLAGS))
 # HEALPix libraries
 HEALPIX ?= /opt/healpix
 HPXINC = -I$(HEALPIX)/include
-HPXLIB = -L$(HEALPIX)/lib -lhealpix
+HPXLIB = -L$(HEALPIX)/lib -lhealpix -lsharp
 
 # CFITSIO libraries
 CFITSIO_DIR ?= /opt/local

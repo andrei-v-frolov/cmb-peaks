@@ -32,6 +32,10 @@ GENERIC(magnetic_fit)
 GENERIC(magnetic_mcmc)
 GENERIC(alm2map_magnetic)
 
+! wavelets.fin
+GENERIC(sample_beam)
+GENERIC(huang)
+
 ! randomize.fin
 GENERIC(randomize_alms)
 GENERIC(xrandomize_alms)
@@ -39,6 +43,7 @@ GENERIC(randomize)
 
 public :: pack_alms, unpack_alms, lconvolution, map2grad, alm2map_covariant, mask2spins_ring
 public :: magnetic2pqu, pqu2magnetic, magnetic_fit, magnetic_mcmc, alm2map_magnetic
+public :: sample_beam, huang
 public :: randomize_alms, xrandomize_alms, randomize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -90,6 +95,7 @@ contains
 #include 'almtools.fin'
 #include 'maptools.fin'
 #include 'magnetic.fin'
+#include 'wavelets.fin'
 #include 'randomize.fin'
 
 ! double precision
@@ -98,6 +104,7 @@ contains
 #include 'almtools.fin'
 #include 'maptools.fin'
 #include 'magnetic.fin'
+#include 'wavelets.fin'
 #include 'randomize.fin'
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

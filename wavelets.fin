@@ -1,0 +1,23 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! sample beam function on a specified grid of x = cos(theta)
+subroutine VARIANT(sample_beam)(lmax, bls, n, f, grid)
+	integer lmax, n, l, i; optional grid
+	real(XP) bls(0:lmax), f(n), grid(n)
+	real(DP) x(n), P(n,0:2), S(n)
+	
+	! initialize sampling grid
+	if (present(grid)) then; x = grid; else; forall (i=1:n) x(i) = real(2*i-n-1,DP)/(n-1); end if
+	
+	! start Legendre recursion
+	P(:,0) = 1.0; P(:,1) = x; S = bls(0)*P(:,0) + sqrt(3.0)*bls(1)*P(:,1)
+	
+	! sum up Y_{l0} harmonic series
+	do l = 2,lmax
+		P(:,mod(l,3)) = ((2*l-1)*x*P(:,mod(l-1,3)) - (l-1)*P(:,mod(l-2,3)))/l
+		S = S + sqrt(real(2*l+1,DP)) * bls(l) * P(:,mod(l,3))
+	end do
+	
+	! return normalized beam
+	f = S/sqrt(4.0*pi)
+end subroutine

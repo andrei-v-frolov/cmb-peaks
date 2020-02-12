@@ -21,3 +21,19 @@ subroutine VARIANT(sample_beam)(lmax, bls, n, f, grid)
 	! return normalized beam
 	f = S/sqrt(4.0*pi)
 end subroutine
+
+! linear interpolation on interval [a,b] using uniformly spaced LUT
+pure function VARIANT(linterp)(n, lut, a, b, x)
+	intent(in) n, lut, a, b, x
+	integer i, n; real a, b, x, w
+	real(XP) lut(n), VARIANT(linterp)
+	
+	! index in lookup table
+	w = (x-a)/(b-a)*(n-1)
+	i = min(max(floor(w)+1, 1), n-1)
+	w = w - real(i-1)
+	
+	! linear combination of LUT values
+	VARIANT(linterp) = (1.0-w)*lut(i) + w*lut(i+1)
+end function
+

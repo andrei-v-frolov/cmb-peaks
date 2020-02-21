@@ -1,32 +1,47 @@
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+! inverse Laplacian of the Gaussian beam
+subroutine VARIANT(einbeam)(fwhm, lmax, beam)
+	intent(in) fwhm, lmax; intent(out) beam
+	real fwhm; integer lmax, l; real(XP) beam(0:lmax)
+	
+	real(DP) bls(0:lmax,1:1)
+	
+	call gaussbeam(fwhm, lmax, bls)
+	beam(0) = 0.0; forall (l=1:lmax) beam(l) = bls(l,1)/l/(l+1)
+end subroutine
+
 ! sample beam function on a specified grid of x = cos(theta)
-subroutine VARIANT(sample_beam)(lmax, bls, n, f, grid)
-	integer lmax, n, l, i; optional grid
-	real(XP) bls(0:lmax), f(n), grid(n)
-	real(DP) x(n), P(n,0:2), S(n)
+subroutine VARIANT(sample_beam)(lmax, beam, n, f, nside, grid)
+	integer nside, lmax, n, l, i; optional nside, grid
+	real(XP) beam(0:lmax), f(n), grid(n)
+	real(DP) bls(0:lmax,1:1), x(n), P(n,0:2), S(n)
 	
 	! initialize sampling grid
 	if (present(grid)) then; x = grid; else; forall (i=1:n) x(i) = real(2*i-n-1,DP)/(n-1); end if
 	
+	! initialize beam convolved with delta function and pixel window
+	bls = 1.0; if (present(nside)) call pixel_window(bls, nside)
+	forall (l=0:lmax) bls(l,:) = (2*l+1)/(4.0*pi) * real(beam(l),DP) * bls(l,:)
+	
 	! start Legendre recursion
-	P(:,0) = 1.0; P(:,1) = x; S = bls(0)*P(:,0) + sqrt(3.0)*bls(1)*P(:,1)
+	P(:,0) = 1.0; P(:,1) = x; S = bls(0,1)*P(:,0) + bls(1,1)*P(:,1)
 	
 	! sum up Y_{l0} harmonic series
 	do l = 2,lmax
 		P(:,mod(l,3)) = ((2*l-1)*x*P(:,mod(l-1,3)) - (l-1)*P(:,mod(l-2,3)))/l
-		S = S + sqrt(real(2*l+1,DP)) * bls(l) * P(:,mod(l,3))
+		S = S + bls(l,1)*P(:,mod(l,3))
 	end do
 	
 	! return normalized beam
-	f = S/sqrt(4.0*pi)
+	f = S
 end subroutine
 
 ! linear interpolation on interval [a,b] using uniformly spaced LUT
-pure function VARIANT(linterp)(n, lut, a, b, x)
+pure function VARIANT(linterp1d)(n, lut, a, b, x)
 	intent(in) n, lut, a, b, x
 	integer i, n; real a, b, x, w
-	real(XP) lut(n), VARIANT(linterp)
+	real(XP) lut(n), VARIANT(linterp1d)
 	
 	! index in lookup table
 	w = (x-a)/(b-a)*(n-1)
@@ -34,6 +49,78 @@ pure function VARIANT(linterp)(n, lut, a, b, x)
 	w = w - real(i-1)
 	
 	! linear combination of LUT values
-	VARIANT(linterp) = (1.0-w)*lut(i) + w*lut(i+1)
+	VARIANT(linterp1d) = (1.0-w)*lut(i) + w*lut(i+1)
 end function
+
+! interpolate scattered values using specified beam and locations
+subroutine VARIANT(interpolate)(nside, order, lmax, n, lut, map, fwhm, beam, pixels, vectors, angles)
+	intent(in) nside, order, lmax, n, lut, fwhm, beam, pixels, vectors, angles; intent(out) map
+	integer nside, order, lmax, n, pixels(n); optional fwhm, beam, pixels, vectors, angles
+	real(XP) lut(n), map(0:12*nside**2-1), beam(0:lmax), vectors(3,n), angles(2,n); real fwhm
+	
+	real, parameter :: arcmin = 60*180/pi
+	
+	integer i, j, l, samples, status
+	integer, allocatable :: p(:), pivot(:)
+	complex(DPC), allocatable :: alms(:,:,:)
+	real(DP), allocatable :: bls(:), kernel(:)
+	real(DP), allocatable :: v(:,:), A(:,:), B(:), M(:)
+	real(DP) avg
+	
+	! allocate storage
+	allocate(bls(0:lmax), alms(1,0:lmax,0:lmax))
+	allocate(p(n), v(3,n), A(n,n), B(n), pivot(n))
+	allocate(M(0:12*nside**2-1), source=0.0)
+	
+	! process interpolation kernel
+	if (present(beam)) then; bls = beam
+	else if (present(fwhm)) then; call einbeam(fwhm, lmax, bls)
+	else; call einbeam(sqrt(48.0/n)*arcmin, lmax, bls); end if
+	
+	samples = 16*nside; allocate(kernel(samples))
+	call sample_beam(lmax, bls, samples, kernel, nside)
+	
+	! process sample positions
+	if (present(pixels)) then
+		select case (order)
+			case(RING); p = pixels
+			case(NEST); do i = 1,n; call nest2ring(nside, pixels(i), p(i)); end do
+			case default; call abort(": ordering not supported")
+		end select
+		
+		do i = 1,n; call pix2vec_ring(nside, p(i), v(:,i)); end do
+	else if (present(vectors)) then
+		do i = 1,n
+			v(:,i) = vectors(:,i)
+			v(:,i) = v(:,i)/norm2(v(:,i))
+			call vec2pix_ring(nside, v(:,i), p(i))
+		end do
+	else if (present(angles)) then
+		do i = 1,n
+			call ang2vec(real(angles(1,i),DP), real(angles(2,i),DP), v(:,i))
+			call vec2pix_ring(nside, v(:,i), p(i))
+		end do
+	else
+		call abort(": sample positions not specified in interpolate()")
+	end if
+	
+	! build kernel overlap matrix
+	B = lut; avg = sum(B)/n; B = (B - avg) * (12*nside**2)/(4.0*pi)
+	forall (i=1:n, j=1:n) A(i,j) = linterp1d(samples, kernel, -1.0, 1.0, sum(v(:,i)*v(:,j)))
+	call dgesv(n, 1, A, n, pivot, B, n, status); if (status /= 0) call abort(": matrix inverse failed in interpolate()")
+	
+	! inject kernel amplitudes into an emty map
+	M(p) = B
+	
+	! convolve injected pixels with intepolation kernel
+	call map2alm(nside, lmax, lmax, M, alms)
+	forall (l=0:lmax) alms(:,l,0:l) = bls(l)*alms(:,l,0:l)
+	alms(:,0,0) = sqrt(4.0*pi) * avg
+	call alm2map(nside, lmax, lmax, alms, M)
+	
+	! return map in requested ordering
+	COPY(M,map); if (order == NEST) call convert_ring2nest(nside, map)
+	
+	deallocate(alms, bls, kernel, p, v, A, B, M, pivot)
+end subroutine
 

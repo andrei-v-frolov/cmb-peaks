@@ -33,8 +33,10 @@ GENERIC(magnetic_mcmc)
 GENERIC(alm2map_magnetic)
 
 ! wavelets.fin
+GENERIC(einbeam)
 GENERIC(sample_beam)
-GENERIC(linterp)
+GENERIC(linterp1d)
+GENERIC(interpolate)
 GENERIC(huang)
 
 ! randomize.fin
@@ -44,7 +46,7 @@ GENERIC(randomize)
 
 public :: pack_alms, unpack_alms, lconvolution, map2grad, alm2map_covariant, mask2spins_ring
 public :: magnetic2pqu, pqu2magnetic, magnetic_fit, magnetic_mcmc, alm2map_magnetic
-public :: sample_beam, linterp, huang
+public :: einbeam, sample_beam, linterp1d, interpolate, huang
 public :: randomize_alms, xrandomize_alms, randomize
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

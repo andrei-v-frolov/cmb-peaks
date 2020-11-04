@@ -4,7 +4,7 @@
 
 # Multiple architecture support (sort of)
 BINDIR := bins/$(shell uname -m)-$(shell uname -s)
-BINS   := $(addprefix $(BINDIR)/,wiener fsynth lmask fcalc xhist vhist hough leakage-3j leakage-mc pxl2map digest ksmap remap)
+BINS   := $(addprefix $(BINDIR)/,log-wiener wiener fsynth lmask fcalc xhist vhist hough leakage-3j leakage-mc pxl2map digest ksmap remap)
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
@@ -26,6 +26,9 @@ FITLIB = -L$(HEALPIX)/lib -lcfitsio -lcurl
 WIGXJPF ?= /opt/wigxjpf
 WIGINC = -I$(WIGXJPF)/mod
 WIGLIB = -L$(WIGXJPF)/lib -lwigxjpf
+
+# L-BFGS-B library components (built-in)
+LBFGSB = $(addprefix libs/lbfgsb-3.0/,lbfgsb.o linpack.o blas.o timer.o)
 
 # LAPACK libraries (use MKL if compiling with Intel Fortran)
 MKLROOT ?= /opt/intel/mkl
@@ -154,6 +157,7 @@ $(BINDIR)/ksmap: mapio.o rank.o
 $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
+$(BINDIR)/log-wiener: $(LBFGSB)
 
 # OpenMP binaries
 $(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o

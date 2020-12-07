@@ -74,10 +74,10 @@ def EB2QU(map, EB='EB', QU='QU', nested=False, mask=None):
 def autoconvert_polarization(map, want=None, nested=False, mask=None):
 	for c in want:
 		if ((c in 'EB') and not(c in map) and ('Q' in map) and ('U' in map)):
-			print "Converting QU->EB"; QU2EB(map, 'QU', 'EB', nested, mask)
+			print("Converting QU->EB"); QU2EB(map, 'QU', 'EB', nested, mask)
 		if ((c in 'QU') and not(c in map) and ('E' in map) and ('B' in map)):
-			print "Converting EB->QU"; EB2QU(map, 'EB', 'QU', nested, mask)
+			print("Converting EB->QU"); EB2QU(map, 'EB', 'QU', nested, mask)
 		if ((c in 'eb') and not(c in map) and ('q' in map) and ('u' in map)):
-			print "Converting qu->eb"; QU2EB(map, 'qu', 'eb', nested, mask)
+			print("Converting qu->eb"); QU2EB(map, 'qu', 'eb', nested, mask)
 		if ((c in 'qu') and not(c in map) and ('e' in map) and ('b' in map)):
-			print "Converting eb->qu"; EB2QU(map, 'eb', 'qu', nested, mask)
+			print("Converting eb->qu"); EB2QU(map, 'eb', 'qu', nested, mask)

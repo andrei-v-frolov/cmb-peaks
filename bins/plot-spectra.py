@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Plot pseudo-Cl spectra
-# usage: plot-spectra <cls.fits> [output.pdf] [FWHM]
+# usage: plot-spectra <cls.fits> [output.pdf] [FWHM] [powerlaw.fits]
 
 ###############################################################################
 # import libraries
@@ -37,11 +37,12 @@ legend = True	# do we want to include the legend?
 ###############################################################################
 # parse arguments
 ###############################################################################
-assert len(argv) > 1, 'usage: plot-spectra <cls.fits> [output.pdf] [FWHM]'
+assert len(argv) > 1, 'usage: plot-spectra <cls.fits> [output.pdf] [FWHM] [powerlaw.fits]'
 
 data = pyfits.open(argv[1])[1].data
 file = argv[2] if len(argv) > 2 else None
 fwhm = float(argv[3]) if len(argv) > 3 else 0.0
+fits = argv[4] if len(argv) > 4 else None
 
 l = np.arange(0,data.shape[0])
 
@@ -112,7 +113,7 @@ def bestfit(l, XX, lmin=20, lmax=200):
 		warn("curve fit failed to converge, falling back to approximate values")
 		fit = [a, alpha]
 	
-	return fit[1], np.vectorize(powerlaw)(l, fit[0], fit[1])
+	return fit, np.vectorize(powerlaw)(l, fit[0], fit[1])
 
 ###############################################################################
 # create the plots
@@ -141,9 +142,9 @@ k,XX,_ = logbin(l[a:b],II[a:b]); plt.loglog(k, XX * k*(k+1)/(2.0*np.pi), 'r-', l
 k,XX,_ = logbin(l[a:b],EE[a:b]); plt.loglog(k, XX * k*(k+1)/(2.0*np.pi), 'g-', label='ee' if 'log' in argv[1] else 'EE', alpha=0.5)
 k,XX,_ = logbin(l[a:b],BB[a:b]); plt.loglog(k, XX * k*(k+1)/(2.0*np.pi), 'b-', label='bb' if 'log' in argv[1] else 'BB', alpha=0.5)
 
-alpha,XX = bestfit(l, II); plt.loglog(l, XX * l*(l+1)/(2.0*np.pi), 'r--', label=(r'$\alpha = %3.2f$' % (alpha-2.0)))
-alpha,XX = bestfit(l, EE); plt.loglog(l, XX * l*(l+1)/(2.0*np.pi), 'g--', label=(r'$\alpha = %3.2f$' % (alpha-2.0)))
-alpha,XX = bestfit(l, BB); plt.loglog(l, XX * l*(l+1)/(2.0*np.pi), 'b--', label=(r'$\alpha = %3.2f$' % (alpha-2.0)))
+IIfit,XX = bestfit(l, II); plt.loglog(l, XX * l*(l+1)/(2.0*np.pi), 'r--', label=(r'$\alpha = %3.2f$' % (IIfit[1]-2.0)))
+EEfit,XX = bestfit(l, EE); plt.loglog(l, XX * l*(l+1)/(2.0*np.pi), 'g--', label=(r'$\alpha = %3.2f$' % (EEfit[1]-2.0)))
+BBfit,XX = bestfit(l, BB); plt.loglog(l, XX * l*(l+1)/(2.0*np.pi), 'b--', label=(r'$\alpha = %3.2f$' % (BBfit[1]-2.0)))
 
 if grid: plt.grid(True, which="both", axis="both", linestyle='-', linewidth=0.2)
 if legend: plt.legend(loc='upper right', ncol=2, frameon=fill or grid)
@@ -168,9 +169,9 @@ k,XX,_ = logbin(l[a:b],IE[a:b]); plt.loglog(k, abs(XX) * k*(k+1)/(2.0*np.pi), '-
 k,XX,_ = logbin(l[a:b],IB[a:b]); plt.loglog(k, abs(XX) * k*(k+1)/(2.0*np.pi), '-', label='ib' if 'log' in argv[1] else 'IB', color="DarkCyan", alpha=0.5)
 k,XX,_ = logbin(l[a:b],EB[a:b]); plt.loglog(k, abs(XX) * k*(k+1)/(2.0*np.pi), '-', label='eb' if 'log' in argv[1] else 'EB', color="Purple", alpha=0.5)
 
-alpha,XY = bestfit(l, abs(IE)); plt.loglog(l, XY * l*(l+1)/(2.0*np.pi), '--', label=(r'$\alpha = %3.2f$' % (alpha-2.0)), color="Orange")
-alpha,XY = bestfit(l, abs(IB)); plt.loglog(l, XY * l*(l+1)/(2.0*np.pi), '--', label=(r'$\alpha = %3.2f$' % (alpha-2.0)), color="DarkCyan")
-alpha,XY = bestfit(l, abs(EB)); plt.loglog(l, XY * l*(l+1)/(2.0*np.pi), '--', label=(r'$\alpha = %3.2f$' % (alpha-2.0)), color="Purple")
+IEfit,XY = bestfit(l, abs(IE)); plt.loglog(l, XY * l*(l+1)/(2.0*np.pi), '--', label=(r'$\alpha = %3.2f$' % (IEfit[1]-2.0)), color="Orange")
+IBfit,XY = bestfit(l, abs(IB)); plt.loglog(l, XY * l*(l+1)/(2.0*np.pi), '--', label=(r'$\alpha = %3.2f$' % (IBfit[1]-2.0)), color="DarkCyan")
+EBfit,XY = bestfit(l, abs(EB)); plt.loglog(l, XY * l*(l+1)/(2.0*np.pi), '--', label=(r'$\alpha = %3.2f$' % (EBfit[1]-2.0)), color="Purple")
 
 if grid: plt.grid(True, which="both", axis="both", linestyle='-', linewidth=0.2)
 if legend: plt.legend(loc='upper right', ncol=2, frameon=fill or grid)
@@ -187,3 +188,28 @@ plt.tight_layout()
 plt.show()
 
 if not(file is None): plt.savefig(file, bbox_inches='tight', pad_inches=0.02, transparent=not(fill))
+
+
+###############################################################################
+# output fitted spectra
+###############################################################################
+
+if fits is None: sys.exit()
+
+def column(name, fit, lmin=0, lmax=3000, format='E15.7', units='unknown^2'):
+	data = np.vectorize(powerlaw)(np.arange(0,lmax+1), fit[0], fit[1], sigma=0.0)
+	if lmin > 0: data[0:lmin] = 0.0
+	return pyfits.Column(name, format, units, array=data)
+
+columns = [
+	column('TEMPERATURE', IIfit),
+	column('GRADIENT', EEfit, 2),
+	column('CURL', BBfit, 2),
+	column('TG', IEfit, 2),
+	column('TC', IBfit, 2),
+	column('GC', EBfit, 2)
+]
+
+hdu = pyfits.PrimaryHDU(pyfits.Header())
+tbl = pyfits.TableHDU.from_columns(columns)
+pyfits.HDUList([hdu,tbl]).writeto(fits)

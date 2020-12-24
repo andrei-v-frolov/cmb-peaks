@@ -196,13 +196,14 @@ if not(file is None): plt.savefig(file, bbox_inches='tight', pad_inches=0.02, tr
 
 if fits is None: sys.exit()
 
-def column(name, fit, lmin=0, lmax=3000, format='E15.7', units='unknown^2'):
+def column(name, fit, lmin=0, lmax=3000, format='E15.7', units='unknown^2', replace=[]):
 	data = np.vectorize(powerlaw)(np.arange(0,lmax+1), fit[0], fit[1], sigma=0.0)
+	if len(replace) > 0: data[0:len(replace)] = replace
 	if lmin > 0: data[0:lmin] = 0.0
 	return pyfits.Column(name, format, units, array=data)
 
 columns = [
-	column('TEMPERATURE', IIfit),
+	column('TEMPERATURE', IIfit, replace=II[0:1]),
 	column('GRADIENT', EEfit, 2),
 	column('CURL', BBfit, 2),
 	column('TG', IEfit, 2),

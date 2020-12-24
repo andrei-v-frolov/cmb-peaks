@@ -157,7 +157,7 @@ $(BINDIR)/ksmap: mapio.o rank.o
 $(BINDIR)/remap: mapio.o rank.o
 $(BINDIR)/pxl2map: mapio.o
 $(BINDIR)/wiener: polint.o
-$(BINDIR)/log-wiener: $(LBFGSB)
+$(BINDIR)/log-wiener: mapio.o almtools.o $(LBFGSB)
 
 # OpenMP binaries
 $(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o

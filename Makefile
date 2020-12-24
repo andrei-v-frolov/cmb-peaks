@@ -8,7 +8,7 @@ BINS   := $(addprefix $(BINDIR)/,log-wiener wiener fsynth lmask fcalc xhist vhis
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
-FFLAGS = -O3 -ipo -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
+FFLAGS = -O3 -ip -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
 FFLAGS_OMP = $(subst parallel,qopenmp,$(FFLAGS))
 #LDFLAGS = -static-intel
 
@@ -38,6 +38,7 @@ LAPLIB = -L$(MKLROOT)/lib -lmkl_rt
 # Intel's dynamic libraries location
 LDFLAGS += -Wl,-rpath,/opt/intel/lib
 LDFLAGS += -Wl,-rpath,$(MKLROOT)/lib
+LDFLAGS += -Wl,-macos_version_min,11.0
 
 INCS += $(HPXINC) $(FITINC) $(LAPINC)
 LIBS += $(HPXLIB) $(FITLIB) $(LAPLIB)

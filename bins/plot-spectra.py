@@ -211,6 +211,12 @@ columns = [
 	column('GC', EBfit, 2)
 ]
 
+hdr = pyfits.Header()
+hdr.append(('MAX-LPOL', 3000)); hdr.comments['MAX-LPOL'] = 'Maximum Legendre order L'
+hdr.append(('POLAR', True)); hdr.comments['POLAR'] = 'Polarisation included (True/False)'
+hdr.append(('BCROSS', True)); hdr.comments['BCROSS'] = 'Magnetic cross terms included (True/False)'
+hdr.append(('ASYMCL', False)); hdr.comments['ASYMCL'] = 'Asymmetric pol cross terms (XY vs YX) included'
+
 hdu = pyfits.PrimaryHDU(pyfits.Header())
 tbl = pyfits.TableHDU.from_columns(columns)
 pyfits.HDUList([hdu,tbl]).writeto(fits)

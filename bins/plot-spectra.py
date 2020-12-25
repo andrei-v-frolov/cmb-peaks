@@ -218,5 +218,5 @@ hdr.append(('BCROSS', True)); hdr.comments['BCROSS'] = 'Magnetic cross terms inc
 hdr.append(('ASYMCL', False)); hdr.comments['ASYMCL'] = 'Asymmetric pol cross terms (XY vs YX) included'
 
 hdu = pyfits.PrimaryHDU(pyfits.Header())
-tbl = pyfits.TableHDU.from_columns(columns)
+tbl = pyfits.BinTableHDU.from_columns(columns, hdr)
 pyfits.HDUList([hdu,tbl]).writeto(fits)

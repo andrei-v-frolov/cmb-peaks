@@ -1,5 +1,5 @@
 ! Non-linear Wiener filter fitting exponential signal model for foregrounds
-! log-wiener lmax {I|IQU}.fits noise-covariance.fits logIQU.fits [residual.fits]
+! log-wiener [lmin:]lmax data.fits signal-cov.fits noise-cov.fits logIQU.fits [residual.fits]
 
 program wiener
 
@@ -12,6 +12,51 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+integer :: lmin = 0, lmax = 1000
+integer :: nmaps = 3, cmaps = 0, nside = 0, ord = RING, pol = 1
+
+character(len=80) :: header(64)
+character(len=8000) :: range, fd, fs, fn, fout, fres
+real(IO), dimension(:,:), allocatable :: M, Cn
+real(DP), dimension(:,:), allocatable :: data, cls, bls, invcov, fit
+
+integer i, l, n
+
+! calling convention
+if (nArguments() < 5) call abort("usage: log-wiener [lmin:]lmax data.fits signal-cov.fits noise-cov.fits logIQU.fits [residual.fits]")
+
+! process arguments
+call getArgument(1, range); call parse_range(range, lmin, lmax); allocate(cls(0:lmax,3))
+call getArgument(2, fd); call read_map(fd, M, nside, nmaps, ord, pol)
+call getArgument(3, fs); call fits2cl(fs, cls, lmax, 3, header)
+call getArgument(4, fn); call read_map(fn, Cn, nside, cmaps, ord)
+call getArgument(5, fout); if (nArguments() > 5) call getArgument(6, fres)
+
+! allocate working maps
+n = nside2npix(nside) - 1
+allocate(data(0:n,3), bls(3,0:lmax), invcov(0:n,6), fit(0:n,3))
+
+! copy input map and compute signal beam function
+data = M; bls = 1.0; forall (i = 1:3, l = 0:lmax, cls(l,i) /= 0.0) bls(i,l) = sqrt(cls(l,i))
+
+! compute inverse covariance of the noise
+select case (cmaps)
+	case(3);  forall (i = 0:n) invcov(i,:) = [1.0/Cn(i,1), 0.0, 0.0, 1.0/Cn(i,2), 0.0, 1.0/Cn(i,3)]
+	case(6);  forall (i = 0:n) invcov(i,:) = inverse(real(Cn(i,1:6), DP))
+	case(10); forall (i = 0:n) invcov(i,:) = inverse(real(Cn(i,5:10), DP))
+	case default; call abort("noise covariance map should have 3,6, or 10 channels")
+end select
+
+call log_wiener(nside, lmin, lmax, data, bls, invcov, fit)
+
+! output Wiener-filtered map
+M = fit; call write_map(fout, M, nside, ord, pol, creator='LOG-WIENER')
+
+! output residual if requested
+if (nArguments() > 5) then
+	forall (i = 0:n) M(i,:) = data(i,:) - exp_iqu(fit(i,:))
+	call write_map(fres, M, nside, ord, pol, creator='LOG-WIENER')
+end if
 
 contains
 
@@ -33,6 +78,15 @@ pure function smatmul(M, a)
 	
 	associate(II => M(1), IQ => M(2), IU => M(3), QQ => M(4), QU => M(5), UU => M(6), I => a(1), Q => a(2), U => a(3))
 		smatmul = [II*I + IQ*Q + IU*U, IQ*I + QQ*Q + QU*U, IU*I + QU*Q + UU*U]
+	end associate
+end function
+
+! exponent of polarization tensor
+pure function exp_iqu(iqu)
+	real(DP) iqu(3), exp_iqu(3), p; intent(in) iqu
+	
+	associate(i => iqu(1), q => iqu(2), u => iqu(3))
+		p = sqrt(q*q + u*u); exp_iqu = exp(i)*[cosh(p), [q,u]*sinh(p)/p]
 	end associate
 end function
 
@@ -109,7 +163,7 @@ subroutine log_wiener(nside, lmin, lmax, data, bls, noise, fit, guess)
 	
 	! allocatable storage for (large) temporary maps
 	real(DP), allocatable :: map(:,:), x(:), g(:), b(:), wa(:)
-	complex(DPC), allocatable ::  alms(:,:,:)
+	complex(DPC), allocatable :: alms(:,:,:)
 	integer, allocatable :: nbd(:), iwa(:)
 	
 	! parameters of the optimization problem
@@ -150,7 +204,7 @@ subroutine log_wiener(nside, lmin, lmax, data, bls, noise, fit, guess)
 	
 	! optimization loop
 	do
-		call setulb(n,m,x,b,b,nbd,f,g,eps,gtol,wa,iwa,task,iprint,csave,lsave,isave,dsave)
+		call setulb(k,m,x,b,b,nbd,f,g,eps,gtol,wa,iwa,task,iprint,csave,lsave,isave,dsave)
 		if (task(1:5) .eq. 'NEW_X') cycle
 		if (task(1:2) .ne. 'FG') exit
 		
@@ -184,6 +238,20 @@ subroutine log_wiener(nside, lmin, lmax, data, bls, noise, fit, guess)
 	
 	! clean up allocated storage
 	deallocate(map, alms, x, g, b, wa, iwa, nbd)
+end subroutine
+
+! parse range specification in [lmin:]lmax format
+subroutine parse_range(range, lmin, lmax)
+	character(*) range; integer i, lmin, lmax, status
+	
+	i = index(range, ':')
+	
+	if (i > 0) then
+		read (range(:i-1), *, iostat=status) lmin; if (status /= 0) call abort("cannot parse lmin in range " // trim(range))
+		read (range(i+1:), *, iostat=status) lmax; if (status /= 0) call abort("cannot parse lmax in range " // trim(range))
+	else
+		read (range, *, iostat=status) lmax; if (status /= 0) call abort("cannot parse range " // trim(range))
+	end if
 end subroutine
 
 end

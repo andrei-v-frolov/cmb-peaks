@@ -41,7 +41,7 @@ data = M; bls = 1.0; forall (i = 1:3, l = 0:lmax, cls(l,i) /= 0.0) bls(i,l) = sq
 
 ! compute inverse covariance of the noise
 select case (cmaps)
-	case(3);  forall (i = 0:n) invcov(i,:) = [1.0/Cn(i,1), 0.0, 0.0, 1.0/Cn(i,2), 0.0, 1.0/Cn(i,3)]
+	case(3);  forall (i = 0:n) invcov(i,:) = spread(1.0/Cn(i,:))
 	case(6);  forall (i = 0:n) invcov(i,:) = inverse(real(Cn(i,1:6), DP))
 	case(10); forall (i = 0:n) invcov(i,:) = inverse(real(Cn(i,5:10), DP))
 	case default; call abort("noise covariance map should have 3,6, or 10 channels")
@@ -61,6 +61,12 @@ end if
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! spread diagonal covariance to symmetric matrix
+pure function spread(cov)
+	real(DP) cov(3), spread(6); intent(in) cov
+	spread = [cov(1), 0.0, 0.0, cov(2), 0.0, cov(3)]
+end function
 
 ! inverse of the (symmetric) noise covariance matrix
 pure function inverse(cov)

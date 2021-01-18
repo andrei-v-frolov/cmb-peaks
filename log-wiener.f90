@@ -17,10 +17,11 @@ integer :: nmaps = 3, cmaps = 0, nside = 0, ord = RING, pol = 1
 
 character(len=80) :: header(64)
 character(len=8000) :: range, fd, fs, fn, fout, fres
-real(IO), dimension(:,:), allocatable :: M, Cn
-real(DP), dimension(:,:), allocatable :: data, cls, bls, invcov, fit
+real(IO), dimension(:,:), allocatable :: M, C
+real(DP), dimension(:,:), allocatable :: data, cls, bls, icov, fit
 
 integer i, l, n
+real(DP) average, var(3)
 
 ! calling convention
 if (nArguments() < 5) call abort("usage: log-wiener [lmin:]lmax data.fits signal-cov.fits noise-cov.fits logIQU.fits [residual.fits]")
@@ -29,38 +30,79 @@ if (nArguments() < 5) call abort("usage: log-wiener [lmin:]lmax data.fits signal
 call getArgument(1, range); call parse_range(range, lmin, lmax); allocate(cls(0:lmax,3))
 call getArgument(2, fd); call read_map(fd, M, nside, nmaps, ord, pol)
 call getArgument(3, fs); call fits2cl(fs, cls, lmax, 3, header)
-call getArgument(4, fn); call read_map(fn, Cn, nside, cmaps, ord)
+call getArgument(4, fn); call read_map(fn, C, nside, cmaps, ord)
 call getArgument(5, fout); if (nArguments() > 5) call getArgument(6, fres)
 
 ! allocate working maps
 n = nside2npix(nside) - 1
-allocate(data(0:n,3), bls(3,0:lmax), invcov(0:n,6), fit(0:n,3))
+allocate(data(0:n,3), bls(3,0:lmax), icov(0:n,6), fit(0:n,3))
 
-! copy input map and compute signal beam function
-data = M; bls = 1.0; forall (i = 1:3, l = 0:lmax, cls(l,i) /= 0.0) bls(i,l) = sqrt(cls(l,i))
 
-! compute inverse covariance of the noise
+! copy normalized input map and compute signal beam function
+average = csum(M(:,1))/(n+1); data = real(M,DP)/average; var = variance(cls, lmax)
+bls = 1.0; forall (i = 1:3, l = 0:lmax, cls(l,i) /= 0.0) bls(i,l) = sqrt(cls(l,i))
+
+! compute inverse covariance of the (normalized) noise
 select case (cmaps)
-	case(3);  forall (i = 0:n) invcov(i,:) = spread(1.0/Cn(i,:))
-	case(6);  forall (i = 0:n) invcov(i,:) = inverse(real(Cn(i,1:6), DP))
-	case(10); forall (i = 0:n) invcov(i,:) = inverse(real(Cn(i,5:10), DP))
-	case default; call abort("noise covariance map should have 3,6, or 10 channels")
+	case(3);  forall (i = 0:n) icov(i,:) = spread(average**2/C(i,:))
+	case(6);  forall (i = 0:n) icov(i,:) = inverse(real(C(i,1:6), DP)) * average**2
+	case(10); forall (i = 0:n) icov(i,:) = inverse(real(C(i,5:10), DP)) * average**2
+	case default; call abort("noise covariance map should have 3, 6, or 10 channels")
 end select
 
-call log_wiener(nside, lmin, lmax, data, bls, invcov, fit)
+forall (i = 0:n) fit(i,:) = wlog_iqu(data(i,:), wlog_prior(real(C(i,5:10), DP)/average**2, var))
+!call log_wiener(nside, lmin, lmax, data, bls, icov, fit, fit)
+
+! add average back to logarithmic map
+fit(:,1) = fit(:,1) + log(average)
 
 ! output Wiener-filtered map
 M = fit; call write_map(fout, M, nside, ord, pol, creator='LOG-WIENER')
 
 ! output residual if requested
 if (nArguments() > 5) then
-	forall (i = 0:n) M(i,:) = data(i,:) - exp_iqu(fit(i,:))
+	forall (i = 0:n) M(i,:) = average*data(i,:) - exp_iqu(fit(i,:))
 	call write_map(fres, M, nside, ord, pol, creator='LOG-WIENER')
 end if
 
 contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! compensated sum (Kahan's algorithm)
+pure function csum(array)
+	real(IO), intent(in) :: array(:); real(DP) csum, c, y, t; integer i
+	
+	csum = 0.0; c = 0.0
+	
+	do i = 1,size(array)
+		y = array(i) - c; t = csum + y
+		c = (t-csum) - y; csum = t
+	end do
+end 
+
+! pixel variance corresponding to Gaussian random field with given Cl's (excluding monopole)
+pure function variance(cls, lmax)
+	real(DP) cls(0:lmax,3), variance(3), c(3), y(3), t(3)
+	integer l, lmax; intent(in) cls, lmax
+	
+	variance = 0.0; c = 0.0
+	
+	do l = 1,lmax
+		y = (2*l+1)*cls(l,:) - c; t = variance + y
+		c = (t-variance) - y; variance = t
+	end do
+	
+	variance = variance/(4.0*pi)
+end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! compute the trace of symmetric covariance matrix
+pure function trace(cov)
+	real(DP) cov(6), trace; intent(in) cov
+	trace = cov(1) + cov(4) + cov(6)
+end function
 
 ! spread diagonal covariance to symmetric matrix
 pure function spread(cov)
@@ -87,6 +129,14 @@ pure function smatmul(M, a)
 	end associate
 end function
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! rough iqu values for a given IQU data
+pure function guess_iqu(data)
+	real(DP) data(3), guess_iqu(3), f; intent(in) data
+	f = norm2(data); guess_iqu = [log(f), data(2:3)/f]
+end function
+
 ! exponent of polarization tensor
 pure function exp_iqu(iqu)
 	real(DP) iqu(3), exp_iqu(3), p; intent(in) iqu
@@ -96,29 +146,59 @@ pure function exp_iqu(iqu)
 	end associate
 end function
 
+! logarithm of polarization tensor
+pure function log_iqu(IQU)
+	real(DP) IQU(3), log_iqu(3), P; intent(in) IQU
+	
+	associate(I => IQU(1), Q => IQU(2), U => IQU(3))
+		P = sqrt(Q*Q + U*U)
+		log_iqu(1) = log(I*I - P*P)/2.0
+		log_iqu(2:3) = [Q,U] * atanh(P/I)/P
+	end associate
+end function
+
+! approximate log-Wiener filter for a single pixel, prior = [II,PP,alpha] packs
+! noise covariance c*diag(II,PP,PP) and signal covariance c/diag(alpha,1,1)
+pure function wlog_iqu(IQU, prior)
+	real(DP) IQU(3), prior(3), wlog_iqu(3); intent(in) IQU, prior
+	
+	real(DP) P, r, s, t; integer k
+	
+	associate(I => IQU(1), Q => IQU(2), U => IQU(3), II => prior(1), PP => prior(2), alpha => prior(3))
+		P = sqrt(Q*Q + U*U); r = 0.0; s = min(log(II)/2.0,-1.0)
+		
+		do k = 1,8
+			t = (I + sqrt(I*I + 4.0*II*(r*r-alpha*s)))/2.0
+			r = t/(t*t + PP) * P; s = log(t/cosh(r))
+		end do
+		
+		wlog_iqu = [s, (Q/P)*r, (U/P)*r]
+	end associate
+end function
+
+! return packed prior from noise covariance and pixel variance information
+pure function wlog_prior(cov, var)
+	real(DP) cov(6), var(3), p, wlog_prior(3); intent(in) cov, var
+	
+	p = (var(2)+var(3))/2.0; wlog_prior = [cov(1)/p, (cov(4)+cov(6))/(2.0*p), p/var(1)]
+end function
+
 ! pixel parametrization cost functional and its derivative
-pure function cost(iqu, data, invcov)
-	real(DP) iqu(3), data(3), invcov(6), cost(4)
-	intent(in) iqu, data, invcov
+pure function cost(iqu, data, icov)
+	real(DP) iqu(3), data(3), icov(6), cost(4); intent(in) iqu, data, icov
 	
 	real(DP) p, model(3), y(3)
 	
 	associate(i => iqu(1), q => iqu(2), u => iqu(3), g => cost(1:3), H => cost(4))
 		p = sqrt(q*q + u*u); model = exp(i)*[cosh(p), [q,u]*sinh(p)/p]
-		y = smatmul(invcov, data-model); H = dot_product(y, data-model)/2.0
+		y = smatmul(icov, data-model); H = dot_product(y, data-model)/2.0
 		g = smatmul([model, ([q*q, q*u, u*u]*model(1) + [u*model(3), -u*model(2), q*model(2)])/(p*p)], -y)
 	end associate
 end function
 
-! approximate iqu values for a given IQU data
-pure function guess_iqu(data)
-	real(DP) data(3), guess_iqu(3), f; intent(in) data
-	f = norm2(data); guess_iqu = [log(f), data(2:3)/f]
-end function
-
 ! non-linear Wiener filter for a single pixel
-function fit_iqu(data, invcov, prior)
-	real(DP) data(3), invcov(6), prior(3), fit_iqu(3)
+function fit_iqu(data, icov, prior)
+	real(DP) data(3), icov(6), prior(3), fit_iqu(3)
 	
 	! parameters of the optimization problem
 	integer, parameter :: n = 3, m = 7, nbd(3) = 0, iprint = -1
@@ -141,7 +221,7 @@ function fit_iqu(data, invcov, prior)
 		if (task(1:5) .eq. 'NEW_X') cycle
 		if (task(1:2) .ne. 'FG') exit
 		
-		y = cost(x, data, invcov)
+		y = cost(x, data, icov)
 		g = y(1:3) + prior*x
 		f = y(4) + sum(prior*x*x)/2.0
 	end do
@@ -152,6 +232,8 @@ function fit_iqu(data, invcov, prior)
 	! return best guess
 	fit_iqu = x
 end function
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! non-linear Wiener filter optimizing data = exp(iqu) + noise
 ! =============================================================================
@@ -245,6 +327,8 @@ subroutine log_wiener(nside, lmin, lmax, data, bls, noise, fit, guess)
 	! clean up allocated storage
 	deallocate(map, alms, x, g, b, wa, iwa, nbd)
 end subroutine
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! parse range specification in [lmin:]lmax format
 subroutine parse_range(range, lmin, lmax)

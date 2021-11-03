@@ -277,7 +277,7 @@ end subroutine
 subroutine minkowski(M, mask, nmaps, n, bins)
 	integer i, k, n, p, nmaps, bins, s, o
 	real(DP) F(nmaps), M(0:n,nmaps), mask(0:n)
-	real(SP), allocatable :: U(:)
+	real(DP), allocatable :: U(:)
 	integer, allocatable :: idx(:), pxl(:)
 	
 	! temporary storage

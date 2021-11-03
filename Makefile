@@ -20,7 +20,7 @@ HPXLIB = -L$(HEALPIX)/lib -lhealpix -lsharp
 # CFITSIO libraries
 CFITSIO_DIR ?= /opt/local
 FITINC = -I$(CFITSIO_DIR)/include
-FITLIB = -L$(HEALPIX)/lib -lcfitsio -lcurl
+FITLIB = -L$(HEALPIX)/lib -lcfitsio -lcurl -lz
 
 # WIGXJPF libraries
 WIGXJPF ?= /opt/wigxjpf
@@ -38,7 +38,7 @@ LAPLIB = -L$(MKLROOT)/lib -lmkl_rt
 # Intel's dynamic libraries location
 LDFLAGS += -Wl,-rpath,/opt/intel/lib
 LDFLAGS += -Wl,-rpath,$(MKLROOT)/lib
-LDFLAGS += -Wl,-macos_version_min,11.0
+LDFLAGS += -Wl,-macos_version_min,12.0
 
 INCS += $(HPXINC) $(FITINC) $(LAPINC)
 LIBS += $(HPXLIB) $(FITLIB) $(LAPLIB)

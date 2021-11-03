@@ -66,7 +66,7 @@ fig = plt.figure(figsize=(cm2inch(width), cm2inch(height)), frameon=fill)
 
 for (i,p) in enumerate(plot):
 	x, F, n = makecdf(M[p].compressed()); L1, L2, L3, L4 = lmoments(x, F)
-	print argv[2], p, L2, L3/L2, L4/L2 - 0.12260171954089094743716661166353633
+	print(argv[2], p, L2, L3/L2, L4/L2 - 0.12260171954089094743716661166353633)
 	
 	# Gaussian distribution with mean = L1 and sigma = L2/sqrt(pi)
 	G = np.exp(-(X-L1)**2/L2**2/(2*np.pi))/np.sqrt(2.0*np.pi**2)/L2; plt.semilogy(X, G,'--')

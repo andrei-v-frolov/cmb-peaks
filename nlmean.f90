@@ -119,7 +119,9 @@ subroutine nlbrute(nside, nmaps, sigma, F, map, out)
 	
 	n = nside2npix(nside)-1
 	
-	forall (i=0:n) out(i,:) = nlmean(nside, nmaps, F(i,:), sigma, F, map)
+	!$OMP PARALLEL DO
+	do i = 0,n; out(i,:) = nlmean(nside, nmaps, F(i,:), sigma, F, map); end do
+	!$OMP END PARALLEL DO
 end subroutine
 
 end

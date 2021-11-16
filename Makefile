@@ -153,7 +153,6 @@ $(BINDIR)/xhist: mapio.o imageio.o rank.o
 $(BINDIR)/vhist: mapio.o
 $(BINDIR)/hough: mapio.o
 $(BINDIR)/fsynth: mapio.o rank.o
-$(BINDIR)/nlmean: mapio.o almtools.o rank.o
 $(BINDIR)/lmask: mapio.o rank.o
 $(BINDIR)/ksmap: mapio.o rank.o
 $(BINDIR)/remap: mapio.o rank.o
@@ -164,6 +163,7 @@ $(BINDIR)/log-wiener: mapio.o almtools.o $(LBFGSB)
 # OpenMP binaries
 $(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o
 $(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
+$(BINDIR)/nlmean: nlmean.f90 mapio.o almtools.o rank.o
 	$(FC) $(FFLAGS_OMP) $(WIGINC) $(INCS) $^ -o $@ $(LDFLAGS) $(WIGLIB) $(LIBS)
 
 # modules

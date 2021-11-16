@@ -12,15 +12,17 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+real, parameter :: eps = 1.0e-7
+
 character(len=8000) :: arg, fin, fout, fres
 integer :: nmaps = 0, nside = 0, ord = 0
-real(IO), dimension(:,:), allocatable :: Min, Mout
+real(IO), dimension(:,:), allocatable :: Minp, Mout
 real(DP), dimension(:,:), allocatable :: M, F, S
 integer, dimension(:,:), allocatable :: idx, rank
 
 real fwhm, amount
 real(DP) sigma(3)
-integer i, n, lmax, status
+integer i, n, bmax, lmax, status
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -28,19 +30,20 @@ if (nArguments() < 4 .or. nArguments() > 5) call abort("sage: nlmean FWHM amount
 
 call getArgument(1, arg); read(arg, *, iostat=status) fwhm; if (status /= 0) call abort("error parsing FWHM specification: " // trim(arg))
 call getArgument(2, arg); read(arg, *, iostat=status) amount; if (status /= 0) call abort("error parsing filtering amount: " // trim(arg))
-call getArgument(3, fin); if (verbose) write (*,*) "Reading " // trim(fin); call read_map(fin, Min, nside, nmaps, ord)
+call getArgument(3, fin); if (verbose) write (*,*) "Reading " // trim(fin); call read_map(fin, Minp, nside, nmaps, ord)
 call getArgument(4, fout); if (nArguments() == 5) call getArgument(5, fres)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-n = nside2npix(nside)-1; lmax = 3*nside-1; lmax=1000
+bmax = int(180*240*sqrt(-log(2.0)*log(eps))/(pi*fwhm) + 0.5)
+n = nside2npix(nside)-1; lmax = min(3*nside-1, bmax, 1000)
 
 ! allocate workspace and output storage
-allocate(Mout, mold=Min); Mout = 0.0
+allocate(Mout, mold=Minp); Mout = 0.0
 allocate(M(0:n,nmaps), S(0:n,nmaps), F(0:n,3), idx(n+1,3), rank(n+1,3))
 
 ! bring input map into RING ordering (if required)
-if (ord == NEST) call convert_nest2ring(nside, Min); M = Min
+if (ord == NEST) call convert_nest2ring(nside, Minp); M = Minp
 
 ! extract features and build rank tables
 if (verbose) write (*,*) "Extracting features from the map..."

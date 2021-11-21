@@ -111,6 +111,29 @@ pure function nlmean(nside, nmaps, w, v, F, map)
 	nlmean = s(1:nmaps)/s(0)
 end function
 
+! ...
+pure function nlmean2(nside, nmaps, w, v, F, map)
+	integer nside, nmaps, i, j, k, n
+	real(DP) w(3), v(3), nlmean2(10,0:nmaps)
+	real(DP) u, q(3), g(10), d(0:nmaps), s(10,0:nmaps)
+	real(DP), dimension(0:12*nside**2, 3) :: F
+	real(DP), dimension(0:12*nside**2, nmaps) :: map
+	intent(in) nside, nmaps, w, v, F, map
+	
+	n = 12*nside**2-1; s = 0.0
+	
+	do i = 0,n
+		q = w * (v-F(i,:))
+		u = weight(w, v-F(i,:))
+		g = [1.0, -q, q(1)*q(1), q(1)*q(2), q(1)*q(3), q(2)*q(2), q(2)*q(3), q(3)*q(3)]
+		d = [1.0, map(i,:)]
+		
+		forall (j=1:10, k=0:nmaps) s(j,k) = s(j,k) + u*g(j)*d(k)
+	end do
+	
+	nlmean2 = s
+end function
+
 ! brute-force non-local means filter
 subroutine nlbrute(nside, nmaps, w, F, map, out)
 	integer nside, nmaps, i, n; real(DP) w(3)

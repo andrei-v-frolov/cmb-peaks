@@ -176,7 +176,7 @@ subroutine nlmeanmg(fside, nmaps, w, F, map, out)
 		nside = ishft(fside,1-l); n = nside2npix(nside)-1
 		allocate(mg(l)%F(0:n,3), mg(l)%U(0:n,3), mg(l)%S(0:n,0:nmaps,10), source=0.0)
 		
-		if (l == 1) mg(l)%F = F
+		if (l == 1) mg(l)%F = F; call convert_ring2nest(nside, Minp)
 		if (l >  1) call udgrade_nest(mg(l-1)%F, mg(l-1)%nside, mg(l)%F, mg(l)%nside)
 	end associate; end do
 	
@@ -207,6 +207,8 @@ subroutine nlmeanmg(fside, nmaps, w, F, map, out)
 		do i = 0,n; out(i,:) = S(i,1:nmaps,1)/S(i,0,1); end do
 		!$OMP END PARALLEL DO
 	end associate
+	
+	call convert_nest2ring(fside, out)
 	
 	! clean up
 	do l = 1,levels

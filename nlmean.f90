@@ -81,7 +81,7 @@ contains
 ! synthesize smoothed feature map based on Minkowski functionals
 subroutine features(nside, lmax, fwhm, map, F)
 	integer nside, lmax, l; real fwhm
-	real(DP) map(0:12*nside**2), F(0:12*nside**2,3), bls(0:lmax,1)
+	real(DP) map(0:12*nside**2-1), F(0:12*nside**2-1,3), bls(0:lmax,1)
 	complex(DPC), allocatable :: alms(:,:,:)
 	
 	allocate(alms(1,0:lmax,0:lmax))
@@ -106,8 +106,8 @@ end function
 pure function nlmean(nside, nmaps, w, v, F, map)
 	integer nside, nmaps, i, n
 	real(DP) w(3), v(3), nlmean(nmaps), s(0:nmaps)
-	real(DP), dimension(0:12*nside**2, 3) :: F
-	real(DP), dimension(0:12*nside**2, nmaps) :: map
+	real(DP), dimension(0:12*nside**2-1, 3) :: F
+	real(DP), dimension(0:12*nside**2-1, nmaps) :: map
 	intent(in) nside, nmaps, w, v, F, map
 	
 	n = 12*nside**2-1; s = 0.0
@@ -124,8 +124,8 @@ pure function nlmean2(nside, nmaps, w, v, F, map)
 	integer nside, nmaps, i, j, k, n
 	real(DP) w(3), v(3), nlmean2(0:nmaps,10)
 	real(DP) u, q(3), g(10), d(0:nmaps), s(0:nmaps,10)
-	real(DP), dimension(0:12*nside**2, 3) :: F
-	real(DP), dimension(0:12*nside**2, nmaps) :: map
+	real(DP), dimension(0:12*nside**2-1, 3) :: F
+	real(DP), dimension(0:12*nside**2-1, nmaps) :: map
 	intent(in) nside, nmaps, w, v, F, map
 	
 	n = 12*nside**2-1; s = 0.0
@@ -145,8 +145,8 @@ end function
 ! brute-force non-local means filter
 subroutine nlbrute(nside, nmaps, w, F, map, out)
 	integer nside, nmaps, i, n; real(DP) w(3)
-	real(DP), dimension(0:12*nside**2, 3) :: F
-	real(DP), dimension(0:12*nside**2, nmaps) :: map, out
+	real(DP), dimension(0:12*nside**2-1, 3) :: F
+	real(DP), dimension(0:12*nside**2-1, nmaps) :: map, out
 	intent(in) nside, nmaps, w, F, map; intent(out) out
 	
 	n = nside2npix(nside)-1
@@ -159,9 +159,9 @@ end subroutine
 ! non-local means filter using multigrid interpolation
 subroutine nlmeanmg(fside, nmaps, w, F, map, out)
 	integer fside, nmaps; real(DP) w(3)
-	real(DP), dimension(0:12*fside**2, 3) :: F
-	real(DP), dimension(0:12*fside**2, nmaps) :: map, out
 	intent(in) fside, nmaps, w, F, map; intent(out) out
+	real(DP), dimension(0:12*fside**2-1, 3) :: features
+	real(DP), dimension(0:12*fside**2-1, nmaps) :: map, out
 	
 	integer i, l, levels
 	type(grid), allocatable :: mg(:)

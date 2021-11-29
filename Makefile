@@ -3,13 +3,20 @@
 ################################################################
 
 # Multiple architecture support (sort of)
-BINDIR := bins/$(shell uname -m)-$(shell uname -s)
+ARCH   := $(shell uname -m)-$(shell uname -s)
+BINDIR := bins/$(ARCH)
+OBJDIR := objs/$(ARCH)
+DIRS   := $(BINDIR) $(OBJDIR)
+
+# Binaries that go into default build target
 BINS   := $(addprefix $(BINDIR)/,log-wiener wiener fsynth lmask fcalc nlmean xhist vhist hough leakage-3j leakage-mc pxl2map digest ksmap remap)
+OBJS   := $(addprefix $(OBJDIR)/,$(addsuffix .o,mapio imageio almtools pdetools rank polint))
 
 # Fortran compiler (adjust for your machine, -r8 is mandatory)
 FC = ifort
 FFLAGS = -O3 -ip -xHOST -fpp -heap-arrays 256 -r8 -pc80 -parallel
 FFLAGS_OMP = $(subst parallel,qopenmp,$(FFLAGS))
+FFLAGS += -module $(OBJDIR)
 #LDFLAGS = -static-intel
 
 # HEALPix libraries
@@ -28,7 +35,8 @@ WIGINC = -I$(WIGXJPF)/mod
 WIGLIB = -L$(WIGXJPF)/lib -lwigxjpf
 
 # L-BFGS-B library components (built-in)
-LBFGSB = $(addprefix libs/lbfgsb-3.0/,lbfgsb.o linpack.o blas.o timer.o)
+LBFGSB_DIR = libs/lbfgsb-3.0
+LBFGSB_LIB  += $(addprefix $(OBJDIR)/,lbfgsb.o linpack.o blas.o timer.o)
 
 # LAPACK libraries (use MKL if compiling with Intel Fortran)
 MKLROOT ?= /opt/intel/mkl
@@ -148,32 +156,46 @@ stat/%.pdf: stat/%.dat
 ################### Binaries & Dependencies ####################
 
 # binaries
-$(BINDIR)/fcalc: mapio.o pdetools.o almtools.o rank.o
-$(BINDIR)/xhist: mapio.o imageio.o rank.o
-$(BINDIR)/vhist: mapio.o
-$(BINDIR)/hough: mapio.o
-$(BINDIR)/fsynth: mapio.o rank.o
-$(BINDIR)/lmask: mapio.o rank.o
-$(BINDIR)/ksmap: mapio.o rank.o
-$(BINDIR)/remap: mapio.o rank.o
-$(BINDIR)/pxl2map: mapio.o
-$(BINDIR)/wiener: polint.o
-$(BINDIR)/log-wiener: mapio.o almtools.o $(LBFGSB)
+$(BINDIR)/fcalc: $(addprefix $(OBJDIR)/,mapio.o pdetools.o almtools.o rank.o)
+$(BINDIR)/xhist: $(addprefix $(OBJDIR)/,mapio.o imageio.o rank.o)
+$(BINDIR)/vhist: $(addprefix $(OBJDIR)/,mapio.o)
+$(BINDIR)/hough: $(addprefix $(OBJDIR)/,mapio.o)
+$(BINDIR)/fsynth: $(addprefix $(OBJDIR)/,mapio.o rank.o)
+$(BINDIR)/lmask: $(addprefix $(OBJDIR)/,mapio.o rank.o)
+$(BINDIR)/ksmap: $(addprefix $(OBJDIR)/,mapio.o rank.o)
+$(BINDIR)/remap: $(addprefix $(OBJDIR)/,mapio.o rank.o)
+$(BINDIR)/pxl2map: $(addprefix $(OBJDIR)/,mapio.o almtools.o)
+$(BINDIR)/wiener: $(addprefix $(OBJDIR)/,polint.o)
+$(BINDIR)/log-wiener: $(addprefix $(OBJDIR)/,mapio.o almtools.o) $(LBFGSB_LIB)
 
 # OpenMP binaries
-$(BINDIR)/leakage-mc: mapio.o imageio.o pdetools.o almtools.o
-$(BINDIR)/leakage-3j: leakage-3j.f90 imageio.o
-$(BINDIR)/nlmean: nlmean.f90 mapio.o almtools.o rank.o
+$(BINDIR)/leakage-mc: leakage-mc.f90 $(addprefix $(OBJDIR)/,mapio.o imageio.o pdetools.o almtools.o)
+$(BINDIR)/leakage-3j: leakage-3j.f90 $(addprefix $(OBJDIR)/,imageio.o)
+$(BINDIR)/nlmean: nlmean.f90 $(addprefix $(OBJDIR)/,mapio.o almtools.o rank.o)
 	$(FC) $(FFLAGS_OMP) $(WIGINC) $(INCS) $^ -o $@ $(LDFLAGS) $(WIGLIB) $(LIBS)
 
 # modules
-imageio.o: imageio.fin
-mapio.o: mapio.fin vectools.fin
-pdetools.o: multigrid.fin inpaint-qu.fin almtools.o masktools.fin
-almtools.o: almtools.fin maptools.fin magnetic.fin wavelets.fin randomize.fin complex-qu.fin mapio.o
+$(OBJDIR)/imageio.o: imageio.fin
+$(OBJDIR)/mapio.o: mapio.fin vectools.fin
+$(OBJDIR)/pdetools.o: multigrid.fin inpaint-qu.fin $(OBJDIR)/almtools.o masktools.fin
+$(OBJDIR)/almtools.o: almtools.fin maptools.fin magnetic.fin wavelets.fin randomize.fin complex-qu.fin $(OBJDIR)/mapio.o
 
-# generic rules
+################### Generic build rules ########################
+
+# build directories
+$(BINS): | $(BINDIR)
+$(OBJS): | $(OBJDIR)
+
+$(DIRS):
+	echo "Creating" $@
+	mkdir -p $@
+
+# binaries and object files
 $(BINDIR)/%: %.f90
 	$(FC) $(FFLAGS) $(INCS) $^ -o $@ $(LDFLAGS) $(LIBS)
-%.o %.mod: %.f90
-	$(FC) $(FFLAGS) $(INCS) $< -c
+$(OBJDIR)/%.o: %.f
+	$(FC) $(FFLAGS) $(INCS) $< -c -o $@
+$(OBJDIR)/%.o: $(LBFGSB_DIR)/%.f
+	$(FC) $(FFLAGS) $(INCS) $< -c -o $@
+$(OBJDIR)/%.o $(OBJDIR)/%.mod: %.f90
+	$(FC) $(FFLAGS) $(INCS) $< -c -o $@

@@ -6,10 +6,8 @@
 *.py[cod]
 
 # compiled binaries
-bins/i386-Linux/*
-bins/i386-Darwin/*
-bins/x86_64-Linux/*
-bins/x86_64-Darwin/*
+bins/*
+objs/*
 
 # generated data
 alms/*.fits

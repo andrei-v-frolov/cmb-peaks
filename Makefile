@@ -98,7 +98,8 @@ dataclean:
 
 distclean: dataclean
 	rm -f $(BINS) $(BASE) cl-{wmap,mask}.fits cl-lmap-?.fits
-	rm -f `find . -name "*.o" -or -name "*.mod" -or -name "*.py[cod]"`
+	rm -f `find $(OBJDIR) -name "*.o" -or -name "*.mod"`
+	rm -f `find . -name "*.py[cod]"`
 
 
 ################### Whiten Pipeline ############################

@@ -57,6 +57,10 @@ if (ord == NEST) call convert_nest2ring(nside, Minp); M = Minp
 if (verbose) write (*,*) "Extracting features from the map..."
 call features(nside, lmax, fwhm, M(:,1), F)
 
+! bring all maps into NEST ordering
+call convert_ring2nest(nside, M)
+call convert_ring2nest(nside, F)
+
 if (verbose) write (*,*) "Ranking feature maps and estimating variance..."
 do i = 1,3
 	call indexx(n+1, F(:,i), idx(:,i))
@@ -73,7 +77,7 @@ call nlbrute(nside, nmaps, 1.0/(amount*sigma)**2, F, M, S)
 
 ! write output map(s)
 if (verbose) write (*,*) "Saving filtered map to " // trim(fout)
-Mout = S; if (ord == NEST) call convert_ring2nest(nside, Mout)
+Mout = S; if (ord == RING) call convert_nest2ring(nside, Mout)
 call write_map(fout, Mout, nside, ord, pol=0, vec=0, creator='NLMEAN')
 
 contains
@@ -156,8 +160,41 @@ subroutine nlbrute(nside, nmaps, w, F, map, out)
 	!$OMP END PARALLEL DO
 end subroutine
 
-! non-local means filter using multigrid interpolation
-subroutine nlmeanmg(fside, nmaps, w, F, map, out)
+! non-local means filter with running aperture (NESTED ordering)
+subroutine nldisc(nside, nmaps, radius, w, F, map, out)
+	integer nside, nmaps, i, j, k, l, n
+	real(DP) radius, v(3), w(3), s(0:nmaps)
+	real(DP), dimension(0:12*nside**2-1, 3) :: F
+	real(DP), dimension(0:12*nside**2-1, nmaps) :: map, out
+	intent(in) nside, nmaps, radius, w, F, map; intent(out) out
+	
+	integer, allocatable :: idx(:)
+	
+	n = nside2npix(nside)-1
+	l = nside2npix(nside) * sin(radius/2.0)**2
+	
+	allocate(idx(0:3*l/2))
+	
+	!$OMP PARALLEL DO PRIVATE(v,s,k,idx)
+	do i = 0,n
+		call pix2vec_nest(nside, i, v)
+		call query_disc(nside, v, radius, idx, k, nest=1)
+		
+		s = 0.0
+		
+		do j = 0,k-1
+			s = s + weight(w, F(i,:)-F(idx(j),:)) * [1.0, map(idx(j),:)]
+		end do
+		
+		out(i,:) = s(1:nmaps)/s(0)
+	end do
+	!$OMP END PARALLEL DO
+	
+	deallocate(idx)
+end subroutine
+
+! non-local means filter using multigrid interpolation (NESTED ordering)
+subroutine nlmeanmg(fside, nmaps, w, features, map, out)
 	integer fside, nmaps; real(DP) w(3)
 	intent(in) fside, nmaps, w, F, map; intent(out) out
 	real(DP), dimension(0:12*fside**2-1, 3) :: features

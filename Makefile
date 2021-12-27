@@ -172,7 +172,7 @@ $(BINDIR)/log-wiener: $(addprefix $(OBJDIR)/,mapio.o almtools.o) $(LBFGSB_LIB)
 # OpenMP binaries
 $(BINDIR)/leakage-mc: leakage-mc.f90 $(addprefix $(OBJDIR)/,mapio.o imageio.o pdetools.o almtools.o)
 $(BINDIR)/leakage-3j: leakage-3j.f90 $(addprefix $(OBJDIR)/,imageio.o)
-$(BINDIR)/nlmean: nlmean.f90 $(addprefix $(OBJDIR)/,mapio.o almtools.o rank.o)
+$(BINDIR)/nlmean: nlmean.f90 $(addprefix $(OBJDIR)/,mapio.o almtools.o)
 	$(FC) $(FFLAGS_OMP) $(WIGINC) $(INCS) $^ -o $@ $(LDFLAGS) $(WIGLIB) $(LIBS)
 
 # modules

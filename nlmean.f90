@@ -26,10 +26,8 @@ character(len=8000) :: arg, fin, fout, fres
 integer :: nmaps = 0, nside = 0, ord = 0
 real(IO), dimension(:,:), allocatable :: Minp, Mout
 real(DP), dimension(:,:), allocatable :: M, F, S
-integer, dimension(:,:), allocatable :: idx, rank
 
-real fwhm, amount
-real(DP) sigma(3)
+real fwhm, amount, sigma, delta
 integer i, n, bmax, lmax, status
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -48,7 +46,7 @@ n = nside2npix(nside)-1; lmax = min(3*nside-1, bmax, 1000)
 
 ! allocate workspace and output storage
 allocate(Mout, mold=Minp); Mout = 0.0
-allocate(M(0:n,nmaps), S(0:n,nmaps), F(0:n,3), idx(n+1,3), rank(n+1,3))
+allocate(M(0:n,nmaps), S(0:n,nmaps), F(0:n,3))
 
 ! bring input map into RING ordering (if required)
 if (ord == NEST) call convert_nest2ring(nside, Minp); M = Minp
@@ -61,15 +59,9 @@ call features(nside, lmax, fwhm, M(:,1), F)
 call convert_ring2nest(nside, M)
 call convert_ring2nest(nside, F)
 
-if (verbose) write (*,*) "Ranking feature maps and estimating variance..."
-do i = 1,3
-	call indexx(n+1, F(:,i), idx(:,i))
-	call rankx(n+1, idx(:,i), rank(:,i))
-end do
-
-! estimate feature variance using L2-moment...
-sigma = sum(F*(2*rank-n-1), 1)/(n-1.0)**2 * sqrt(pi)
-write (*,*) sigma
+! estimate feature covariance...
+sigma = amount*norm2(M(:,1)-F(:,1))/(n+1)
+delta = fwhm*pi/180/60/sqrt(8.0*log(2.0))
 
 ! ...
 if (verbose) write (*,*) "Applying brute-force non-local mean filter..."

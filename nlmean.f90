@@ -27,12 +27,12 @@ integer :: nmaps = 0, nside = 0, ord = 0
 real(IO), dimension(:,:), allocatable :: Minp, Mout
 real(DP), dimension(:,:), allocatable :: M, F, S
 
-real fwhm, amount, sigma, delta
+real(DP) fwhm, amount, sigma, w(3)
 integer i, n, bmax, lmax, status
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-if (nArguments() < 4 .or. nArguments() > 5) call abort("sage: nlmean FWHM amount map.fits output.fits [residual.fits]")
+if (nArguments() < 4 .or. nArguments() > 5) call abort("Usage: nlmean FWHM amount map.fits output.fits [residual.fits]")
 
 call getArgument(1, arg); read(arg, *, iostat=status) fwhm; if (status /= 0) call abort("error parsing FWHM specification: " // trim(arg))
 call getArgument(2, arg); read(arg, *, iostat=status) amount; if (status /= 0) call abort("error parsing filtering amount: " // trim(arg))
@@ -51,21 +51,19 @@ allocate(M(0:n,nmaps), S(0:n,nmaps), F(0:n,3))
 ! bring input map into RING ordering (if required)
 if (ord == NEST) call convert_nest2ring(nside, Minp); M = Minp
 
-! extract features and build rank tables
+! extract features and estimate feature covariance
 if (verbose) write (*,*) "Extracting features from the map..."
-call features(nside, lmax, fwhm, M(:,1), F)
+call features(nside, lmax, fwhm, M(:,1), F, w)
+sigma = amount*norm2(M(:,1)-F(:,1))/(n+1)
 
 ! bring all maps into NEST ordering
 call convert_ring2nest(nside, M)
 call convert_ring2nest(nside, F)
 
-! estimate feature covariance...
-sigma = amount*norm2(M(:,1)-F(:,1))/(n+1)
-delta = fwhm*pi/180/60/sqrt(8.0*log(2.0))
-
 ! ...
 if (verbose) write (*,*) "Applying brute-force non-local mean filter..."
-call nlbrute(nside, nmaps, 1.0/(amount*sigma)**2, F, M, S)
+!call nlbrute(nside, nmaps, w/sigma**2, F, M, S)
+call nldisc(nside, nmaps, 0.5, w/sigma**2, F, M, S)
 
 ! write output map(s)
 if (verbose) write (*,*) "Saving filtered map to " // trim(fout)
@@ -75,20 +73,28 @@ call write_map(fout, Mout, nside, ord, pol=0, vec=0, creator='NLMEAN')
 contains
 
 ! synthesize smoothed feature map based on Minkowski functionals
-subroutine features(nside, lmax, fwhm, map, F)
-	integer nside, lmax, l; real fwhm
+subroutine features(nside, lmax, fwhm, map, F, w)
+	integer nside, lmax, l, n; real fwhm
 	real(DP) map(0:12*nside**2-1), F(0:12*nside**2-1,3), bls(0:lmax,1)
+	real(DP) w(3), delta, rho; optional w
 	complex(DPC), allocatable :: alms(:,:,:)
+	real(DP), allocatable :: v(:)
 	
-	allocate(alms(1,0:lmax,0:lmax))
+	n = nside2npix(nside)-1
+	allocate(alms(1,0:lmax,0:lmax), v(0:n))
 	
 	call map2alm(nside, lmax, lmax, map, alms)
 	call gaussbeam(fwhm, lmax, bls)
 	
 	forall (l=0:lmax) alms(1,l,0:l) = bls(l,1)*alms(1,l,0:l)
-	call alm2map_covariant(nside, lmax, lmax, alms, mink=F)
+	call alm2map_covariant(nside, lmax, lmax, alms, feat=F, svar=v)
 	
-	deallocate(alms)
+	if (present(w)) then
+		delta = fwhm*pi/180/60/sqrt(8.0*log(2.0)); rho = sum(v)/(n+1)
+		w = [1.0, 2.0*delta**2, 12.0*delta**4/(3.0 + (6.0*rho-1.0)*delta**2)]
+	end if
+	
+	deallocate(alms, v)
 end subroutine
 
 ! Gaussian weight kernel evaluating similarity of feature indicators

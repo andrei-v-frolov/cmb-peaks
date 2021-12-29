@@ -147,10 +147,11 @@ end subroutine
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! synthesize covariant derivative maps in RING ordering (using canned HEALPix derivatives)
-subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, mask)
+subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, feat, mvar, svar, mask)
 	integer nside, lmax, mmax, p, n
 	complex(XP) alms(1,0:lmax,0:mmax)
-	real(XP), dimension(0:12*nside**2-1,3), optional :: tqu, mink, skel
+	real(XP), dimension(0:12*nside**2-1,3), optional :: tqu, mink, skel, feat
+	real(XP), dimension(0:12*nside**2-1),   optional :: mvar, svar
 	real(XP), dimension(0:12*nside**2-1,5), optional :: mask
 	
 	! allocate local storage
@@ -193,6 +194,23 @@ subroutine VARIANT(alm2map_covariant)(nside, lmax, mmax, alms, tqu, mink, skel, 
 			skel(p,1) = M(p)
 			skel(p,2) = (D2(p,3) - D2(p,1))*D1(p,1)*D1(p,2) + D2(p,2) * (D1(p,1)**2 - D1(p,2)**2)
 			skel(p,3) = - (D2(p,1)*D1(p,2)**2 - 2.0*D2(p,2)*D1(p,1)*D1(p,2) + D2(p,3)*D1(p,1)**2)/C2(p)
+		end if
+		
+		! differential invariants for feature descriptor in nlmean()
+		if (present(feat)) then
+			feat(p,1) = M(p)
+			feat(p,2) = sqrt(C2(p))
+			feat(p,3) = (D2(p,3) - D2(p,1))*D1(p,1)*D1(p,2) + D2(p,2) * (D1(p,1)**2 - D1(p,2)**2)/C2(p)
+		end if
+		
+		! variance of Minkowski feature estimator
+		if (present(mvar)) then
+			mvar(p) = 4.0*((D2(p,3) - D2(p,1))*D1(p,1)*D1(p,2) + D2(p,2) * (D1(p,1)**2 - D1(p,2)**2))**2/C2(p)**3
+		end if
+		
+		! variance of skeleton feature estimator
+		if (present(svar)) then
+			svar(p) = ((D2(p,1) - D2(p,3))*(D1(p,1)**2 - D1(p,2)**2) + 4.0*D2(p,2)*D1(p,1)*D2(p,2))**2/C2(p)**3
 		end if
 		
 		! mask covariant derivatives (in QUXYM packing)

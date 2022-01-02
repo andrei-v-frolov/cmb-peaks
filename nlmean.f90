@@ -161,7 +161,7 @@ end subroutine
 ! non-local means filter with running aperture (NESTED ordering)
 subroutine nldisc(nside, nmaps, radius, w, F, map, out)
 	integer nside, nmaps, i, j, k, l, n
-	real(DP) radius, v(3), w(3), s(0:nmaps)
+	real(DP) radius, z, v(3), w(3), s(0:nmaps)
 	real(DP), dimension(0:12*nside**2-1, 3) :: F
 	real(DP), dimension(0:12*nside**2-1, nmaps) :: map, out
 	intent(in) nside, nmaps, radius, w, F, map; intent(out) out
@@ -173,7 +173,7 @@ subroutine nldisc(nside, nmaps, radius, w, F, map, out)
 	
 	allocate(idx(0:3*l/2))
 	
-	!$OMP PARALLEL DO PRIVATE(v,s,k,idx)
+	!$OMP PARALLEL DO PRIVATE(z,v,s,k,idx)
 	do i = 0,n
 		call pix2vec_nest(nside, i, v)
 		call query_disc(nside, v, radius, idx, k, nest=1)
@@ -181,7 +181,8 @@ subroutine nldisc(nside, nmaps, radius, w, F, map, out)
 		s = 0.0
 		
 		do j = 0,k-1
-			s = s + weight(w, F(i,:)-F(idx(j),:)) * [1.0, map(idx(j),:)]
+			v = F(i,:)-F(idx(j),:); z = sum(w*v*v)/2.0; if (z > 5.0) cycle
+			s = s + exp(-z) * [1.0, map(idx(j),:)]
 		end do
 		
 		out(i,:) = s(1:nmaps)/s(0)

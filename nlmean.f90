@@ -12,14 +12,6 @@ implicit none
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-type grid
-	integer nside, n
-	real(DP), dimension(:,:), allocatable :: F, U
-	real(DP), dimension(:,:,:), allocatable :: S
-end type
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 real, parameter :: eps = 1.0e-7
 
 character(len=8000) :: arg, fin, fout, fres
@@ -121,30 +113,7 @@ pure function nlmean(nside, nmaps, w, v, F, map)
 	nlmean = s(1:nmaps)/s(0)
 end function
 
-! ...
-pure function nlmean2(nside, nmaps, w, v, F, map)
-	integer nside, nmaps, i, j, k, n
-	real(DP) w(3), v(3), nlmean2(0:nmaps,10)
-	real(DP) u, q(3), g(10), d(0:nmaps), s(0:nmaps,10)
-	real(DP), dimension(0:12*nside**2-1, 3) :: F
-	real(DP), dimension(0:12*nside**2-1, nmaps) :: map
-	intent(in) nside, nmaps, w, v, F, map
-	
-	n = 12*nside**2-1; s = 0.0
-	
-	do i = 0,n
-		q = w * (v-F(i,:))
-		u = weight(w, v-F(i,:))
-		g = [1.0, -q, q(1)*q(1), q(1)*q(2), q(1)*q(3), q(2)*q(2), q(2)*q(3), q(3)*q(3)]
-		d = [1.0, map(i,:)]
-		
-		forall (j=1:10, k=0:nmaps) s(k,j) = s(k,j) + u*g(j)*d(k)
-	end do
-	
-	nlmean2 = s
-end function
-
-! brute-force non-local means filter
+! brute-force non-local means filter (any ordering)
 subroutine nlbrute(nside, nmaps, w, F, map, out)
 	integer nside, nmaps, i, n; real(DP) w(3)
 	real(DP), dimension(0:12*nside**2-1, 3) :: F
@@ -190,68 +159,7 @@ subroutine nldisc(nside, nmaps, radius, w, F, map, out)
 	!$OMP END PARALLEL DO
 	
 	deallocate(idx)
-end subroutine
-
-! non-local means filter using multigrid interpolation (NESTED ordering)
-subroutine nlmeanmg(fside, nmaps, w, features, map, out)
-	integer fside, nmaps; real(DP) w(3)
-	intent(in) fside, nmaps, w, F, map; intent(out) out
-	real(DP), dimension(0:12*fside**2-1, 3) :: features
-	real(DP), dimension(0:12*fside**2-1, nmaps) :: map, out
 	
-	integer i, l, levels
-	type(grid), allocatable :: mg(:)
-	
-	! total multigrid levels
-	levels = log(fside/4.0)/log(2.0)
-	if (levels < 1) levels = 1
-	allocate(mg(levels))
-	
-	! initalize grid structure
-	do l = 1,levels; associate(nside => mg(l)%nside, n => mg(l)%n)
-		nside = ishft(fside,1-l); n = nside2npix(nside)-1
-		allocate(mg(l)%F(0:n,3), mg(l)%U(0:n,3), mg(l)%S(0:n,0:nmaps,10), source=0.0)
-		
-		if (l == 1) mg(l)%F = F; call convert_ring2nest(nside, Minp)
-		if (l >  1) call udgrade_nest(mg(l-1)%F, mg(l-1)%nside, mg(l)%F, mg(l)%nside)
-	end associate; end do
-	
-	! evaluate filtered map and derivatives at the coarse level
-	associate(n => mg(levels)%n, S => mg(levels)%S)
-		!mg(levels)%U = mg(levels)%F
-		
-		!$OMP PARALLEL DO
-		do i = 0,n; S(i,:,:) = nlmean2(fside, nmaps, w, F(i,:), F, map); end do
-		!$OMP END PARALLEL DO
-	end associate
-	
-	! upgrade filtered map correcting for differences in features
-	do l = levels-1,1,-1; associate(n => mg(l)%n, F => mg(l)%F, U => mg(l)%U, S => mg(l)%S)
-		call udgrade_nest(mg(l+1)%F, mg(l+1)%nside, mg(l)%U, mg(l)%nside)
-		do i = 1,10; call udgrade_nest(mg(l+1)%S(:,:,i), mg(l+1)%nside, mg(l)%S(:,:,i), mg(l)%nside); end do
-		
-		!$OMP PARALLEL DO
-		do i = 0,n
-			if (correct(nmaps, S(i,:,:), F(i,:)-U(i,:)) > 1.0e-7) S(i,:,:) = nlmean2(fside, nmaps, w, F(i,:), F, map)
-		end do
-		!$OMP END PARALLEL DO
-	end associate; end do
-	
-	! output filtered map
-	associate(n => nside2npix(fside)-1, S => mg(1)%S); 
-		!$OMP PARALLEL DO
-		do i = 0,n; out(i,:) = S(i,1:nmaps,1)/S(i,0,1); end do
-		!$OMP END PARALLEL DO
-	end associate
-	
-	call convert_nest2ring(fside, out)
-	
-	! clean up
-	do l = 1,levels
-		deallocate(mg(l)%F, mg(l)%U, mg(l)%S)
-	end do
-	
-	deallocate(mg)
 end subroutine
 
 end

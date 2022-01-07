@@ -54,7 +54,6 @@ call convert_ring2nest(nside, F)
 
 ! ...
 if (verbose) write (*,*) "Applying brute-force non-local mean filter..."
-!call nlbrute(nside, nmaps, w/sigma**2, F, M, S)
 call nldisc(nside, nmaps, 0.5, w/sigma**2, F, M, S)
 
 ! write output map(s)
@@ -87,44 +86,6 @@ subroutine features(nside, lmax, fwhm, map, F, w)
 	end if
 	
 	deallocate(alms, v)
-end subroutine
-
-! Gaussian weight kernel evaluating similarity of feature indicators
-pure function weight(w, v)
-	real(DP) weight, w(3), v(3); intent(in) w, v
-	
-	weight = exp(-sum(w*v*v)/2.0)
-end function
-
-! ...
-pure function nlmean(nside, nmaps, w, v, F, map)
-	integer nside, nmaps, i, n
-	real(DP) w(3), v(3), nlmean(nmaps), s(0:nmaps)
-	real(DP), dimension(0:12*nside**2-1, 3) :: F
-	real(DP), dimension(0:12*nside**2-1, nmaps) :: map
-	intent(in) nside, nmaps, w, v, F, map
-	
-	n = 12*nside**2-1; s = 0.0
-	
-	do i = 0,n
-		s = s + weight(w, v-F(i,:)) * [1.0, map(i,:)]
-	end do
-	
-	nlmean = s(1:nmaps)/s(0)
-end function
-
-! brute-force non-local means filter (any ordering)
-subroutine nlbrute(nside, nmaps, w, F, map, out)
-	integer nside, nmaps, i, n; real(DP) w(3)
-	real(DP), dimension(0:12*nside**2-1, 3) :: F
-	real(DP), dimension(0:12*nside**2-1, nmaps) :: map, out
-	intent(in) nside, nmaps, w, F, map; intent(out) out
-	
-	n = nside2npix(nside)-1
-	
-	!$OMP PARALLEL DO
-	do i = 0,n; out(i,:) = nlmean(nside, nmaps, w, F(i,:), F, map); end do
-	!$OMP END PARALLEL DO
 end subroutine
 
 ! non-local means filter with running aperture (NESTED ordering)

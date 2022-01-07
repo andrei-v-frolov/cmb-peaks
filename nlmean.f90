@@ -61,6 +61,13 @@ if (verbose) write (*,*) "Saving filtered map to " // trim(fout)
 Mout = S; if (ord == RING) call convert_nest2ring(nside, Mout)
 call write_map(fout, Mout, nside, ord, pol=0, vec=0, creator='NLMEAN')
 
+! write residual map if requested
+if (nArguments() == 5) then
+	if (verbose) write (*,*) "Saving residual map to " // trim(fres)
+	Mout = M - S; if (ord == RING) call convert_nest2ring(nside, Mout)
+	call write_map(fres, Mout, nside, ord, pol=0, vec=0, creator='NLMEAN')
+end if
+
 contains
 
 ! synthesize smoothed feature map based on Minkowski functionals

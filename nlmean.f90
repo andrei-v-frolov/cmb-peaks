@@ -13,13 +13,14 @@ implicit none
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 real, parameter :: eps = 1.0e-7
+real, parameter :: arcmin = pi/(180*60)
 
 character(len=8000) :: arg, fin, fout, fres
 integer :: nmaps = 0, nside = 0, ord = 0
 real(IO), dimension(:,:), allocatable :: Minp, Mout
 real(DP), dimension(:,:), allocatable :: M, F, S
 
-real(DP) fwhm, amount, sigma, w(3)
+real(DP) fwhm, amount, radius, sigma, w(3)
 integer i, n, bmax, lmax, status
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -33,7 +34,8 @@ call getArgument(4, fout); if (nArguments() == 5) call getArgument(5, fres)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-bmax = int(180*240*sqrt(-log(2.0)*log(eps))/(pi*fwhm) + 0.5)
+radius = min(max(64.0/nside,fwhm*arcmin),0.5)
+bmax = int(4*sqrt(-log(2.0)*log(eps))/(fwhm*arcmin) + 0.5)
 n = nside2npix(nside)-1; lmax = min(3*nside-1, bmax, 1000)
 
 ! allocate workspace and output storage
@@ -54,7 +56,7 @@ call convert_ring2nest(nside, F)
 
 ! ...
 if (verbose) write (*,*) "Applying brute-force non-local mean filter..."
-call nldisc(nside, nmaps, 0.5, w/sigma**2, F, M, S)
+call nldisc(nside, nmaps, radius, w/sigma**2, F, M, S)
 
 ! write output map(s)
 if (verbose) write (*,*) "Saving filtered map to " // trim(fout)
